@@ -1,0 +1,3 @@
+[submodule "schema/SCHEMA-RASPP"]
+	path = schema/raspp
+	url = git@github.com:TUM-CBR/SCHEMA-RASPP.git
