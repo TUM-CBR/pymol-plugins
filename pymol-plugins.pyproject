@@ -1,3 +1,3 @@
 {
-    "files": ["schema/visual/SchemaRunner.ui","schema/visual/__init__.py","schema/visual/SchemaSelector.ui"]
+    "files": ["schema/visual/SchemaSelectorWidget.ui","schema/visual/SchemaInstanceWidget.ui","schema/visual/__init__.py","schema/visual/SchemaRunnerWidget.ui"]
 }
