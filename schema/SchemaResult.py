@@ -21,7 +21,14 @@ class SchemaResultEntry(object):
         return self.__shuffling_points
 
 class SchemaResult(object):
-    def __init__(self, structure_name : str, pdb : str, results : str):
+    def __init__(
+        self,
+        result_name : str,
+        structure_name : str,
+        pdb : str,
+        results : str):
+        
+        self.__result_name = result_name
         self.__pdb = pdb
         self.__results = results
         self.__structure_name = structure_name
@@ -43,7 +50,7 @@ class SchemaResult(object):
 
     @property
     def name(self):
-        return os.path.basename(self.__results)
+        return os.path.join(self.__result_name, os.path.basename(self.__results))
 
     def load_results(self):
 

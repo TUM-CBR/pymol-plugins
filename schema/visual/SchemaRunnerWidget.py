@@ -8,6 +8,7 @@
 #
 # WARNING! All changes made in this file will be lost!
 
+import datetime
 import pymol
 from pymol.parsing import QuietException
 from PyQt5.QtWidgets import QWidget
@@ -35,8 +36,8 @@ class SchemaRunnerWidget(QWidget):
         self.__load_previous_sequences()
         self.__on_busy_status_changed(False)
 
-    def __on_busy_status_changed(self, is_busy : bool):
-        if is_busy:
+    def __on_busy_status_changed(self, is_busy : int):
+        if is_busy > 0:
             self.__ui.runSchemaButton.setEnabled(False)
             self.__ui.schemaProgress.setRange(0,0)
             self.__ui.schemaProgress.setVisible(True)
@@ -63,10 +64,10 @@ class SchemaRunnerWidget(QWidget):
     def on_refreshButton_clicked(self):
         self.__refresh_structures()
 
-    def __get_pdb_sequence(self):
+    def __get_pdb_sequence(self, structure_name):
         result = []
         pymol.cmd.iterate(
-            "(%s) & guide & alt +A" % self.__manager.structure_name,
+            "(%s) & guide & alt +A" % structure_name,
             'result.append(resn)',
             space={'result': result}
         )
@@ -84,13 +85,19 @@ class SchemaRunnerWidget(QWidget):
         self.__save_sequences()
 
         try:
-            xos = self.__validate_crossovers()
-            pymol.cmd.save(self.__manager.pdb_file, self.__ui.structuresCombo.currentText())
-            pymol.cmd.load(self.__manager.pdb_file)
+            name = datetime.datetime.now().strftime('%Y_%m_%d_%H%M%S')
+            task = self.__manager.get_schema_task(name)
 
-            sequences = "%s\n\n>%s\n%s" % (self.__ui.sequencesText.toPlainText(), self.__manager.structure_name, self.__get_pdb_sequence())
+            if task is not None:
+                xos = self.__validate_crossovers()
+
+                pymol.cmd.save(task.pdb_file, self.__ui.structuresCombo.currentText())
+                pymol.cmd.load(task.pdb_file)
+
+                sequences = "%s\n\n>%s\n%s" % (self.__ui.sequencesText.toPlainText(), task.structure_name, self.__get_pdb_sequence(task.structure_name))
+
+                task.run_schema(sequences, xos, 30)
             
-            self.__manager.run_schema(sequences, xos, 3)
         except QuietException:
             self.__schema_context.raise_error_message("The structure '%s' is invalid" % self.__ui.structuresCombo.currentText)
         except ValueError:

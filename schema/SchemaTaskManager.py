@@ -26,29 +26,103 @@ class SchemaTaskManager(QObject):
 
     SCHEMA_RESULT_PREFIX = 'SCHEMA_results'
     __results_updated_signal = pyqtSignal(list)
-    is_busy_signal = pyqtSignal(bool)
+    is_busy_signal = pyqtSignal(int)
 
-    def __init__(self, schema_context, name : str, working_directory : str):
+    def __init__(self, schema_context, working_directory : str):
         super(SchemaTaskManager, self).__init__()
         self.__schema_context = schema_context
-        self.__name = name
         self.__working_directory = working_directory
-        self.__schema_thread = None
+        self.__current_tasks = []
         self.__schema_watcher = QTimer()
         self.__schema_watcher.setInterval(100)
         self.__schema_watcher.setSingleShot(False)
-        self.__schema_watcher.timeout.connect(self.__check_schema)
+        self.__schema_watcher.timeout.connect(self.__check_tasks)
         self.__schema_watcher.start()
+        self.__current_task_count = 0
+
+    def __check_tasks(self):
+        prev_task_count = self.__current_task_count
+        self.__current_tasks = list(filter(lambda x: not x.is_done, self.__current_tasks))
+        self.__current_task_count = len(self.__current_tasks)
+
+        if prev_task_count == self.__current_task_count:
+            return
+        else:
+            self.is_busy_signal.emit(self.__current_task_count)
+            self.__results_updated_signal.emit(self.get_results())
 
     def subscribe_results_updated(self, action):
         action(self.get_results())
         return self.__results_updated_signal.connect(action)
 
-    def get_results(self):
+    def __get_results(self):
+
+        try:
+            for folder_name in os.listdir(self.__working_directory):
+                folder = os.path.join(self.__working_directory, folder_name)
+                try:
+                    for file_name in os.listdir(folder):
+                        file = os.path.join(folder, file_name)
+                        if  file_name.startswith(SchemaTaskManager.SCHEMA_RESULT_PREFIX):
+                            yield SchemaResult(
+                                folder_name,
+                                SchemaTask.get_structure_name(file_name),
+                                SchemaTask.get_pdb_file_name(self.__working_directory, folder_name),
+                                file)
+                except NotADirectoryError:
+                    pass
+        except FileNotFoundError:
+            pass
+
+    def __ensure_directories(self):
+        if not os.path.exists(self.__working_directory):
+            os.makedirs(self.__working_directory)
+
+    def save_resource(self, name : str, value : str):
         self.__ensure_directories()
-        return \
-            [SchemaResult(self.structure_name, self.pdb_file, os.path.join(self.location, file)) for file in os.listdir(self.location) \
-            if file.startswith(SchemaTaskManager.SCHEMA_RESULT_PREFIX)]
+        with open(os.path.join(self.__working_directory, name), 'w') as resource:
+            resource.write(value)
+
+    def load_resource(self, name : str):
+        try:
+            with open(os.path.join(self.__working_directory, name), 'r') as resource:
+                return resource.read()
+        except FileNotFoundError:
+            return None
+
+    def get_results(self):
+        return list(self.__get_results())
+
+    def get_schema_task(self, name : str):
+
+        if(len(self.__current_tasks) > 0):
+            return
+
+        task = SchemaTask(self.__schema_context, name, self.__working_directory)
+        self.__current_tasks.append(task)
+
+        return task
+
+class SchemaTask(QObject):
+
+    __results_updated_signal = pyqtSignal(list)
+    is_busy_signal = pyqtSignal(bool)
+
+    def __init__(
+        self,
+        schema_context,
+        name : str,
+        working_directory : str):
+
+        super(SchemaTask, self).__init__()
+        self.__schema_context = schema_context
+        self.__name = name
+        self.__working_directory = working_directory
+        self.__schema_thread = None
+
+    @property
+    def is_done(self):
+        return self.__schema_thread is not None and not self.__schema_thread.is_alive()
 
     @property
     def location(self):
@@ -60,17 +134,37 @@ class SchemaTaskManager(QObject):
     
     @property
     def structure_name(self):
-        return 'SCHEMA_%s' % self.name
+        return SchemaTask.get_structure_name(self.name)
     
     @property
     def pdb_file(self):
         self.__ensure_directories()
-        return os.path.join(self.location, "%s.pdb" % self.structure_name)
+        return SchemaTask.get_pdb_file_name(self.__working_directory, self.name)
+
+    @staticmethod
+    def get_structure_name(name: str):
+        return 'SCHEMA_%s' % name
+
+    @staticmethod
+    def get_pdb_aln_file_name(working_directory : str, result_name: str):
+        return os.path.join(
+            working_directory,
+            result_name,
+            'SCHEMA_pdb_%s.aln' % result_name
+        )
+
+    @staticmethod
+    def get_pdb_file_name(working_directory : str, result_name: str):
+        return os.path.join(
+            working_directory,
+            result_name,
+            "%s.pdb" % SchemaTask.get_structure_name(result_name)
+        )
 
     @property
     def pdb_aln_file(self):
         self.__ensure_directories()
-        return os.path.join(self.location, 'SCHEMA_pdb_%s.aln' % self.name)
+        return SchemaTask.get_pdb_aln_file_name(self.__working_directory, self.name)
 
     @property
     def msa_aln_file(self):
@@ -92,18 +186,6 @@ class SchemaTaskManager(QObject):
     def __ensure_directories(self):
         if not os.path.exists(self.location):
             os.makedirs(self.location)
-
-    def save_resource(self, name : str, value : str):
-        self.__ensure_directories()
-        with open(os.path.join(self.location, name), 'w') as resource:
-            resource.write(value)
-
-    def load_resource(self, name : str):
-        try:
-            with open(os.path.join(self.location, name), 'r') as resource:
-                return resource.read()
-        except FileNotFoundError:
-            return None
 
     @staticmethod
     def parse_sequences(sequences):
@@ -210,10 +292,9 @@ class SchemaTaskManager(QObject):
         )
 
         self.__schema_thread.start()
-        self.is_busy_signal.emit(True)
 
     def __run_schema_action(self, sequences_str: str, shuffling_points: list[int], min_fragment_size: int):
-        sequences = SchemaTaskManager.parse_sequences(sequences_str)
+        sequences = SchemaTask.parse_sequences(sequences_str)
         self.__align_parent(sequences)
         self.__align_sequences(sequences)
         self.__run_schema_contacts()

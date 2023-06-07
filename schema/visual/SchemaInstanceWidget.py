@@ -1,4 +1,5 @@
 from PyQt5.QtWidgets import QWidget
+import os
 import tempfile
 
 from ..SchemaTaskManager import SchemaTaskManager
@@ -13,7 +14,7 @@ class SchemaInstanceWidget(QWidget):
         self.__schema_context = schema_context
         self.__ui = Ui_SchemaInstanceWidget()
         self.__ui.setupUi(self)
-        self.__manager = SchemaTaskManager(schema_context, 'dummy', tempfile.gettempdir())
+        self.__manager = SchemaTaskManager(schema_context, os.path.join(tempfile.gettempdir(), '.cbr_tools'))
 
         self.__schema_selector = SchemaSelectorWidget(schema_context, self.__manager)
         self.__schema_runner = SchemaRunnerWidget(schema_context, self.__manager)
