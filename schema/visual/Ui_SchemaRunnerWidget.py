@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'SchemaRunnerWidget.ui'
+# Form implementation generated from reading ui file './SchemaRunnerWidget.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.9
 #
@@ -42,9 +42,13 @@ class Ui_SchemaRunnerWidget(object):
         self.label_3 = QtWidgets.QLabel(SchemaRunnerWidget)
         self.label_3.setObjectName("label_3")
         self.gridLayout.addWidget(self.label_3, 3, 0, 1, 1)
-        self.lineEdit = QtWidgets.QLineEdit(SchemaRunnerWidget)
-        self.lineEdit.setObjectName("lineEdit")
-        self.gridLayout.addWidget(self.lineEdit, 3, 1, 1, 3)
+        self.crossoversText = QtWidgets.QLineEdit(SchemaRunnerWidget)
+        self.crossoversText.setObjectName("crossoversText")
+        self.gridLayout.addWidget(self.crossoversText, 3, 1, 1, 3)
+        self.schemaProgress = QtWidgets.QProgressBar(SchemaRunnerWidget)
+        self.schemaProgress.setProperty("value", 24)
+        self.schemaProgress.setObjectName("schemaProgress")
+        self.gridLayout.addWidget(self.schemaProgress, 4, 1, 1, 3)
         self.verticalLayout.addLayout(self.gridLayout)
         spacerItem1 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         self.verticalLayout.addItem(spacerItem1)

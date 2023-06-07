@@ -16,6 +16,11 @@ import tempfile
 from .Ui_SchemaRunnerWidget import Ui_SchemaRunnerWidget
 from ..SchemaTaskManager import SchemaTaskManager
 
+input_validation_error = \
+    """The values of the input fields could not be read:
+    * Please ensure that the crossovers are a comma separated integers
+    """
+
 class SchemaRunnerWidget(QWidget):
 
     SEQUENCES_KEY = 'sequences'
@@ -26,7 +31,18 @@ class SchemaRunnerWidget(QWidget):
         self.__ui = Ui_SchemaRunnerWidget()
         self.__ui.setupUi(self)
         self.__manager = manager
+        self.__manager.is_busy_signal.connect(self.__on_busy_status_changed)
         self.__load_previous_sequences()
+        self.__on_busy_status_changed(False)
+
+    def __on_busy_status_changed(self, is_busy : bool):
+        if is_busy:
+            self.__ui.runSchemaButton.setEnabled(False)
+            self.__ui.schemaProgress.setRange(0,0)
+            self.__ui.schemaProgress.setVisible(True)
+        else:
+            self.__ui.runSchemaButton.setEnabled(True)
+            self.__ui.schemaProgress.setVisible(False)
 
     def __load_previous_sequences(self):
         previous = self.__manager.load_resource(SchemaRunnerWidget.SEQUENCES_KEY)
@@ -58,17 +74,25 @@ class SchemaRunnerWidget(QWidget):
 
         return "".join(legend[resn] for resn in result)
 
+    def __validate_crossovers(self):
+        xos = self.__ui.crossoversText.text()
+        return [int(x) for x in xos.split(",")]
+
+
     def on_runSchemaButton_clicked(self):
 
         self.__save_sequences()
 
         try:
+            xos = self.__validate_crossovers()
             pymol.cmd.save(self.__manager.pdb_file, self.__ui.structuresCombo.currentText())
             pymol.cmd.load(self.__manager.pdb_file)
 
             sequences = "%s\n\n>%s\n%s" % (self.__ui.sequencesText.toPlainText(), self.__manager.structure_name, self.__get_pdb_sequence())
             
-            self.__manager.run_schema(sequences, 5, 30)
+            self.__manager.run_schema(sequences, xos, 3)
         except QuietException:
             self.__schema_context.raise_error_message("The structure '%s' is invalid" % self.__ui.structuresCombo.currentText)
+        except ValueError:
+            self.__schema_context.raise_error_message(input_validation_error)
         

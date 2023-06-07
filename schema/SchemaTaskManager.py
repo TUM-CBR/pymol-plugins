@@ -1,7 +1,8 @@
 import os
-from PyQt5.QtCore import pyqtSignal, QObject
+from PyQt5.QtCore import pyqtSignal, pyqtSlot, QObject, QTimer
 import re
 import subprocess
+from threading import Thread
 
 from .raspp import schemacontacts
 from .raspp import rasppcurve
@@ -25,12 +26,19 @@ class SchemaTaskManager(QObject):
 
     SCHEMA_RESULT_PREFIX = 'SCHEMA_results'
     __results_updated_signal = pyqtSignal(list)
+    is_busy_signal = pyqtSignal(bool)
 
     def __init__(self, schema_context, name : str, working_directory : str):
         super(SchemaTaskManager, self).__init__()
         self.__schema_context = schema_context
         self.__name = name
         self.__working_directory = working_directory
+        self.__schema_thread = None
+        self.__schema_watcher = QTimer()
+        self.__schema_watcher.setInterval(100)
+        self.__schema_watcher.setSingleShot(False)
+        self.__schema_watcher.timeout.connect(self.__check_schema)
+        self.__schema_watcher.start()
 
     def subscribe_results_updated(self, action):
         action(self.get_results())
@@ -180,10 +188,33 @@ class SchemaTaskManager(QObject):
 
             rasppcurve.main_impl(args)
 
+    def __check_schema(self):
+
+        # todo: very hacky we just check on regular interval if
+        # the task is done
+
+        if self.__schema_thread \
+            and not self.__schema_thread.is_alive():
+            self.__schema_thread = None
+            self.is_busy_signal.emit(False)
+
     def run_schema(self, sequences_str: str, shuffling_points: list[int], min_fragment_size: int):
+
+        # We only allow one schema task at the time
+        if self.__schema_thread:
+            return
+
+        self.__schema_thread = Thread(
+            target = self.__run_schema_action,
+            args = [sequences_str, shuffling_points, min_fragment_size]
+        )
+
+        self.__schema_thread.start()
+        self.is_busy_signal.emit(True)
+
+    def __run_schema_action(self, sequences_str: str, shuffling_points: list[int], min_fragment_size: int):
         sequences = SchemaTaskManager.parse_sequences(sequences_str)
         self.__align_parent(sequences)
         self.__align_sequences(sequences)
         self.__run_schema_contacts()
-        self.__run_schema_curve([shuffling_points], min_fragment_size)
-                
+        self.__run_schema_curve(shuffling_points, min_fragment_size)

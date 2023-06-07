@@ -43,7 +43,6 @@ class SchemaSelectorWidget(QWidget):
         pymol.cmd.load(result.pdb)
 
     def on_resultsList_itemClicked(self, item : QListWidgetItem):
-        print("helo")
         self.__set_result(item.data(SchemaSelectorWidget.RESULT_DATA_ROLE))
 
     def on_resultsViewer_cellActivated(self, row, column):

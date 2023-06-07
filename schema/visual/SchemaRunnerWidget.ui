@@ -71,7 +71,14 @@
       </widget>
      </item>
      <item row="3" column="1" colspan="3">
-      <widget class="QLineEdit" name="lineEdit"/>
+      <widget class="QLineEdit" name="crossoversText"/>
+     </item>
+     <item row="4" column="1" colspan="3">
+      <widget class="QProgressBar" name="schemaProgress">
+       <property name="value">
+        <number>24</number>
+       </property>
+      </widget>
      </item>
     </layout>
    </item>
