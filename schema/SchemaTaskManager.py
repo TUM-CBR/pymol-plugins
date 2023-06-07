@@ -66,7 +66,7 @@ class SchemaTaskManager(QObject):
                         if  file_name.startswith(SchemaTaskManager.SCHEMA_RESULT_PREFIX):
                             yield SchemaResult(
                                 folder_name,
-                                SchemaTask.get_structure_name(file_name),
+                                SchemaTask.get_structure_name(folder_name),
                                 SchemaTask.get_pdb_file_name(self.__working_directory, folder_name),
                                 file)
                 except NotADirectoryError:
