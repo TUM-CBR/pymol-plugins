@@ -12,6 +12,16 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "python": "/home/ernesto/code/pymol-open-source/.env/bin/python"
+        },
+        {
+            "name": "Pymol37",
+            "type": "python",
+            "request": "launch",
+            "args": ["-i", "test_pymol.py"],
+            "module": "IPython",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "python": "/home/ernesto/code/pymol-plugins/.env/bin/python"
         }
     ]
 }

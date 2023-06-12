@@ -3,12 +3,13 @@ from PyQt5.QtCore import pyqtSignal, pyqtSlot, QObject, QTimer
 import re
 import subprocess
 from threading import Thread
+from typing import Dict, List
 
 from .raspp import schemacontacts
 from .raspp import rasppcurve
 from .SchemaResult import SchemaResult
 
-seq_name_re = re.compile('>(?P<name>\w+)')
+seq_name_re = re.compile('>(?P<name>\\w+)')
 
 error_parse_sequence = \
     """Could not read the parent sequences. Please ensure the sequences follow the format:
@@ -24,6 +25,7 @@ error_no_main_sequence = \
 
 class SchemaTaskManager(QObject):
 
+    __no_clustal_stdin = Exception("Bug in the code! The clustal process has no stdin")
     SCHEMA_RESULT_PREFIX = 'SCHEMA_results'
     __results_updated_signal = pyqtSignal(list)
     is_busy_signal = pyqtSignal(int)
@@ -93,36 +95,38 @@ class SchemaTaskManager(QObject):
     def get_results(self):
         return list(self.__get_results())
 
-    def get_schema_task(self, name : str):
-
-        if(len(self.__current_tasks) > 0):
-            return
-
-        task = SchemaTask(self.__schema_context, name, self.__working_directory)
+    def run_schema(self, name: str, sequences_str: str, shuffling_points: List[int], min_fragment_size: int) -> None:
+        task = SchemaTask(self.__schema_context, name, self.__working_directory, sequences_str, shuffling_points, min_fragment_size)
         self.__current_tasks.append(task)
-
-        return task
+        self.__check_tasks()
 
 class SchemaTask(QObject):
 
-    __results_updated_signal = pyqtSignal(list)
     is_busy_signal = pyqtSignal(bool)
 
     def __init__(
         self,
         schema_context,
         name : str,
-        working_directory : str):
+        working_directory : str,
+        sequences_str : str,
+        shuffling_points : List[int],
+        min_fragment_size: int):
 
         super(SchemaTask, self).__init__()
         self.__schema_context = schema_context
         self.__name = name
         self.__working_directory = working_directory
-        self.__schema_thread = None
+        self.__schema_thread = Thread(
+            target = self.__run_schema_action,
+            args = [sequences_str, shuffling_points, min_fragment_size]
+        )
+
+        self.__schema_thread.start()
 
     @property
     def is_done(self):
-        return self.__schema_thread is not None and not self.__schema_thread.is_alive()
+        return self.__schema_thread.is_alive()
 
     @property
     def location(self):
@@ -188,14 +192,15 @@ class SchemaTask(QObject):
             os.makedirs(self.location)
 
     @staticmethod
-    def parse_sequences(sequences):
+    def parse_sequences(sequences : str) -> Dict[str,str]:
 
-        results = {}
+        results : Dict[str,str] = {}
         current_key = None
         
         for line in filter(lambda x: x.strip() != "", sequences.splitlines()):
 
-            if match := seq_name_re.match(line):
+            match = seq_name_re.match(line)
+            if match:
                 current_key = match['name']
                 results[current_key] = ""
             elif current_key:
@@ -205,7 +210,7 @@ class SchemaTask(QObject):
 
         return results
 
-    def __run_clustal(self, outfile : str):
+    def __run_clustal(self, outfile : str) -> subprocess.Popen:
         return subprocess.Popen(
             [self.__schema_context.clustal, '-i', '-', '--force', '--outfmt=clustal', '-o', outfile],
             text=True,
@@ -214,7 +219,7 @@ class SchemaTask(QObject):
             stderr=subprocess.PIPE
         )
             
-    def __align_parent(self, sequences : dict[str,str]):
+    def __align_parent(self, sequences : Dict[str,str]) -> None:
 
         if 'Main' not in sequences:
             raise ValueError(error_no_main_sequence)
@@ -222,29 +227,33 @@ class SchemaTask(QObject):
         if self.structure_name not in sequences:
             raise Exception('The sequence of structure "%s" is not in the list.' % self.structure_name)
 
-        clustal = self.__run_clustal(self.pdb_aln_file)
+        with self.__run_clustal(self.pdb_aln_file) as clustal:
+            stdin = clustal.stdin
+            if stdin:
+                stdin.write('>Main\n%s\n>%s\n%s' % (sequences['Main'], self.structure_name, sequences[self.structure_name]))
+                stdin.close()
+            else:
+                raise SchemaTaskManager.__no_clustal_stdin
 
-        clustal.stdin.write('>Main\n%s\n>%s\n%s' % (sequences['Main'], self.structure_name, sequences[self.structure_name]))
-
-        clustal.stdin.close()
-
-        clustal.wait()
+            clustal.wait()
 
 
-    def __align_sequences(self, sequences: dict[str,str]):
+    def __align_sequences(self, sequences: Dict[str,str]):
 
-        clustal = self.__run_clustal(self.msa_aln_file)
+        with self.__run_clustal(self.msa_aln_file) as clustal:
+            if not clustal.stdin:
+                raise SchemaTaskManager.__no_clustal_stdin
 
-        for (name, sequence) in sequences.items():
+            for (name, sequence) in sequences.items():
 
-            # The sequence of the structure does not need to be included
-            # in the multiple sequence alignment
-            if name != self.structure_name:
-                clustal.stdin.write('>%s\n%s\n\n' % (name, sequence))
+                # The sequence of the structure does not need to be included
+                # in the multiple sequence alignment
+                if name != self.structure_name:
+                    clustal.stdin.write('>%s\n%s\n\n' % (name, sequence))
 
-        clustal.stdin.close()
+            clustal.stdin.close()
 
-        clustal.wait()
+            clustal.wait()
 
     def __run_schema_contacts(self):
         args = {
@@ -256,7 +265,7 @@ class SchemaTask(QObject):
 
         schemacontacts.main_impl(args)
 
-    def __run_schema_curve(self, suffling_points: list[int], min_fragment_size: int):
+    def __run_schema_curve(self, suffling_points: List[int], min_fragment_size: int):
 
         for n in suffling_points:
             
@@ -270,30 +279,7 @@ class SchemaTask(QObject):
 
             rasppcurve.main_impl(args)
 
-    def __check_schema(self):
-
-        # todo: very hacky we just check on regular interval if
-        # the task is done
-
-        if self.__schema_thread \
-            and not self.__schema_thread.is_alive():
-            self.__schema_thread = None
-            self.is_busy_signal.emit(False)
-
-    def run_schema(self, sequences_str: str, shuffling_points: list[int], min_fragment_size: int):
-
-        # We only allow one schema task at the time
-        if self.__schema_thread:
-            return
-
-        self.__schema_thread = Thread(
-            target = self.__run_schema_action,
-            args = [sequences_str, shuffling_points, min_fragment_size]
-        )
-
-        self.__schema_thread.start()
-
-    def __run_schema_action(self, sequences_str: str, shuffling_points: list[int], min_fragment_size: int):
+    def __run_schema_action(self, sequences_str: str, shuffling_points: List[int], min_fragment_size: int):
         sequences = SchemaTask.parse_sequences(sequences_str)
         self.__align_parent(sequences)
         self.__align_sequences(sequences)

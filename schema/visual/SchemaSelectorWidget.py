@@ -54,8 +54,9 @@ class SchemaSelectorWidget(QWidget):
     def __select_item(self, row):
         item = self.__result_items[row]
 
+        e = 0
         for (i,loc) in enumerate(item.shuffling_points):
-            s = 0 if i == 0 else e
+            s = e
             e = loc
             sele = "(model %s) and (resi %i-%i)" % (self.__result.structure_name, s, e)
             pymol.cmd.color(get_color(i), sele)

@@ -11,11 +11,12 @@
 import datetime
 import pymol
 from pymol.parsing import QuietException
+from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QWidget
-import tempfile
+
+from schema.SchemaTaskManager import SchemaTask, SchemaTaskManager
 
 from .Ui_SchemaRunnerWidget import Ui_SchemaRunnerWidget
-from ..SchemaTaskManager import SchemaTaskManager
 
 input_validation_error = \
     """The values of the input fields could not be read:
@@ -26,7 +27,7 @@ class SchemaRunnerWidget(QWidget):
 
     SEQUENCES_KEY = 'sequences'
 
-    def __init__(self, schema_context, manager, *args, **kwargs):
+    def __init__(self, schema_context, manager : SchemaTaskManager, *args, **kwargs):
         super(SchemaRunnerWidget, self).__init__(*args, **kwargs)
         self.__schema_context = schema_context
         self.__ui = Ui_SchemaRunnerWidget()
@@ -59,8 +60,12 @@ class SchemaRunnerWidget(QWidget):
 
     def __refresh_structures(self):
         self.__ui.structuresCombo.clear()
-        self.__ui.structuresCombo.addItems(pymol.cmd.get_names())
 
+        for name in pymol.cmd.get_names():
+            for chain in pymol.cmd.get_chains(name):
+                self.__ui.structuresCombo.addItem("%s/%s" % (name, chain), (name, chain))
+
+    @pyqtSlot()
     def on_refreshButton_clicked(self):
         self.__refresh_structures()
 
@@ -68,35 +73,37 @@ class SchemaRunnerWidget(QWidget):
         result = []
         pymol.cmd.iterate(
             "(%s) & guide & alt +A" % structure_name,
-            'result.append(resn)',
+            'result.append(oneletter)',
             space={'result': result}
         )
-        legend = pymol.exporting._resn_to_aa
-
-        return "".join(legend[resn] for resn in result)
+        return "".join(result)
 
     def __validate_crossovers(self):
         xos = self.__ui.crossoversText.text()
         return [int(x) for x in xos.split(",")]
 
+    def __get_pdb_file_name(self, name : str) -> str:
+        return SchemaTask.get_pdb_file_name(self.__working_directory, name)
 
+    def __get_structure_name(self, name : str) -> str:
+        return SchemaTask.get_structure_name(name)
+
+    @pyqtSlot()
     def on_runSchemaButton_clicked(self):
 
         self.__save_sequences()
 
         try:
             name = datetime.datetime.now().strftime('%Y_%m_%d_%H%M%S')
-            task = self.__manager.get_schema_task(name)
+            pdb_file = self.__get_pdb_file_name(name)
+            structure_name = self.__get_structure_name(name)
+            xos = self.__validate_crossovers()
+            
+            pymol.cmd.save(pdb_file, "(model %s) & (chain %s)" % self.__ui.structuresCombo.currentData())
+            pymol.cmd.load(pdb_file)
+            sequences = "%s\n\n>%s\n%s" % (self.__ui.sequencesText.toPlainText(), structure_name, self.__get_pdb_sequence(structure_name))
 
-            if task is not None:
-                xos = self.__validate_crossovers()
-
-                pymol.cmd.save(task.pdb_file, self.__ui.structuresCombo.currentText())
-                pymol.cmd.load(task.pdb_file)
-
-                sequences = "%s\n\n>%s\n%s" % (self.__ui.sequencesText.toPlainText(), task.structure_name, self.__get_pdb_sequence(task.structure_name))
-
-                task.run_schema(sequences, xos, 30)
+            self.__manager.run_schema(name, sequences, xos, 30)
             
         except QuietException:
             self.__schema_context.raise_error_message("The structure '%s' is invalid" % self.__ui.structuresCombo.currentText)
