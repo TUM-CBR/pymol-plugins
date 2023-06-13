@@ -8,8 +8,7 @@ from typing import Dict, List, NamedTuple
 from .raspp import schemacontacts
 from .raspp import rasppcurve
 from .SchemaResult import SchemaResult
-
-seq_name_re = re.compile('>(?P<name>\\w+)')
+from .support import fasta
 
 error_parse_sequence = \
     """Could not read the parent sequences. Please ensure the sequences follow the format:
@@ -132,11 +131,15 @@ class SchemaTask(QObject):
 
     @property
     def is_done(self):
-        return self.__schema_thread.is_alive()
+        return not self.__schema_thread.is_alive()
+
+    @staticmethod
+    def __location(working_directory : str, name : str):
+        return os.path.join(working_directory, name)
 
     @property
     def location(self):
-        return os.path.join(self.__working_directory, self.__name)
+        return SchemaTask.__location(self.__working_directory, self.__name)
 
     @property
     def name(self):
@@ -165,6 +168,7 @@ class SchemaTask(QObject):
 
     @staticmethod
     def get_pdb_file_name(working_directory : str, result_name: str):
+        SchemaTask.ensure_location(SchemaTask.__location(working_directory, result_name))
         return os.path.join(
             working_directory,
             result_name,
@@ -193,26 +197,26 @@ class SchemaTask(QObject):
             "%s_%s_n%i" % (SchemaTaskManager.SCHEMA_RESULT_PREFIX, self.name, n)
             )
     
+    @staticmethod
+    def ensure_location(location : str) -> None:
+        if not os.path.exists(location):
+            os.makedirs(location)
+
     def __ensure_directories(self):
-        if not os.path.exists(self.location):
-            os.makedirs(self.location)
+        SchemaTask.ensure_location(self.location)
 
     @staticmethod
     def parse_sequences(sequences : str) -> Dict[str,str]:
 
         results : Dict[str,str] = {}
-        current_key = None
         
-        for line in filter(lambda x: x.strip() != "", sequences.splitlines()):
+        for line in fasta.parse_fasta_iter(sequences):
 
-            match = seq_name_re.match(line)
-            if match:
-                current_key = match['name']
-                results[current_key] = ""
-            elif current_key:
-                results[current_key] += line + "\n"
+            if isinstance(line, BaseException):
+                raise line
             else:
-                raise ValueError(error_parse_sequence)
+                (k,v) = line
+                results[k] = v
 
         return results
 

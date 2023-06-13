@@ -6,7 +6,7 @@ class SchemaContext():
     __instances = 0
 
     def __init__(self):
-        self.__working_directory = path.join(path.expanduser('~user'), ".cbr_tools")
+        self.__working_directory = path.join(path.expanduser('~'), ".cbr_tools")
 
     def raise_error_message(self, error):
         print(error)
@@ -23,6 +23,6 @@ class SchemaContext():
     def clustal(self) -> str:
 
         if os.name == 'nt':
-            return path.join(path.dirname(__file__), "resources", "clustalo.exe")
+            return path.join(path.dirname(__file__), "resources", "clustal", "clustalo.exe")
 
         return "clustalo"
