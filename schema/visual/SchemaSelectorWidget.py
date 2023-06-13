@@ -3,7 +3,7 @@ import pymol
 
 from ..SchemaResult import SchemaResult
 
-from .SchemaContext import SchemaContext
+from ..SchemaContext import SchemaContext
 from .Ui_SchemaSelectorWidget import Ui_SchemaSelectorWidget
 from ..SchemaTaskManager import SchemaTaskManager
 

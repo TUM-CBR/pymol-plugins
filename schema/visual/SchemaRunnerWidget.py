@@ -14,7 +14,7 @@ from pymol.parsing import QuietException
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QWidget
 
-from schema.SchemaTaskManager import SchemaTask, SchemaTaskManager
+from ..SchemaTaskManager import SchemaTask, SchemaTaskManager
 
 from .Ui_SchemaRunnerWidget import Ui_SchemaRunnerWidget
 
@@ -83,7 +83,7 @@ class SchemaRunnerWidget(QWidget):
         return [int(x) for x in xos.split(",")]
 
     def __get_pdb_file_name(self, name : str) -> str:
-        return SchemaTask.get_pdb_file_name(self.__working_directory, name)
+        return self.__manager.get_pdb_file_name(name)
 
     def __get_structure_name(self, name : str) -> str:
         return SchemaTask.get_structure_name(name)

@@ -3,7 +3,7 @@ from PyQt5.QtCore import pyqtSignal, pyqtSlot, QObject, QTimer
 import re
 import subprocess
 from threading import Thread
-from typing import Dict, List
+from typing import Dict, List, NamedTuple
 
 from .raspp import schemacontacts
 from .raspp import rasppcurve
@@ -30,10 +30,9 @@ class SchemaTaskManager(QObject):
     __results_updated_signal = pyqtSignal(list)
     is_busy_signal = pyqtSignal(int)
 
-    def __init__(self, schema_context, working_directory : str):
+    def __init__(self, schema_context):
         super(SchemaTaskManager, self).__init__()
         self.__schema_context = schema_context
-        self.__working_directory = working_directory
         self.__current_tasks = []
         self.__schema_watcher = QTimer()
         self.__schema_watcher.setInterval(100)
@@ -41,6 +40,10 @@ class SchemaTaskManager(QObject):
         self.__schema_watcher.timeout.connect(self.__check_tasks)
         self.__schema_watcher.start()
         self.__current_task_count = 0
+
+    @property
+    def __working_directory(self) -> str:
+        return self.__schema_context.working_directory
 
     def __check_tasks(self):
         prev_task_count = self.__current_task_count
@@ -56,6 +59,9 @@ class SchemaTaskManager(QObject):
     def subscribe_results_updated(self, action):
         action(self.get_results())
         return self.__results_updated_signal.connect(action)
+
+    def get_pdb_file_name(self, name : str) -> str:
+        return SchemaTask.get_pdb_file_name(self.__working_directory, name)
 
     def __get_results(self):
 
