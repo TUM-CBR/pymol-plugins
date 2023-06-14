@@ -12,6 +12,7 @@ import datetime
 import pymol
 from pymol.parsing import QuietException
 from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtGui import QIntValidator
 from PyQt5.QtWidgets import QWidget
 
 from ..SchemaTaskManager import SchemaTask, SchemaTaskManager
@@ -32,6 +33,10 @@ class SchemaRunnerWidget(QWidget):
         self.__schema_context = schema_context
         self.__ui = Ui_SchemaRunnerWidget()
         self.__ui.setupUi(self)
+
+        self.__ui.minLengthText.setValidator(QIntValidator(1,9999))
+        self.__ui.maxLengthText.setValidator(QIntValidator(1,9999))
+
         self.__manager = manager
         self.__manager.is_busy_signal.connect(self.__on_busy_status_changed)
         self.__load_previous_sequences()
@@ -98,12 +103,14 @@ class SchemaRunnerWidget(QWidget):
             pdb_file = self.__get_pdb_file_name(name)
             structure_name = self.__get_structure_name(name)
             xos = self.__validate_crossovers()
+            min_length = int(self.__ui.minLengthText)
+            max_length = int(self.__ui.maxLengthText)
             
             pymol.cmd.save(pdb_file, "(model %s) & (chain %s)" % self.__ui.structuresCombo.currentData())
             pymol.cmd.load(pdb_file)
             sequences = "%s\n\n>%s\n%s" % (self.__ui.sequencesText.toPlainText(), structure_name, self.__get_pdb_sequence(structure_name))
 
-            self.__manager.run_schema(name, sequences, xos, 30)
+            self.__manager.run_schema(name, sequences, xos, min_length, max_length)
             
         except QuietException:
             self.__schema_context.raise_error_message("The structure '%s' is invalid" % self.__ui.structuresCombo.currentText)

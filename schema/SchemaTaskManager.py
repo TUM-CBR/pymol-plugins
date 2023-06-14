@@ -9,6 +9,7 @@ from .raspp import schemacontacts
 from .raspp import rasppcurve
 from .SchemaResult import SchemaResult
 from .support import fasta
+from .support.strings import MAIN_SEQUENCE_NAME
 
 error_parse_sequence = \
     """Could not read the parent sequences. Please ensure the sequences follow the format:
@@ -20,7 +21,7 @@ error_parse_sequence = \
     """
 
 error_no_main_sequence = \
-    """Could not find a sequence called 'Main'. This sequence will be aligned to the structure."""
+    """Could not find a sequence called '%s'. This sequence will be aligned to the structure.""" % MAIN_SEQUENCE_NAME
 
 class SchemaTaskManager(QObject):
 
@@ -75,6 +76,8 @@ class SchemaTaskManager(QObject):
                                 folder_name,
                                 SchemaTask.get_structure_name(folder_name),
                                 SchemaTask.get_pdb_file_name(self.__working_directory, folder_name),
+                                SchemaTask.get_pdb_aln_file_name(self.__working_directory, folder_name),
+                                SchemaTask.get_aln_file_name(self.__working_directory, folder_name),
                                 file)
                 except NotADirectoryError:
                     pass
@@ -100,8 +103,8 @@ class SchemaTaskManager(QObject):
     def get_results(self):
         return list(self.__get_results())
 
-    def run_schema(self, name: str, sequences_str: str, shuffling_points: List[int], min_fragment_size: int) -> None:
-        task = SchemaTask(self.__schema_context, name, self.__working_directory, sequences_str, shuffling_points, min_fragment_size)
+    def run_schema(self, name: str, sequences_str: str, shuffling_points: List[int], min_fragment_size: int, max_fragment_size : int) -> None:
+        task = SchemaTask(self.__schema_context, name, self.__working_directory, sequences_str, shuffling_points, min_fragment_size, max_fragment_size)
         self.__current_tasks.append(task)
         self.__check_tasks()
 
@@ -116,7 +119,8 @@ class SchemaTask(QObject):
         working_directory : str,
         sequences_str : str,
         shuffling_points : List[int],
-        min_fragment_size: int):
+        min_fragment_size: int,
+        max_fragment_size : int):
 
         super(SchemaTask, self).__init__()
         self.__schema_context = schema_context
@@ -124,7 +128,7 @@ class SchemaTask(QObject):
         self.__working_directory = working_directory
         self.__schema_thread = Thread(
             target = self.__run_schema_action,
-            args = [sequences_str, shuffling_points, min_fragment_size]
+            args = [sequences_str, shuffling_points, min_fragment_size, max_fragment_size]
         )
 
         self.__schema_thread.start()
@@ -167,6 +171,10 @@ class SchemaTask(QObject):
         )
 
     @staticmethod
+    def get_aln_file_name(working_directory : str, result_name : str) -> str:
+        return os.path.join(working_directory, 'SCHEMA_all_%s.aln' % result_name)
+
+    @staticmethod
     def get_pdb_file_name(working_directory : str, result_name: str):
         SchemaTask.ensure_location(SchemaTask.__location(working_directory, result_name))
         return os.path.join(
@@ -183,7 +191,7 @@ class SchemaTask(QObject):
     @property
     def msa_aln_file(self):
         self.__ensure_directories()
-        return os.path.join(self.location, 'SCHEMA_all_%s.aln' % self.name)
+        return SchemaTask.get_aln_file_name(self.__working_directory, self.__name)
 
     @property
     def contacts_file(self):
@@ -231,7 +239,7 @@ class SchemaTask(QObject):
             
     def __align_parent(self, sequences : Dict[str,str]) -> None:
 
-        if 'Main' not in sequences:
+        if MAIN_SEQUENCE_NAME not in sequences:
             raise ValueError(error_no_main_sequence)
 
         if self.structure_name not in sequences:
@@ -240,7 +248,7 @@ class SchemaTask(QObject):
         with self.__run_clustal(self.pdb_aln_file) as clustal:
             stdin = clustal.stdin
             if stdin:
-                stdin.write('>Main\n%s\n>%s\n%s' % (sequences['Main'], self.structure_name, sequences[self.structure_name]))
+                stdin.write('>%s\n%s\n>%s\n%s' % (MAIN_SEQUENCE_NAME, sequences[MAIN_SEQUENCE_NAME], self.structure_name, sequences[self.structure_name]))
                 stdin.close()
             else:
                 raise SchemaTaskManager.__no_clustal_stdin
@@ -275,7 +283,7 @@ class SchemaTask(QObject):
 
         schemacontacts.main_impl(args)
 
-    def __run_schema_curve(self, suffling_points: List[int], min_fragment_size: int):
+    def __run_schema_curve(self, suffling_points: List[int], min_fragment_size: int, max_fragment_size : int):
 
         for n in suffling_points:
             
@@ -284,14 +292,15 @@ class SchemaTask(QObject):
                 rasppcurve.ARG_CONTACT_FILE: self.contacts_file,
                 rasppcurve.ARG_NUM_CROSSOVERS: n,
                 rasppcurve.ARG_OUTPUT_FILE: self.get_results_file_name(n),
-                rasppcurve.ARG_MIN_FRAGMENT_SIZE: min_fragment_size
+                rasppcurve.ARG_MIN_FRAGMENT_SIZE: min_fragment_size,
+                rasppcurve.ARG_MAX_FRAGMENT_SIZE: max_fragment_size
             }
 
             rasppcurve.main_impl(args)
 
-    def __run_schema_action(self, sequences_str: str, shuffling_points: List[int], min_fragment_size: int):
+    def __run_schema_action(self, sequences_str: str, shuffling_points: List[int], min_fragment_size: int, max_fragment_size: int):
         sequences = SchemaTask.parse_sequences(sequences_str)
         self.__align_parent(sequences)
         self.__align_sequences(sequences)
         self.__run_schema_contacts()
-        self.__run_schema_curve(shuffling_points, min_fragment_size)
+        self.__run_schema_curve(shuffling_points, min_fragment_size, max_fragment_size)

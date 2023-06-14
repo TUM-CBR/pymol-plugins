@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>300</height>
+    <width>813</width>
+    <height>582</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,28 +15,32 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <layout class="QGridLayout" name="gridLayout">
-     <item row="1" column="0">
-      <widget class="QLabel" name="label_2">
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QLabel" name="label">
        <property name="text">
-        <string>Select Parents</string>
+        <string>Select Structure:</string>
        </property>
       </widget>
      </item>
-     <item row="2" column="0" colspan="4">
-      <widget class="QPlainTextEdit" name="sequencesText"/>
+     <item>
+      <widget class="QComboBox" name="structuresCombo">
+       <property name="minimumSize">
+        <size>
+         <width>200</width>
+         <height>0</height>
+        </size>
+       </property>
+      </widget>
      </item>
-     <item row="0" column="1">
-      <widget class="QComboBox" name="structuresCombo"/>
-     </item>
-     <item row="0" column="2">
+     <item>
       <widget class="QPushButton" name="refreshButton">
        <property name="text">
         <string>Refresh</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="3">
+     <item>
       <spacer name="horizontalSpacer">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
@@ -49,31 +53,74 @@
        </property>
       </spacer>
      </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="label">
-       <property name="text">
-        <string>Select Structure:</string>
-       </property>
-      </widget>
-     </item>
-     <item row="4" column="0">
-      <widget class="QPushButton" name="runSchemaButton">
-       <property name="text">
-        <string>Run SCHEMA</string>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="0">
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="label_2">
+     <property name="text">
+      <string>Select Parents</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPlainTextEdit" name="sequencesText"/>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
+     <item>
       <widget class="QLabel" name="label_3">
        <property name="text">
         <string>Corssover Counts</string>
        </property>
       </widget>
      </item>
-     <item row="3" column="1" colspan="3">
+     <item>
       <widget class="QLineEdit" name="crossoversText"/>
      </item>
-     <item row="4" column="1" colspan="3">
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_3">
+     <item>
+      <widget class="QLabel" name="label_4">
+       <property name="text">
+        <string>Min Length</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="minLengthText">
+       <property name="text">
+        <string>30</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_5">
+       <property name="text">
+        <string>Max Length</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="maxLengthText">
+       <property name="text">
+        <string>120</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_4">
+     <item>
+      <widget class="QPushButton" name="runSchemaButton">
+       <property name="text">
+        <string>Run SCHEMA</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QProgressBar" name="schemaProgress">
        <property name="value">
         <number>24</number>
