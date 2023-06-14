@@ -23,6 +23,10 @@ class SchemaResultEntry(object):
     def shuffling_points(self):
         return [self.__alignments.get_structure_position(i) for i in self.__shuffling_points]
 
+    @property
+    def msa_shuffling_points(self):
+        return self.__shuffling_points
+
 class SchemaResult(object):
     def __init__(
         self,

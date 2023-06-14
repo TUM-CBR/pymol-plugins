@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>751</width>
-    <height>494</height>
+    <width>915</width>
+    <height>654</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -20,7 +20,31 @@
       <enum>Qt::Horizontal</enum>
      </property>
      <widget class="QListWidget" name="resultsList"/>
-     <widget class="QTableWidget" name="resultsViewer"/>
+     <widget class="QTableWidget" name="resultsViewer">
+      <property name="columnCount">
+       <number>4</number>
+      </property>
+      <column>
+       <property name="text">
+        <string>&lt;E&gt;</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>&lt;M&gt;</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Positions (MSA)</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Positions (Structure)</string>
+       </property>
+      </column>
+     </widget>
     </widget>
    </item>
   </layout>

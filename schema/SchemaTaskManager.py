@@ -172,7 +172,7 @@ class SchemaTask(QObject):
 
     @staticmethod
     def get_aln_file_name(working_directory : str, result_name : str) -> str:
-        return os.path.join(working_directory, 'SCHEMA_all_%s.aln' % result_name)
+        return os.path.join(working_directory, result_name, 'SCHEMA_all_%s.aln' % result_name)
 
     @staticmethod
     def get_pdb_file_name(working_directory : str, result_name: str):

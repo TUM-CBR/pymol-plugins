@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_SchemaSelectorWidget(object):
     def setupUi(self, SchemaSelectorWidget):
         SchemaSelectorWidget.setObjectName("SchemaSelectorWidget")
-        SchemaSelectorWidget.resize(751, 494)
+        SchemaSelectorWidget.resize(915, 654)
         self.verticalLayout = QtWidgets.QVBoxLayout(SchemaSelectorWidget)
         self.verticalLayout.setObjectName("verticalLayout")
         self.splitter = QtWidgets.QSplitter(SchemaSelectorWidget)
@@ -23,9 +23,17 @@ class Ui_SchemaSelectorWidget(object):
         self.resultsList = QtWidgets.QListWidget(self.splitter)
         self.resultsList.setObjectName("resultsList")
         self.resultsViewer = QtWidgets.QTableWidget(self.splitter)
+        self.resultsViewer.setColumnCount(4)
         self.resultsViewer.setObjectName("resultsViewer")
-        self.resultsViewer.setColumnCount(0)
         self.resultsViewer.setRowCount(0)
+        item = QtWidgets.QTableWidgetItem()
+        self.resultsViewer.setHorizontalHeaderItem(0, item)
+        item = QtWidgets.QTableWidgetItem()
+        self.resultsViewer.setHorizontalHeaderItem(1, item)
+        item = QtWidgets.QTableWidgetItem()
+        self.resultsViewer.setHorizontalHeaderItem(2, item)
+        item = QtWidgets.QTableWidgetItem()
+        self.resultsViewer.setHorizontalHeaderItem(3, item)
         self.verticalLayout.addWidget(self.splitter)
 
         self.retranslateUi(SchemaSelectorWidget)
@@ -34,3 +42,11 @@ class Ui_SchemaSelectorWidget(object):
     def retranslateUi(self, SchemaSelectorWidget):
         _translate = QtCore.QCoreApplication.translate
         SchemaSelectorWidget.setWindowTitle(_translate("SchemaSelectorWidget", "Form"))
+        item = self.resultsViewer.horizontalHeaderItem(0)
+        item.setText(_translate("SchemaSelectorWidget", "<E>"))
+        item = self.resultsViewer.horizontalHeaderItem(1)
+        item.setText(_translate("SchemaSelectorWidget", "<M>"))
+        item = self.resultsViewer.horizontalHeaderItem(2)
+        item.setText(_translate("SchemaSelectorWidget", "Positions (MSA)"))
+        item = self.resultsViewer.horizontalHeaderItem(3)
+        item.setText(_translate("SchemaSelectorWidget", "Positions (Structure)"))

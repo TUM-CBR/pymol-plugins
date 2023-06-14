@@ -28,7 +28,7 @@ class SchemaAlignments(object):
             or MAIN_SEQUENCE_NAME not in parents_msa:
             raise ValueError("A sequence called %s must be in both msa" % MAIN_SEQUENCE_NAME)
 
-        for (name, sequence) in structure_msa:
+        for (name, sequence) in structure_msa.items():
 
             if name == MAIN_SEQUENCE_NAME:
                 self.__main_msa = sequence
@@ -48,17 +48,18 @@ class SchemaAlignments(object):
         """
 
         main_parents_prefix = clustal.remove_spacers(self.__main_parents_msa[0:i])
+        main_parents_prefix_pos = 0
         result = 0
 
-        while(len(main_parents_prefix) > 0):
-            parent_current = main_parents_prefix[0]
+        while(main_parents_prefix_pos < len(main_parents_prefix)):
+            parent_current = main_parents_prefix[main_parents_prefix_pos]
             seq_current = self.__main_msa[result]
+            result += 1
 
             if seq_current == parent_current:
-                result += 1
-                main_parents_prefix = main_parents_prefix[1:]
+                main_parents_prefix_pos += 1
             elif not clustal.is_spacer(seq_current):
                 raise ValueError("The character '%s' is not a valid clustal character." % seq_current)
 
-        return result
+        return len(clustal.remove_spacers(self.__structure_msa[0:result - 1])) - 1
 
