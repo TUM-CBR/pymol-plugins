@@ -1,0 +1,41 @@
+---
+name: "pre-release"
+
+on:
+  push:
+    branches:
+      - "main"
+    tags-ignore:
+      - "*"
+
+jobs:
+  gh_pre_release:
+    runs-on: "ubuntu-latest"
+
+    steps:
+      - name: "Checkout source code"
+        uses: "actions/checkout@v3"
+        with:
+          lfs: true
+          fetch-depth: 0
+          submodules: true
+
+      - run: wget -O devops/tmp/clustalo-win64.zip http://www.clustal.org/omega/clustal-omega-1.2.2-win64.zip
+      - run: unzip -d schema/resources/clustal devops/tmp/clustalo-win64.zip
+      - run: mv schema/resources/clustal/clustal-*/* schema/resources/clustal/
+
+      - name: Archive Release
+        uses: thedoctor0/zip-release@0.7.1
+        with:
+          type: 'zip'
+          filename: 'cbr-tools-win64.zip'
+          exclusions: '*.git* *.vscode* *.pyproject *.pyproject.user *devops/tmp/* **/*.gitkeep'
+
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "latest"
+          prerelease: true
+          title: "Development Build"
+          files: |
+            cbr-tools-win64.zip
