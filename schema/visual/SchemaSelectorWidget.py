@@ -55,21 +55,38 @@ class SchemaSelectorWidget(QWidget):
             item = QListWidgetItem(result.name, self.__ui.resultsList)
             item.setData(SchemaSelectorWidget.RESULT_DATA_ROLE, result)
 
+    @staticmethod
+    def __get_offset(name : str) -> int:
+        offset = [None]
+        pymol.cmd.iterate(
+            'model %s' % name,
+            # if a protein has 999999999 residues, you probably
+            # have bigger problems in life than your PhD thesis
+            'offset[0] = min(resv, offset[0] or 999999999)',
+            space={'offset' : offset, 'min' : min}
+        )
+
+        if offset[0] is None:
+            raise Exception('The required structure "%s" has not been loaded' % name)
+
+        return offset[0] + 1
+
     def __set_result(self, result : SchemaResult):
+
+        pymol.cmd.load(result.pdb)
 
         self.__result = result
         self.__result_items = result.load_results()
 
         self.__ui.resultsViewer.clearContents()
         self.__ui.resultsViewer.setRowCount(len(self.__result_items))
+        offset = SchemaSelectorWidget.__get_offset(self.__result.structure_name)
 
         for (row, item) in enumerate(self.__result_items):
             self.__ui.resultsViewer.setItem(row, 0, QTableWidgetItem(item.energy))
             self.__ui.resultsViewer.setItem(row, 1, QTableWidgetItem(item.mutations))
             self.__ui.resultsViewer.setItem(row, 2, QTableWidgetItem(" ".join(map(str, item.msa_shuffling_points))))
-            self.__ui.resultsViewer.setItem(row, 3, QTableWidgetItem(" ".join(map(str, item.shuffling_points))))
-
-        pymol.cmd.load(result.pdb)
+            self.__ui.resultsViewer.setItem(row, 3, QTableWidgetItem(" ".join(map(str, item.shuffling_points(offset)))))
 
     def on_resultsList_itemClicked(self, item : QListWidgetItem):
         self.__set_result(item.data(SchemaSelectorWidget.RESULT_DATA_ROLE))
@@ -82,16 +99,19 @@ class SchemaSelectorWidget(QWidget):
 
     def __select_item(self, row):
         item = self.__result_items[row]
+        offset = self.__get_offset(self.__result.structure_name)
+        shuffling_points = item.shuffling_points(offset)
 
         # Ensure that we color the whole structure so the last fragment
         # will remain with this color
         pymol.cmd.color(
-            get_color(len(item.shuffling_points)),
+            get_color(len(shuffling_points)),
             "model %s" % self.__result.structure_name
         )
 
         e = 0
-        for (i,loc) in enumerate(item.shuffling_points):
+
+        for (i,loc) in enumerate(shuffling_points):
             s = e
             e = loc
             sele = "(model %s) and (resi %i-%i)" % (self.__result.structure_name, s, e)

@@ -71,9 +71,11 @@ class Ui_SchemaRunnerWidget(object):
         self.schemaProgress.setProperty("value", 24)
         self.schemaProgress.setObjectName("schemaProgress")
         self.horizontalLayout_4.addWidget(self.schemaProgress)
+        spacerItem1 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout_4.addItem(spacerItem1)
         self.verticalLayout.addLayout(self.horizontalLayout_4)
-        spacerItem1 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        self.verticalLayout.addItem(spacerItem1)
+        spacerItem2 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        self.verticalLayout.addItem(spacerItem2)
 
         self.retranslateUi(SchemaRunnerWidget)
         QtCore.QMetaObject.connectSlotsByName(SchemaRunnerWidget)

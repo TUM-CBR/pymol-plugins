@@ -103,8 +103,8 @@ class SchemaRunnerWidget(QWidget):
             pdb_file = self.__get_pdb_file_name(name)
             structure_name = self.__get_structure_name(name)
             xos = self.__validate_crossovers()
-            min_length = int(self.__ui.minLengthText)
-            max_length = int(self.__ui.maxLengthText)
+            min_length = int(self.__ui.minLengthText.text())
+            max_length = int(self.__ui.maxLengthText.text())
             
             pymol.cmd.save(pdb_file, "(model %s) & (chain %s)" % self.__ui.structuresCombo.currentData())
             pymol.cmd.load(pdb_file)
