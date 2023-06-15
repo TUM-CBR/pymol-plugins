@@ -35,7 +35,7 @@ jobs:
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           prerelease: true
-          automatic_release_tag: null
+          automatic_release_tag: "latest"
           title: "Nightly Build"
           files: |
             cbr-tools-win64.zip
