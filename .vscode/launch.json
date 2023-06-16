@@ -21,7 +21,7 @@
             "module": "IPython",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "python": "/home/ernesto/code/pymol-plugins/.env/bin/python"
+            "python": "/home/ernesto/code/pymol-plugins/.virtualenv/bin/python"
         }
     ]
 }
