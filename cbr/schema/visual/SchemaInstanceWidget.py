@@ -1,15 +1,22 @@
 from PyQt5.QtWidgets import QWidget
 
+from ...core.Context import Context
+from ..SchemaContext import SchemaContext
 from ..SchemaTaskManager import SchemaTaskManager
 from .SchemaRunnerWidget import SchemaRunnerWidget
 from .SchemaSelectorWidget import SchemaSelectorWidget
 from .Ui_SchemaInstanceWidget import Ui_SchemaInstanceWidget
 
+def create_context():
+    return SchemaContext()
+
+K_CONTEXT = 'schema-context'
+
 class SchemaInstanceWidget(QWidget):
 
-    def __init__(self, schema_context, *args, **kwargs):
+    def __init__(self, context : Context, *args, **kwargs):
         super(SchemaInstanceWidget, self).__init__(*args, **kwargs)
-        self.__schema_context = schema_context
+        schema_context = context.create_or_load(K_CONTEXT, create_context)
         self.__ui = Ui_SchemaInstanceWidget()
         self.__ui.setupUi(self)
         self.__manager = SchemaTaskManager(schema_context)

@@ -1,0 +1,3 @@
+{
+    "files": ["SchemaSelectorWidget.ui","SchemaInstanceWidget.ui","SchemaRunnerWidget.ui"]
+}
