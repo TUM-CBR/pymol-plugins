@@ -1,14 +1,14 @@
 import os
-from PyQt5.QtCore import pyqtSignal, pyqtSlot, QObject, QTimer
-import re
-import subprocess
+from PyQt5.QtCore import pyqtSignal, QObject, QTimer
 from threading import Thread
-from typing import Dict, List, NamedTuple
+from typing import Dict, List
+
+from ..clustal import fasta
+from ..clustal.Clustal import Clustal
 
 from .raspp import schemacontacts
 from .raspp import rasppcurve
 from .SchemaResult import SchemaResult
-from .support import fasta
 from .support.strings import MAIN_SEQUENCE_NAME
 
 error_parse_sequence = \
@@ -132,6 +132,7 @@ class SchemaTask(QObject):
         )
 
         self.__schema_thread.start()
+        self.__clustal = Clustal()
 
     @property
     def is_done(self):
@@ -227,15 +228,6 @@ class SchemaTask(QObject):
                 results[k] = v
 
         return results
-
-    def __run_clustal(self, outfile : str) -> subprocess.Popen:
-        return subprocess.Popen(
-            [self.__schema_context.clustal, '-i', '-', '--force', '--outfmt=clustal', '-o', outfile],
-            text=True,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
             
     def __align_parent(self, sequences : Dict[str,str]) -> None:
 
@@ -245,33 +237,19 @@ class SchemaTask(QObject):
         if self.structure_name not in sequences:
             raise Exception('The sequence of structure "%s" is not in the list.' % self.structure_name)
 
-        with self.__run_clustal(self.pdb_aln_file) as clustal:
-            stdin = clustal.stdin
-            if stdin:
-                stdin.write('>%s\n%s\n>%s\n%s' % (MAIN_SEQUENCE_NAME, sequences[MAIN_SEQUENCE_NAME], self.structure_name, sequences[self.structure_name]))
-                stdin.close()
-            else:
-                raise SchemaTaskManager.__no_clustal_stdin
-
-            clustal.wait()
-
+        self.__clustal.run_msa(
+            [ (MAIN_SEQUENCE_NAME, sequences[MAIN_SEQUENCE_NAME])
+            , (self.structure_name, sequences[self.structure_name])
+            ],
+            self.pdb_aln_file
+        )
 
     def __align_sequences(self, sequences: Dict[str,str]):
 
-        with self.__run_clustal(self.msa_aln_file) as clustal:
-            if not clustal.stdin:
-                raise SchemaTaskManager.__no_clustal_stdin
-
-            for (name, sequence) in sequences.items():
-
-                # The sequence of the structure does not need to be included
-                # in the multiple sequence alignment
-                if name != self.structure_name:
-                    clustal.stdin.write('>%s\n%s\n\n' % (name, sequence))
-
-            clustal.stdin.close()
-
-            clustal.wait()
+        self.__clustal.run_msa(
+            [(k,v) for (k,v) in sequences.items() if k != self.structure_name],
+            self.msa_aln_file
+        )
 
     def __run_schema_contacts(self):
         args = {

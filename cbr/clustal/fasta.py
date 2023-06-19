@@ -1,13 +1,20 @@
-from typing import Dict, Iterable, Generator, Tuple
+from io import StringIO
+from typing import Iterable, TextIO, Tuple
 
 allowed_characters = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y', 'X', 'B']
 
-def parse_fasta_iter(input : str) -> 'Iterable[Tuple[str, str] | Exception]':
+def parse_fasta_iter(input : Iterable[str]):
+    with StringIO() as stream:
+        for line in input:
+            stream.write(line)
+        return parse_fasta_stream(stream)
+
+def parse_fasta_stream(input : TextIO) -> 'Iterable[Tuple[str, str] | Exception]':
 
     current_header : 'None | str' = None
     current_seq : 'None | str' = None
 
-    for line in input.splitlines():
+    for line in input.readlines():
         line = line.strip()
 
         if line.startswith(">"):

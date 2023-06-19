@@ -18,11 +18,3 @@ class SchemaContext():
     @staticmethod
     def is_loaded() -> bool:
         return SchemaContext.__instances > 0
-
-    @property
-    def clustal(self) -> str:
-
-        if os.name == 'nt':
-            return path.join(path.dirname(__file__), "resources", "clustal", "clustalo.exe")
-
-        return "clustalo"
