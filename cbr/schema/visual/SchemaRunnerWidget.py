@@ -15,6 +15,7 @@ from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtGui import QIntValidator
 from PyQt5.QtWidgets import QWidget
 
+from ...core import visual
 from ..SchemaTaskManager import SchemaTask, SchemaTaskManager
 
 from .Ui_SchemaRunnerWidget import Ui_SchemaRunnerWidget
@@ -41,6 +42,7 @@ class SchemaRunnerWidget(QWidget):
         self.__manager.is_busy_signal.connect(self.__on_busy_status_changed)
         self.__load_previous_sequences()
         self.__on_busy_status_changed(False)
+        visual.as_structure_selector(self.__ui.structuresCombo, self.__ui.refreshButton)
 
     def __on_busy_status_changed(self, is_busy : int):
         if is_busy > 0:
@@ -62,17 +64,6 @@ class SchemaRunnerWidget(QWidget):
             SchemaRunnerWidget.SEQUENCES_KEY,
             self.__ui.sequencesText.toPlainText()
         )
-
-    def __refresh_structures(self):
-        self.__ui.structuresCombo.clear()
-
-        for name in pymol.cmd.get_names():
-            for chain in pymol.cmd.get_chains(name):
-                self.__ui.structuresCombo.addItem("%s/%s" % (name, chain), (name, chain))
-
-    @pyqtSlot()
-    def on_refreshButton_clicked(self):
-        self.__refresh_structures()
 
     def __get_pdb_sequence(self, structure_name):
         result = []

@@ -4,7 +4,8 @@ from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QWidget
 
 from ..core.Context import Context
-from ..schema import Applications
+from ..msa import Applications as Msa
+from ..schema import Applications as Schema
 from .Ui_Main import Ui_Main
 
 class Main(QWidget):
@@ -19,4 +20,9 @@ class Main(QWidget):
     @pyqtSlot()
     def on_schemaRasppButton_clicked(self):
         print("starting raspp")
-        Applications.schema_raspp(self.__context)
+        Schema.schema_raspp(self.__context)
+
+    @pyqtSlot()
+    def on_msaViewerButton_clicked(self):
+        print("starting msa viewer")
+        Msa.msa_viewer(self.__context)

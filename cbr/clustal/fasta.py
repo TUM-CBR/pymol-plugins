@@ -1,37 +1,69 @@
-from io import StringIO
-from typing import Iterable, TextIO, Tuple
+import os
+from typing import Iterable, TextIO, Tuple, TypeVar
+
+from ..core.WrapIO import WrapIO
+
+FastaInput = TypeVar('FastaInput', str, Iterable[str], TextIO)
 
 allowed_characters = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y', 'X', 'B']
 
-def parse_fasta_iter(input_any : 'str | Iterable[str]'):
-    input = [input_any] if isinstance(input_any, str) else input_any
-    with StringIO() as stream:
-        for line in input:
-            stream.write(line)
-        stream.seek(0)
-        return list(parse_fasta_stream(stream))
+def get_fasta_input_arg(in_fasta : FastaInput) -> WrapIO:
 
-def parse_fasta_stream(input : TextIO) -> 'Iterable[Tuple[str, str] | Exception]':
+    if isinstance(in_fasta, TextIO):
+        return WrapIO(stream=in_fasta)
+    elif isinstance(in_fasta, str) and os.path.exists(in_fasta):
+        return WrapIO(open_stream=in_fasta)
 
-    current_header : 'None | str' = None
-    current_seq : 'None | str' = None
+    def init(stream : TextIO):
 
-    for line in input.readlines():
-        line = line.strip()
+        if isinstance(in_fasta, str):
+            stream.write(in_fasta)
+        elif isinstance(in_fasta, Iterable):
+            for in_value in in_fasta:
+                stream.write(in_value)
+        else:
+            raise ValueError("The argument is not a valid fasta input type")
 
-        if line.startswith(">"):
-            if current_header and current_seq:
-                yield (current_header, current_seq)
+    return WrapIO(init=init)
 
-            current_header = line[1:]
-            current_seq = ''
-        elif current_seq is not None and \
-            all([c in allowed_characters for c in line.upper()]):
-            current_seq += line
-        elif current_header:
-            current_header = None
-            current_seq = None
-            yield ValueError('Could not parse line "%s"' % line)
+def parse_fasta_iter(input_any : FastaInput):
+    return parse_fasta(input_any)
 
-    if current_header and current_seq:
-        yield (current_header, current_seq)
+def parse_fasta_stream(input: TextIO):
+    return parse_fasta(input)
+
+def parse_fasta(in_fasta : FastaInput) -> 'Iterable[Tuple[str, str] | Exception]':
+
+    result = []
+    def yield_(k, v = None):
+
+        if v is None:
+            result.append(k)
+        else:
+            result.append((k,v))
+
+    with get_fasta_input_arg(in_fasta) as in_fasta_stream:
+        current_header : 'None | str' = None
+        current_seq : 'None | str' = None
+
+        for line in in_fasta_stream.stream.readlines():
+            line = line.strip()
+
+            if line.startswith(">"):
+                if current_header and current_seq:
+                    yield_(current_header, current_seq)
+
+                current_header = line[1:]
+                current_seq = ''
+            elif current_seq is not None and \
+                all([c in allowed_characters for c in line.upper()]):
+                current_seq += line
+            elif current_header:
+                current_header = None
+                current_seq = None
+                yield_(ValueError('Could not parse line "%s"' % line))
+
+        if current_header and current_seq:
+            yield_(current_header, current_seq)
+
+    return result

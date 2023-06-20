@@ -1,6 +1,6 @@
 from typing import Dict, NamedTuple
 
-from . import clustal
+from ...clustal import msa
 from .strings import MAIN_SEQUENCE_NAME
 
 class SchemaAlignments(object):
@@ -9,10 +9,10 @@ class SchemaAlignments(object):
     def from_files(pdb_msa_file_name : str, parents_msa_file_name : str) -> 'SchemaAlignments':
 
         with open(pdb_msa_file_name, 'r') as pdb_msa_file:
-            pdb_msa = clustal.parse_alignments(pdb_msa_file.read())
+            pdb_msa = msa.parse_alignments(pdb_msa_file.read())
 
         with open(parents_msa_file_name, 'r') as parents_msa_file:
-            parents_msa = clustal.parse_alignments(parents_msa_file.read())
+            parents_msa = msa.parse_alignments(parents_msa_file.read())
 
         return SchemaAlignments(
             pdb_msa,
@@ -47,7 +47,7 @@ class SchemaAlignments(object):
         parents to the position that index corresponds in the structure.
         """
 
-        main_parents_prefix = clustal.remove_spacers(self.__main_parents_msa[0:i])
+        main_parents_prefix = msa.remove_spacers(self.__main_parents_msa[0:i])
         main_parents_prefix_pos = 0
         result = 0
 
@@ -58,8 +58,8 @@ class SchemaAlignments(object):
 
             if seq_current == parent_current:
                 main_parents_prefix_pos += 1
-            elif not clustal.is_spacer(seq_current):
+            elif not msa.is_spacer(seq_current):
                 raise ValueError("The character '%s' is not a valid clustal character." % seq_current)
 
-        return len(clustal.remove_spacers(self.__structure_msa[0:result - 1])) - 1
+        return len(msa.remove_spacers(self.__structure_msa[0:result - 1])) - 1
 

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>Form</class>
- <widget class="QWidget" name="Form">
+ <class>MsaViewer</class>
+ <widget class="QWidget" name="MsaViewer">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -24,10 +24,10 @@
       </widget>
      </item>
      <item>
-      <widget class="QComboBox" name="comboBox"/>
+      <widget class="QComboBox" name="structuresCombo"/>
      </item>
      <item>
-      <widget class="QPushButton" name="pushButton_2">
+      <widget class="QPushButton" name="structuresRefreshButton">
        <property name="text">
         <string>Refresh</string>
        </property>
@@ -58,7 +58,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="pushButton">
+      <widget class="QPushButton" name="selectMsaButton">
        <property name="text">
         <string>Browse</string>
        </property>
@@ -95,7 +95,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QComboBox" name="comboBox_2"/>
+      <widget class="QComboBox" name="sequenceCombo"/>
      </item>
      <item>
       <spacer name="horizontalSpacer_3">
@@ -115,7 +115,7 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_4">
      <item>
-      <widget class="QPushButton" name="pushButton_3">
+      <widget class="QPushButton" name="colorConservedButton">
        <property name="minimumSize">
         <size>
          <width>151</width>

@@ -1,8 +1,9 @@
 from io import StringIO, TextIOBase
 import os
 import subprocess
-from typing import Callable, Iterable, NewType, TextIO, Tuple, TypeVar
+from typing import Iterable, TextIO, Tuple, TypeVar
 
+from ..core.WrapIO import WrapIO
 from . import fasta
 
 def find_clustal():
@@ -14,37 +15,6 @@ def find_clustal():
 
 class ClustalResult(object):
     pass
-
-class WrapIO(object):
-
-    def __init__(
-        self,
-        stream : 'TextIO | None' = None,
-        open_stream : 'Callable[[], TextIO]' = StringIO,
-        init : 'None | Callable[[TextIO], None]' = None):
-        self.__stream = stream or open_stream()
-        self.__init = init
-        self.__percolate = not stream
-
-    @property
-    def stream(self) -> TextIO:
-        return self.__stream
-
-    def __enter__(self, *args, **kwargs):
-
-        if self.__percolate:
-            self.__stream.__enter__(*args, **kwargs)
-
-        if self.__init:
-            self.__init(self.__stream)
-            self.__stream.seek(0)
-
-        return self
-
-    def __exit__(self, *args, **kwargs):
-
-        if self.__percolate:
-            self.__stream.__exit__(*args, **kwargs)
 
 MsaInput = TypeVar('MsaInput', str, Iterable[Tuple[str, str]], TextIO)
 

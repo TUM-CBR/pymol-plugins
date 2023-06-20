@@ -14,7 +14,9 @@
    <string>Main</string>
   </property>
   <property name="styleSheet">
-   <string notr="true"/>
+   <string notr="true">.QPushButton {
+	padding: 10px
+}</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
@@ -107,7 +109,8 @@
         </font>
        </property>
        <property name="styleSheet">
-        <string notr="true">image: url(:/resources/msa.png);</string>
+        <string notr="true">image: url(:/resources/msa.png);
+</string>
        </property>
        <property name="text">
         <string>MSA Viewer</string>

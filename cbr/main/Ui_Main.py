@@ -15,7 +15,9 @@ class Ui_Main(object):
     def setupUi(self, Main):
         Main.setObjectName("Main")
         Main.resize(767, 656)
-        Main.setStyleSheet("")
+        Main.setStyleSheet(".QPushButton {\n"
+"    padding: 10px\n"
+"}")
         self.verticalLayout = QtWidgets.QVBoxLayout(Main)
         self.verticalLayout.setObjectName("verticalLayout")
         self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
@@ -54,7 +56,8 @@ class Ui_Main(object):
         font = QtGui.QFont()
         font.setBold(True)
         self.msaViewerButton.setFont(font)
-        self.msaViewerButton.setStyleSheet("image: url(:/resources/msa.png);")
+        self.msaViewerButton.setStyleSheet("image: url(:/resources/msa.png);\n"
+"")
         self.msaViewerButton.setIconSize(QtCore.QSize(128, 128))
         self.msaViewerButton.setObjectName("msaViewerButton")
         self.horizontalLayout_3.addWidget(self.msaViewerButton)
