@@ -3,11 +3,13 @@ from typing import Iterable, TextIO, Tuple
 
 allowed_characters = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y', 'X', 'B']
 
-def parse_fasta_iter(input : Iterable[str]):
+def parse_fasta_iter(input_any : 'str | Iterable[str]'):
+    input = [input_any] if isinstance(input_any, str) else input_any
     with StringIO() as stream:
         for line in input:
             stream.write(line)
-        return parse_fasta_stream(stream)
+        stream.seek(0)
+        return list(parse_fasta_stream(stream))
 
 def parse_fasta_stream(input : TextIO) -> 'Iterable[Tuple[str, str] | Exception]':
 

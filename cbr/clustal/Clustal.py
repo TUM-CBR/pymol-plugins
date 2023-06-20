@@ -24,7 +24,7 @@ class WrapIO(object):
         init : 'None | Callable[[TextIO], None]' = None):
         self.__stream = stream or open_stream()
         self.__init = init
-        self.__percolate = stream and True
+        self.__percolate = not stream
 
     @property
     def stream(self) -> TextIO:
@@ -37,6 +37,7 @@ class WrapIO(object):
 
         if self.__init:
             self.__init(self.__stream)
+            self.__stream.seek(0)
 
         return self
 
@@ -82,7 +83,7 @@ class Clustal(object):
         if(isinstance(out_msa, TextIO)):
             return WrapIO(stream = out_msa)
         elif(isinstance(out_msa, str)):
-            return WrapIO(open_stream=lambda: open(out_msa, 'w'))
+            return WrapIO(open_stream = lambda: open(out_msa, 'w'))
         else:
             raise ValueError('The output to clustal is not valid')
 
@@ -111,13 +112,13 @@ class Clustal(object):
             else:
                 raise Exception("Failed to open standard input for clustal")
             
+            process.wait()
+            
             if process.stdout:
                 for text in process.stdout:
                     out_result_stream.stream.write(text)
             else:
                 raise Exception("Failed to open the standard output of clustal")
-
-            process.wait()
 
         return ClustalResult()
 

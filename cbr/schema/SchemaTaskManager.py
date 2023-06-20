@@ -123,6 +123,7 @@ class SchemaTask(QObject):
         max_fragment_size : int):
 
         super(SchemaTask, self).__init__()
+        self.__clustal = Clustal()
         self.__schema_context = schema_context
         self.__name = name
         self.__working_directory = working_directory
@@ -132,7 +133,6 @@ class SchemaTask(QObject):
         )
 
         self.__schema_thread.start()
-        self.__clustal = Clustal()
 
     @property
     def is_done(self):
