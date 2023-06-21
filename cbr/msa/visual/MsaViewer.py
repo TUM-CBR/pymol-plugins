@@ -1,6 +1,6 @@
 import pymol.cmd as cmd
 from PyQt5.QtCore import pyqtSlot
-from PyQt5.QtWidgets import QFileDialog, QPushButton, QWidget
+from PyQt5.QtWidgets import QFileDialog, QWidget
 from typing import Dict, Tuple
 
 from ...core.Context import Context
@@ -9,7 +9,6 @@ from ...core.pymol import structure
 from ...clustal import msa
 from ...clustal import Clustal
 from .Ui_MsaViewer import Ui_MsaViewer
-from cbr import clustal
 
 COLOR_MAX = 999
 COLOR_MIN = 600

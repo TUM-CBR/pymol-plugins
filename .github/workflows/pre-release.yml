@@ -21,15 +21,15 @@ jobs:
           submodules: true
 
       - run: wget -O devops/tmp/clustalo-win64.zip http://www.clustal.org/omega/clustal-omega-1.2.2-win64.zip
-      - run: unzip -d schema/resources/clustal devops/tmp/clustalo-win64.zip
-      - run: mv schema/resources/clustal/clustal-*/* schema/resources/clustal/
+      - run: unzip -d cbr/clustal/resources/ devops/tmp/clustalo-win64.zip
+      - run: mv cbr/clustal/resources/clustal-*/* cbr/clustal/resources/
 
       - name: Archive Release
         uses: thedoctor0/zip-release@0.7.1
         with:
           type: 'zip'
           filename: 'cbr-tools-win64.zip'
-          exclusions: '*.git* *.vscode* *.pyproject *.pyproject.user *devops/tmp/* **/*.gitkeep'
+          exclusions: '*.git* *.vscode* *.pyproject *.pyproject.user *devops/tmp/* **/*.gitkeep test_pymol.py'
 
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
