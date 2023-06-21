@@ -16,6 +16,7 @@ from PyQt5.QtGui import QIntValidator
 from PyQt5.QtWidgets import QWidget
 
 from ...core import visual
+from ...core.pymol import structure
 from ..SchemaTaskManager import SchemaTask, SchemaTaskManager
 
 from .Ui_SchemaRunnerWidget import Ui_SchemaRunnerWidget
@@ -66,13 +67,7 @@ class SchemaRunnerWidget(QWidget):
         )
 
     def __get_pdb_sequence(self, structure_name):
-        result = []
-        pymol.cmd.iterate(
-            "(%s) & guide & alt +A" % structure_name,
-            'result.append(oneletter)',
-            space={'result': result}
-        )
-        return "".join(result)
+        return structure.get_pdb_sequence(structure_name)
 
     def __validate_crossovers(self):
         xos = self.__ui.crossoversText.text()

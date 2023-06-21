@@ -1,10 +1,11 @@
 from io import StringIO, TextIOBase
 import os
 import subprocess
-from typing import Iterable, TextIO, Tuple, TypeVar
+from typing import Dict, Iterable, Tuple, TypeVar
 
+from ..core.Context import Context
 from ..core.WrapIO import WrapIO
-from . import fasta
+from . import msa
 
 def find_clustal():
 
@@ -16,9 +17,12 @@ def find_clustal():
 class ClustalResult(object):
     pass
 
-MsaInput = TypeVar('MsaInput', str, Iterable[Tuple[str, str]], TextIO)
+MsaInput = TypeVar('MsaInput', str, Iterable[Tuple[str, str]], TextIOBase)
 
-MsaOutput = TypeVar('MsaOutput', str, TextIO)
+MsaOutput = TypeVar('MsaOutput', str, TextIOBase)
+
+def get_clustal_from_context(context : Context):
+    return Clustal()
 
 class Clustal(object):
 
@@ -32,10 +36,10 @@ class Clustal(object):
     @staticmethod
     def __get_msa_input(in_msa : MsaInput) -> WrapIO:
 
-        if(isinstance(in_msa, TextIO)):
+        if(isinstance(in_msa, TextIOBase)):
             return WrapIO(stream = in_msa)
 
-        def init(result : TextIO):
+        def init(result : TextIOBase):
             if isinstance(in_msa, str):
                 result.write(in_msa)
 
@@ -50,7 +54,7 @@ class Clustal(object):
     @staticmethod
     def __get_msa_output(out_msa : MsaOutput) -> WrapIO:
 
-        if(isinstance(out_msa, TextIO)):
+        if(isinstance(out_msa, TextIOBase)):
             return WrapIO(stream = out_msa)
         elif(isinstance(out_msa, str)):
             return WrapIO(open_stream = lambda: open(out_msa, 'w'))
@@ -92,8 +96,9 @@ class Clustal(object):
 
         return ClustalResult()
 
-    def run_msa_items(self, items : MsaInput) -> 'Iterable[Tuple[str, str] | Exception]':
+    def run_msa_items(self, items : MsaInput) -> Dict[str, str]:
 
         with StringIO() as result:
             self.run_msa(items, result)
-            return fasta.parse_fasta_stream(result)
+            result.seek(0)
+            return msa.parse_alignments(result)

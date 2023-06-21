@@ -1,18 +1,18 @@
 from io import StringIO, TextIOBase
 from typing import Any, Callable, cast, TextIO, TypeVar
 
-NewStreamSpec = TypeVar('NewStreamSpec', str, Callable[[], TextIO])
+NewStreamSpec = TypeVar('NewStreamSpec', str, Callable[[], TextIOBase])
 
-def get_stream_builder(spec : NewStreamSpec) -> Callable[[], TextIO]:
+def get_stream_builder(spec : NewStreamSpec) -> Callable[[], TextIOBase]:
 
     if isinstance(spec, str):
         return lambda: open(spec, 'r')
     else:
         return cast(Callable, spec)
 
-InitStreamSpec = TypeVar('InitStreamSpec', str, None, Callable[[TextIO], None])
+InitStreamSpec = TypeVar('InitStreamSpec', str, None, Callable[[TextIOBase], None])
 
-def get_init_stream(spec : InitStreamSpec) -> 'Callable[[TextIO], None] | None':
+def get_init_stream(spec : InitStreamSpec) -> 'Callable[[TextIOBase], None] | None':
 
     if(isinstance(spec, str)):
         data = spec
@@ -29,7 +29,7 @@ class WrapIO(object):
 
     def __init__(
         self,
-        stream : 'TextIO | None' = None,
+        stream : 'TextIOBase | None' = None,
         open_stream : NewStreamSpec = StringIO,
         init : InitStreamSpec = None):
 
@@ -38,7 +38,7 @@ class WrapIO(object):
         self.__percolate = not stream
 
     @property
-    def stream(self) -> TextIO:
+    def stream(self) -> TextIOBase:
         return self.__stream
 
     def __enter__(self, *args, **kwargs):

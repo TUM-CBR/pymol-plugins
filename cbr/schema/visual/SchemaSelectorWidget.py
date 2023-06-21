@@ -2,11 +2,11 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QAction, QApplication, QMenu, QListWidgetItem, QTableWidgetItem, QWidget
 import pymol
 
-from ..SchemaResult import SchemaResult
-
+from ...core.pymol import structure
 from ..SchemaContext import SchemaContext
-from .Ui_SchemaSelectorWidget import Ui_SchemaSelectorWidget
+from ..SchemaResult import SchemaResult
 from ..SchemaTaskManager import SchemaTaskManager
+from .Ui_SchemaSelectorWidget import Ui_SchemaSelectorWidget
 
 class SchemaSelectorWidget(QWidget):
 
@@ -55,22 +55,6 @@ class SchemaSelectorWidget(QWidget):
             item = QListWidgetItem(result.name, self.__ui.resultsList)
             item.setData(SchemaSelectorWidget.RESULT_DATA_ROLE, result)
 
-    @staticmethod
-    def __get_offset(name : str) -> int:
-        offset = [None]
-        pymol.cmd.iterate(
-            'model %s' % name,
-            # if a protein has 999999999 residues, you probably
-            # have bigger problems in life than your PhD thesis
-            'offset[0] = min(resv, offset[0] or 999999999)',
-            space={'offset' : offset, 'min' : min}
-        )
-
-        if offset[0] is None:
-            raise Exception('The required structure "%s" has not been loaded' % name)
-
-        return offset[0] + 1
-
     def __set_result(self, result : SchemaResult):
 
         pymol.cmd.load(result.pdb)
@@ -80,7 +64,7 @@ class SchemaSelectorWidget(QWidget):
 
         self.__ui.resultsViewer.clearContents()
         self.__ui.resultsViewer.setRowCount(len(self.__result_items))
-        offset = SchemaSelectorWidget.__get_offset(self.__result.structure_name)
+        offset = structure.get_structure_offset(self.__result.structure_name)
 
         for (row, item) in enumerate(self.__result_items):
             self.__ui.resultsViewer.setItem(row, 0, QTableWidgetItem(item.energy))

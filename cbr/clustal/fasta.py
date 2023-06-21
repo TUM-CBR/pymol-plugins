@@ -1,20 +1,21 @@
+from io import TextIOBase
 import os
-from typing import Iterable, TextIO, Tuple, TypeVar
+from typing import Iterable, Tuple, TypeVar
 
 from ..core.WrapIO import WrapIO
 
-FastaInput = TypeVar('FastaInput', str, Iterable[str], TextIO)
+FastaInput = TypeVar('FastaInput', str, Iterable[str], TextIOBase)
 
 allowed_characters = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y', 'X', 'B']
 
 def get_fasta_input_arg(in_fasta : FastaInput) -> WrapIO:
 
-    if isinstance(in_fasta, TextIO):
+    if isinstance(in_fasta, TextIOBase):
         return WrapIO(stream=in_fasta)
     elif isinstance(in_fasta, str) and os.path.exists(in_fasta):
         return WrapIO(open_stream=in_fasta)
 
-    def init(stream : TextIO):
+    def init(stream : TextIOBase):
 
         if isinstance(in_fasta, str):
             stream.write(in_fasta)
@@ -29,7 +30,7 @@ def get_fasta_input_arg(in_fasta : FastaInput) -> WrapIO:
 def parse_fasta_iter(input_any : FastaInput):
     return parse_fasta(input_any)
 
-def parse_fasta_stream(input: TextIO):
+def parse_fasta_stream(input: TextIOBase):
     return parse_fasta(input)
 
 def parse_fasta(in_fasta : FastaInput) -> 'Iterable[Tuple[str, str] | Exception]':
