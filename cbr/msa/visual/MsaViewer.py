@@ -72,7 +72,7 @@ class MsaViewer(QWidget):
             ix = positions[i]
             conserved = {}
             for sequence in sequences:
-                aa = sequence[i]
+                aa = sequence[i].lower()
                 if msa.is_blank(aa):
                     continue
 
