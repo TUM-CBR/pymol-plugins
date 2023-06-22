@@ -1,13 +1,3 @@
-# -*- coding: utf-8 -*-
-
-# Form implementation generated from reading ui file 'SchemaRunner.ui',
-# licensing of 'SchemaRunner.ui' applies.
-#
-# Created: Mon Jun  5 09:16:29 2023
-#      by: pyside2-uic  running on PySide2 5.13.2
-#
-# WARNING! All changes made in this file will be lost!
-
 import datetime
 import pymol
 from pymol.parsing import QuietException

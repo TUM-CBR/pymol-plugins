@@ -2,8 +2,6 @@ from io import TextIOBase
 import os
 from typing import Dict, Iterable, TypeVar
 
-from chempy.cpv import length
-
 from ..core.WrapIO import WrapIO
 
 MsaInput = TypeVar('MsaInput', str, TextIOBase)

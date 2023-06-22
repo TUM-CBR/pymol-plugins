@@ -1,4 +1,3 @@
-from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QMainWindow, QWidget
 from typing import Any, Callable, Dict, TypeVar
 

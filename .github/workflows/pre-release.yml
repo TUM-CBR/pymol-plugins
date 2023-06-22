@@ -24,6 +24,17 @@ jobs:
           fetch-depth: 0
           submodules: true
 
+      - name: "Setup Python for Building"
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.7'
+          cache: 'pip' # caching pip dependencies
+
+      - run: pip install -r .github/workflows/support/requirements.txt
+
+      - name: "Run pyright"
+        run: pyright -p .github/workflows/support/pyrightconfig.json
+
       - run: wget -O devops/tmp/clustalo-win64.zip http://www.clustal.org/omega/clustal-omega-1.2.2-win64.zip
       - run: unzip -d cbr/clustal/resources/ devops/tmp/clustalo-win64.zip
       - run: mv cbr/clustal/resources/clustal-*/* cbr/clustal/resources/
@@ -32,7 +43,7 @@ jobs:
         uses: thedoctor0/zip-release@0.7.1
         with:
           type: 'zip'
-          filename: 'cbr-tools-win64.zip'
+          filename: 'cbr-tools-${{ env.date }}-win64.zip'
           exclusions: '*.git* *.vscode* *.pyproject *.pyproject.user *devops/tmp/* **/*.gitkeep test_pymol.py'
 
       - uses: "marvinpinto/action-automatic-releases@latest"

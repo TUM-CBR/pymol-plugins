@@ -1,6 +1,5 @@
 from PyQt5.QtWidgets import QComboBox, QPushButton
 from pymol import cmd as pymol
-from PyQt5.QtCore import pyqtSlot
 
 def as_structure_selector(
     structures_combo : QComboBox,

@@ -1,14 +1,16 @@
 from io import StringIO, TextIOBase
-from typing import Any, Callable, cast, TextIO, TypeVar
+from typing import Any, Callable, cast, TypeVar
 
 NewStreamSpec = TypeVar('NewStreamSpec', str, Callable[[], TextIOBase])
 
-def get_stream_builder(spec : NewStreamSpec) -> Callable[[], TextIOBase]:
+def stream_builder(spec : NewStreamSpec) -> TextIOBase:
 
     if isinstance(spec, str):
-        return lambda: open(spec, 'r')
+        return open(spec, 'r')
+    elif callable(spec):
+        return spec()
     else:
-        return cast(Callable, spec)
+        raise ValueError("Cannot build a stream from '%s'" % str(spec))
 
 InitStreamSpec = TypeVar('InitStreamSpec', str, None, Callable[[TextIOBase], None])
 
@@ -17,7 +19,7 @@ def get_init_stream(spec : InitStreamSpec) -> 'Callable[[TextIOBase], None] | No
     if(isinstance(spec, str)):
         data = spec
 
-        def python_is_the_worse_language(stream):
+        def python_is_the_worse_language(stream : TextIOBase):
             stream.write(data)
 
         return python_is_the_worse_language
@@ -33,7 +35,7 @@ class WrapIO(object):
         open_stream : NewStreamSpec = StringIO,
         init : InitStreamSpec = None):
 
-        self.__stream = stream or get_stream_builder(open_stream).__call__()
+        self.__stream = stream or stream_builder(open_stream)
         self.__init = get_init_stream(init)
         self.__percolate = not stream
 

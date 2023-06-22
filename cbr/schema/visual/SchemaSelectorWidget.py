@@ -16,7 +16,7 @@ class SchemaSelectorWidget(QWidget):
 
     def __init__(self, schema_context, manager : SchemaTaskManager, *args, **kwargs):
         super(SchemaSelectorWidget, self).__init__(*args, **kwargs)
-        self.__schema_context = schema_context
+        self.__schema_context : SchemaContext = schema_context
         self.__ui = Ui_SchemaSelectorWidget()
         self.__ui.setupUi(self)
         self.__manager = manager
@@ -44,6 +44,7 @@ class SchemaSelectorWidget(QWidget):
                 for column in range(table_widget.columnCount()):
                     if (row, column) in selected_cells:
                         item = table_widget.item(row, column)
+                        assert item is not None, "Item should be found. Bug in the code!"
                         copied_data += str(item.text()) + "\t"
                 copied_data += "\n"
 
@@ -104,7 +105,7 @@ class SchemaSelectorWidget(QWidget):
 
     def __select_item(self, row):
         item = self.__result_items[row]
-        offset = self.__get_offset(self.__result.structure_name)
+        offset = structure.get_structure_offset(self.__result.structure_name)
         shuffling_points = item.shuffling_points(offset)
 
         # Ensure that we color the whole structure so the last fragment

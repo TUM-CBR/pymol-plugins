@@ -1,4 +1,4 @@
-from . import resources
+from . import resources # pyright: ignore
 
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QWidget

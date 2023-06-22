@@ -1,0 +1,16 @@
+{
+    "include": [
+      "cbr"
+    ],
+  
+    "ignore": [
+      "cbr/schema/raspp",
+      "cbr/**/Ui_*.py",
+      "cbr/main/resources.py"
+    ],
+
+    "reportFunctionMemberAccess" : "error",
+    "reportUnusedImport": "error",
+    "reportMissingImports": "none",
+    " reportMissingModuleSource": "none"
+}  

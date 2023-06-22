@@ -1,4 +1,4 @@
-from typing import Dict, NamedTuple
+from typing import Dict
 
 from ...clustal import msa
 from .strings import MAIN_SEQUENCE_NAME
