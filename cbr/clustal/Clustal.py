@@ -10,7 +10,7 @@ from . import msa
 def find_clustal():
 
     if os.name == 'nt':
-        return path.join(path.dirname(__file__), "resources", "clustalo.exe")
+        return os.path.join(os.path.dirname(__file__), "resources", "clustalo.exe")
 
     return "clustalo"
 
