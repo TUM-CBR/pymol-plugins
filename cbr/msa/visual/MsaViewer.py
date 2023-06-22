@@ -1,7 +1,7 @@
 import pymol.cmd as cmd
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QFileDialog, QWidget
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 
 from ...core.Context import Context
 from ...core import visual
@@ -50,7 +50,7 @@ class MsaViewer(QWidget):
         (structure_name, chain) = self.__selected_structure
         return structure.get_pdb_sequence(structure_name, chain)
 
-    def __get_structure_positions(self):
+    def __get_structure_positions(self)  -> 'List[int | None]':
         sequence_name = self.__ui.sequenceCombo.currentText()
         sequence = msa.clean_msa_blanks(self.__sequences[sequence_name])
         structure_sequence = self.__get_structure_sequence()
@@ -69,6 +69,10 @@ class MsaViewer(QWidget):
 
         for i in range(0, len(sequences[0])):
             ix = positions[i]
+
+            if ix is None:
+                continue
+
             conserved = {}
             for sequence in sequences:
                 aa = sequence[i].lower()

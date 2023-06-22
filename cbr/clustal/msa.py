@@ -61,7 +61,17 @@ def clean_msa_blanks(msa_sequence : str) -> str:
         msa_sequence = msa_sequence.replace(blank, "")
     return msa_sequence
 
-def get_relative_positions(msa : Dict[str, str], sequence_msa : Dict[str, str]) -> Iterable[int]:
+def get_relative_positions(msa : Dict[str, str], sequence_msa : Dict[str, str]) -> 'Iterable[int | None]':
+    """
+    This is a function often used to compute positions in an MSA file relative to an arbitrary
+    sequence. The idea is that two inputs are provided, an MSA with multiple sequences and an
+    MSA of one of the sequences of the original msa and the sequence one wishes to compute the
+    relative positions with. It will return a list where each of the list's indexes can
+    be regarded as a position in the original msa and the value of each index can be regarded
+    as the position that would correspond to the target sequence. If the value is None,
+    it means the position in the MSA file doesn't exactly match any position of the target
+    sequence.
+    """
     link = next((x for x in sequence_msa.keys() if x in msa.keys()), None)
     target = next((x for x in sequence_msa.keys() if x != link), None)
 
@@ -82,14 +92,13 @@ def get_relative_positions(msa : Dict[str, str], sequence_msa : Dict[str, str]) 
         ix = len(clean_msa_blanks(target_seq[0:link_ix])) - 1
         return max(0, ix)
 
-    target_ix = get_target_ix()
     for aa in msa[link]:
         link_aa = link_seq[link_ix]
 
         # Position in MSA and the sequence MSA match
         # we yield and move the link_ix
         if aa == link_aa:
-            target_ix = get_target_ix()
+            yield get_target_ix()
             link_ix = next_link_ix(link_ix)
-
-        yield target_ix
+        else:
+            yield None
