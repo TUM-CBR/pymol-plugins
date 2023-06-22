@@ -43,7 +43,7 @@ jobs:
         uses: thedoctor0/zip-release@0.7.1
         with:
           type: 'zip'
-          filename: 'cbr-tools-${{ env.date }}-win64.zip'
+          filename: "cbr-tools-${{ env.date }}-win64.zip"
           exclusions: '*.git* *.vscode* *.pyproject *.pyproject.user *devops/tmp/* **/*.gitkeep test_pymol.py'
 
       - uses: "marvinpinto/action-automatic-releases@latest"
@@ -52,5 +52,4 @@ jobs:
           prerelease: true
           automatic_release_tag: "nightly-${{ env.date }}"
           title: "Nightly Build ${{ env.date }}"
-          files: |
-            cbr-tools-win64.zip
+          files: "cbr-tools-${{ env.date }}-win64.zip"
