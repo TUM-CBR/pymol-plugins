@@ -1,5 +1,7 @@
 import os
+from typing import Dict
 
+from ..clustal import msa
 from .support.schema import SchemaAlignments
 
 class SchemaResultEntry(object):
@@ -41,7 +43,15 @@ class SchemaResult(object):
         self.__results = results
         self.__structure_name = structure_name
         self.__schema_alignments = SchemaAlignments.from_files(pdb_msa, parents_msa)
+        self.__parents_msa_file = parents_msa
         
+    @property
+    def parents_msa_file(self) -> str:
+        return self.__parents_msa_file
+
+    def parents_msa(self) -> Dict[str, str]:
+        return msa.parse_alignments(self.__parents_msa_file)
+
     @property
     def structure_name(self):
         """Return the name of the structure corresponding to this result"""

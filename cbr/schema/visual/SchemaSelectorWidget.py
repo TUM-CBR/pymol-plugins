@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QAction, QApplication, QMenu, QListWidgetItem, QTabl
 import pymol
 
 from ...core.pymol import structure
+from ...clustal import msa
 from ..SchemaContext import SchemaContext
 from ..SchemaResult import SchemaResult
 from ..SchemaTaskManager import SchemaTaskManager
@@ -11,6 +12,7 @@ from .Ui_SchemaSelectorWidget import Ui_SchemaSelectorWidget
 class SchemaSelectorWidget(QWidget):
 
     RESULT_DATA_ROLE = 1
+    MAIN_COLUMN_HEADERS = ["<E>", "<M>", "Positions (MSA)", "Positions (Structure)"]
 
     def __init__(self, schema_context, manager : SchemaTaskManager, *args, **kwargs):
         super(SchemaSelectorWidget, self).__init__(*args, **kwargs)
@@ -62,15 +64,34 @@ class SchemaSelectorWidget(QWidget):
         self.__result = result
         self.__result_items = result.load_results()
 
-        self.__ui.resultsViewer.clearContents()
-        self.__ui.resultsViewer.setRowCount(len(self.__result_items))
+        results_viewer = self.__ui.resultsViewer
+        results_viewer.clearContents()
+        results_viewer.setRowCount(len(self.__result_items))
         offset = structure.get_structure_offset(self.__result.structure_name)
+
+        parents_msa = self.__result.parents_msa()
+
+        # We have the four fixed columns for <E> <M> "MSA positions" and "Structure Positions"
+        # We add one column per sequence in the results
+        columns = SchemaSelectorWidget.MAIN_COLUMN_HEADERS + ["Positions (%s)" % k for k in parents_msa.keys()]
+        results_viewer.setColumnCount(len(columns))
+        results_viewer.setHorizontalHeaderLabels(columns)
+
+        def get_sequence_position(i : int, seq_name : str) -> int:
+            return len(msa.clean_msa_blanks(parents_msa[seq_name][0:i]))
 
         for (row, item) in enumerate(self.__result_items):
             self.__ui.resultsViewer.setItem(row, 0, QTableWidgetItem(item.energy))
             self.__ui.resultsViewer.setItem(row, 1, QTableWidgetItem(item.mutations))
             self.__ui.resultsViewer.setItem(row, 2, QTableWidgetItem(" ".join(map(str, item.msa_shuffling_points))))
             self.__ui.resultsViewer.setItem(row, 3, QTableWidgetItem(" ".join(map(str, item.shuffling_points(offset)))))
+
+            for (i, seq_name) in enumerate(parents_msa.keys()):
+                ix = i + 4
+                positions = [str(get_sequence_position(sp, seq_name)) for sp in item.msa_shuffling_points]
+                results_viewer.setItem(row, ix, QTableWidgetItem(" ".join(positions)))
+
+        results_viewer.resizeColumnsToContents()
 
     def on_resultsList_itemClicked(self, item : QListWidgetItem):
         self.__set_result(item.data(SchemaSelectorWidget.RESULT_DATA_ROLE))
