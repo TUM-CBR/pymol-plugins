@@ -15,7 +15,10 @@
   </property>
   <property name="styleSheet">
    <string notr="true">.QPushButton {
-	padding: 10px
+	padding: 10px;
+	min-width: 128px;
+	min-height: 128px;
+	font-weight: bold;
 }</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
@@ -69,8 +72,8 @@
       <widget class="QPushButton" name="schemaRasppButton">
        <property name="minimumSize">
         <size>
-         <width>128</width>
-         <height>128</height>
+         <width>150</width>
+         <height>150</height>
         </size>
        </property>
        <property name="font">
@@ -96,11 +99,21 @@
       </widget>
      </item>
      <item>
+      <widget class="QPushButton" name="schemaEnergyButton">
+       <property name="styleSheet">
+        <string notr="true">image: url(:/resources/schema.png);</string>
+       </property>
+       <property name="text">
+        <string>SCHEMA Energy</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="msaViewerButton">
        <property name="minimumSize">
         <size>
-         <width>128</width>
-         <height>128</height>
+         <width>150</width>
+         <height>150</height>
         </size>
        </property>
        <property name="font">

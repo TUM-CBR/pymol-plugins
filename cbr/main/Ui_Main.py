@@ -16,7 +16,10 @@ class Ui_Main(object):
         Main.setObjectName("Main")
         Main.resize(767, 656)
         Main.setStyleSheet(".QPushButton {\n"
-"    padding: 10px\n"
+"    padding: 10px;\n"
+"    min-width: 128px;\n"
+"    min-height: 128px;\n"
+"    font-weight: bold;\n"
 "}")
         self.verticalLayout = QtWidgets.QVBoxLayout(Main)
         self.verticalLayout.setObjectName("verticalLayout")
@@ -42,7 +45,7 @@ class Ui_Main(object):
         self.horizontalLayout_3 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_3.setObjectName("horizontalLayout_3")
         self.schemaRasppButton = QtWidgets.QPushButton(Main)
-        self.schemaRasppButton.setMinimumSize(QtCore.QSize(128, 128))
+        self.schemaRasppButton.setMinimumSize(QtCore.QSize(150, 150))
         font = QtGui.QFont()
         font.setBold(True)
         self.schemaRasppButton.setFont(font)
@@ -51,8 +54,12 @@ class Ui_Main(object):
         self.schemaRasppButton.setFlat(False)
         self.schemaRasppButton.setObjectName("schemaRasppButton")
         self.horizontalLayout_3.addWidget(self.schemaRasppButton)
+        self.schemaEnergyButton = QtWidgets.QPushButton(Main)
+        self.schemaEnergyButton.setStyleSheet("image: url(:/resources/schema.png);")
+        self.schemaEnergyButton.setObjectName("schemaEnergyButton")
+        self.horizontalLayout_3.addWidget(self.schemaEnergyButton)
         self.msaViewerButton = QtWidgets.QPushButton(Main)
-        self.msaViewerButton.setMinimumSize(QtCore.QSize(128, 128))
+        self.msaViewerButton.setMinimumSize(QtCore.QSize(150, 150))
         font = QtGui.QFont()
         font.setBold(True)
         self.msaViewerButton.setFont(font)
@@ -75,4 +82,5 @@ class Ui_Main(object):
         Main.setWindowTitle(_translate("Main", "Main"))
         self.label.setText(_translate("Main", "CBR Bioinformatics Tools"))
         self.schemaRasppButton.setText(_translate("Main", "SCHEMA-RASPP"))
+        self.schemaEnergyButton.setText(_translate("Main", "SCHEMA Energy"))
         self.msaViewerButton.setText(_translate("Main", "MSA Viewer"))
