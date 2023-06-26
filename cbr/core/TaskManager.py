@@ -1,8 +1,6 @@
 from PyQt5.QtCore import QMutex, QObject, QThread, pyqtSignal, pyqtSlot
 from typing import Callable, Generic, TypeVar
 
-import debugpy
-
 from .Context import Context
 
 TaskValue = TypeVar("TaskValue")
@@ -110,9 +108,9 @@ class TaskInstance(QObject, Generic[TaskValue]):
     @pyqtSlot()
     def do_work(self):
 
-        debugpy.debug_this_thread()
-        if(self.is_working):
-            return
+        with self.__mutex:
+            if(self.__state == TaskInstance.COMPLETED):
+                return
 
         self.__set_task_running()
         self.work_started.emit()
@@ -157,6 +155,7 @@ class TaskManager(QObject):
         task.moveToThread(self.__worker_thread)
         self.start_work.connect(task.do_work)
         self.start_work.emit(tid)
+        task.on_completed(lambda: self.start_work.disconnect(task.do_work))
 
         return task
 

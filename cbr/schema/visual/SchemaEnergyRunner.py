@@ -15,6 +15,7 @@ from ...core import visual
 from ...support.visual import as_fasta_selector
 from ..raspp import schemacontacts
 from ..raspp import schemaenergy
+from .SchemaEnergyViewer import SchemaEnergyViewer
 from .Ui_SchemaEnergyRunner import Ui_SchemaEnergyRunner
 
 class SchemaEnergyRunner(QWidget):
@@ -39,6 +40,7 @@ class SchemaEnergyRunner(QWidget):
         self.__working_directory = TemporaryDirectory()
         self.__clustal = Clustal.get_clustal_from_context(context)
         self.__task_manager = TaskManager.from_context(context)
+        self.__context = context
         self.__stop_progress_bar()
         self.__ui.runSchemaEnergyButton.clicked.connect(self.on_runSchemaEnergyButton_clicked)
 
@@ -130,6 +132,22 @@ class SchemaEnergyRunner(QWidget):
 
         result.on_started(self.__start_progress_bar)
         result.on_completed(self.__stop_progress_bar)
+        result.on_completed(
+            lambda: self.__show_results(structure_name, chain_name)
+        )
+
+    def __show_results(self, structure_name, chain_name):
+
+        self.__context.run_widget(
+            lambda _: \
+                SchemaEnergyViewer(
+                    self.__context,
+                    structure_name,
+                    chain_name,
+                    self.__schema_energy_file,
+                    self.__contacts_file,
+                )
+        ).show()
 
     def __run_schema_energy(
         self,
@@ -166,5 +184,4 @@ class SchemaEnergyRunner(QWidget):
             schemaenergy.ARG_PRINT_M: True,
             schemaenergy.ARG_PRINT_E: True
         })
-
 
