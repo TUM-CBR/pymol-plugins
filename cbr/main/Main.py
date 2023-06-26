@@ -26,3 +26,8 @@ class Main(QWidget):
     def on_msaViewerButton_clicked(self):
         print("starting msa viewer")
         Msa.msa_viewer(self.__context)
+
+    @pyqtSlot()
+    def on_schemaEnergyButton_clicked(self):
+        print("starting schema energy")
+        Schema.schema_energy(self.__context)
