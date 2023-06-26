@@ -1,9 +1,12 @@
 from os import path
 import pymol
-from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtCore import pyqtSlot, QRegExp
+from PyQt5.QtGui import QRegExpValidator
 from PyQt5.QtWidgets import QWidget
 from tempfile import TemporaryDirectory
 from typing import List
+
+from cbr.core.TaskManager import TaskManager
 
 from ...clustal import Clustal
 from ...core.Context import Context
@@ -15,6 +18,8 @@ from ..raspp import schemaenergy
 from .Ui_SchemaEnergyRunner import Ui_SchemaEnergyRunner
 
 class SchemaEnergyRunner(QWidget):
+
+    XoValidator = QRegExpValidator(QRegExp("^(\\s*\\d+\\s*(,\\s*\\d+)*)?$"))
 
     def __init__(self, context : Context, *args, **kwargs):
         super(SchemaEnergyRunner, self).__init__(*args, **kwargs)
@@ -29,8 +34,24 @@ class SchemaEnergyRunner(QWidget):
             self.__ui.fastaTextEdit,
             self.__ui.structureSequenceCombo)
 
+        self.__ui.shufflingPointsEdit.setValidator(SchemaEnergyRunner.XoValidator)
+
         self.__working_directory = TemporaryDirectory()
         self.__clustal = Clustal.get_clustal_from_context(context)
+        self.__task_manager = TaskManager.from_context(context)
+        self.__stop_progress_bar()
+        self.__ui.runSchemaEnergyButton.clicked.connect(self.on_runSchemaEnergyButton_clicked)
+
+    def __stop_progress_bar(self):
+        self.__ui.schemaProgress.setVisible(False)
+        self.__ui.runSchemaEnergyButton.setEnabled(True)
+
+    def __start_progress_bar(self):
+        self.__ui.runSchemaEnergyButton.setEnabled(False)
+        self.__ui.schemaProgress.reset()
+        self.__ui.schemaProgress.setMinimum(0)
+        self.__ui.schemaProgress.setMaximum(0)
+        self.__ui.schemaProgress.setVisible(True)
 
     def __del__(self):
         self.__working_directory.cleanup()
@@ -86,13 +107,29 @@ class SchemaEnergyRunner(QWidget):
 
     def __save_crossovers(self, crossovers : List[int]):
         with open(self.__corssovers_file, 'w') as xo_file:
-            xo_file.write(",".join(map(str, crossovers)))
+            xo_file.write(" ".join(map(str, crossovers)))
         return self.__corssovers_file
 
     @pyqtSlot()
-    def on_runSchemaButton_clicked(self):
+    def on_runSchemaEnergyButton_clicked(self):
         (structure_name, chain_name) = self.__ui.structuresCombo.currentData()
-        pass
+        crossovers = [ \
+            int(xo) \
+            for xo in self.__ui.shufflingPointsEdit.text().split(",") \
+        ]
+
+        def task():
+            return self.__run_schema_energy(
+                structure_name,
+                chain_name,
+                crossovers)
+
+        result = self.__task_manager.run_task(
+            "schema-energy/%s/%s" % (structure_name, chain_name),
+            task)
+
+        result.on_started(self.__start_progress_bar)
+        result.on_completed(self.__stop_progress_bar)
 
     def __run_schema_energy(
         self,
@@ -125,7 +162,9 @@ class SchemaEnergyRunner(QWidget):
             schemaenergy.ARG_CROSSOVER_FILE: xo_file,
             schemaenergy.ARG_MULTIPLE_SEQUENCE_ALIGNMENT_FILE: self.__msa_file,
             schemaenergy.ARG_OUTPUT_FILE: self.__schema_energy_file,
-            schemaenergy.ARG_PDB_ALIGNMENT_FILE: self.__structure_msa_file
+            schemaenergy.ARG_PDB_ALIGNMENT_FILE: self.__structure_msa_file,
+            schemaenergy.ARG_PRINT_M: True,
+            schemaenergy.ARG_PRINT_E: True
         })
 
 
