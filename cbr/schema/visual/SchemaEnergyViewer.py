@@ -26,6 +26,20 @@ class SchemaEnergyViewer(QWidget):
         self.__chain_name = chain_name
         self.__render_everything()
 
+    def on_contactsTable_itemSelectionChanged(self):
+
+        selected = self.__ui.contactsTable.selectedIndexes()
+        contacts = list(self.__contacts.contacts)
+        residues = " | ".join(
+            "resi %i | resi %i" % (contacts[sel.row()].pdb_i, contacts[sel.row()].pdb_i)
+            for sel in selected
+        )
+
+        cmd.select(
+            'SCHEMA_CONTACTS',
+            "model %s & chain %s & (%s)" % (self.__structure_name, self.__chain_name, residues)
+        )
+
     def __render_everything(self):
 
         results_table = self.__ui.resultsTable

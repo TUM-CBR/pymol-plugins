@@ -25,7 +25,7 @@ def parse_schema_energy(in_data : InputStream) -> SchemaEnergy:
 
             if line[0:4] == ['#', 'Average', 'disruption', '<E>']:
                 avg_e = float(line[5])
-            elif line[0:4] == ['#', 'Average', 'mutation', '<m>', '=']:
+            elif line[0:4] == ['#', 'Average', 'mutation', '<m>']:
                 avg_m = float(line[5])
             elif len(line) == 3:
                 results.append(
