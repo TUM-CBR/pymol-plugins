@@ -1,5 +1,8 @@
+from PyQt5.QtCore import QUrl, pyqtSlot
+from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtWidgets import QTableWidgetItem, QWidget
 from pymol import cmd
+from tempfile import TemporaryDirectory
 
 from ...core.Context import Context
 from ..support import parsers
@@ -15,6 +18,7 @@ class SchemaEnergyViewer(QWidget):
         chain_name : str,
         raw_results : str,
         raw_contacts : str,
+        results_folder : TemporaryDirectory,
         *args,
         **kwargs):
         super(SchemaEnergyViewer, self).__init__(*args, **kwargs)
@@ -25,6 +29,14 @@ class SchemaEnergyViewer(QWidget):
         self.__structure_name = structure_name
         self.__chain_name = chain_name
         self.__render_everything()
+        self.__results_folder = results_folder
+
+    def __del__(self):
+        self.__results_folder.cleanup()
+
+    @pyqtSlot()
+    def on_openResultsFolder_clicked(self):
+        QDesktopServices.openUrl(QUrl.fromLocalFile(self.__results_folder.name))
 
     def on_contactsTable_itemSelectionChanged(self):
 
@@ -35,10 +47,11 @@ class SchemaEnergyViewer(QWidget):
             for sel in selected
         )
 
-        cmd.select(
-            'SCHEMA_CONTACTS',
-            "model %s & chain %s & (%s)" % (self.__structure_name, self.__chain_name, residues)
-        )
+        if(len(residues) > 0):
+            cmd.select(
+                'SCHEMA_CONTACTS',
+                "model %s & chain %s & (%s)" % (self.__structure_name, self.__chain_name, residues)
+            )
 
     def __render_everything(self):
 
