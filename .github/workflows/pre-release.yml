@@ -33,7 +33,7 @@ jobs:
       - run: pip install -r .github/workflows/support/requirements.txt
 
       - name: "Run pyright"
-        run: pyright -p .github/workflows/support/pyrightconfig.json
+        run: pyright -p pyrightconfig.github.json --verbose
 
       - run: wget -O devops/tmp/clustalo-win64.zip http://www.clustal.org/omega/clustal-omega-1.2.2-win64.zip
       - run: unzip -d cbr/clustal/resources/ devops/tmp/clustalo-win64.zip

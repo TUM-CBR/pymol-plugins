@@ -9,7 +9,7 @@ TaskSpec = Callable[[], TaskValue]
 
 def debug_qthread():
     if "QTHREAD_DEBUGGING" in os.environ:
-        import debugpy
+        import debugpy # pyright: ignore
         debugpy.debug_this_thread()
 
 class QMutexWrapper():
