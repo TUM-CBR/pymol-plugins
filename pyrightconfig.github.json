@@ -12,5 +12,5 @@
     "reportFunctionMemberAccess" : "error",
     "reportUnusedImport": "error",
     "reportMissingImports": "none",
-    " reportMissingModuleSource": "none"
+    "reportMissingModuleSource": "none"
 }  
