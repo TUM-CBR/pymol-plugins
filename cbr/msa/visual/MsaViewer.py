@@ -1,6 +1,6 @@
 import pymol.cmd as cmd
 from PyQt5.QtCore import pyqtSlot
-from PyQt5.QtWidgets import QFileDialog, QWidget
+from PyQt5.QtWidgets import QDialog, QFileDialog, QWidget
 from typing import Dict, List, Tuple
 
 from ...core.Context import Context
@@ -8,6 +8,7 @@ from ...core import visual
 from ...core.pymol import structure
 from ...clustal import msa
 from ...clustal import Clustal
+from .FastaSequencesInput import FastaSequencesInput
 from .Ui_MsaViewer import Ui_MsaViewer
 
 COLOR_MAX = 999
@@ -22,11 +23,18 @@ class MsaViewer(QWidget):
         visual.as_structure_selector(self.__ui.structuresCombo, self.__ui.structuresRefreshButton)
         self.__set_sequences({})
         self.__clustal = Clustal.get_clustal_from_context(context)
+        self.__msa_input_dialog = FastaSequencesInput(context, parent = self)
 
     def __set_sequences(self, sequences : Dict[str, str]):
         self.__sequences = dict(sequences)
         self.__ui.sequenceCombo.clear()
         self.__ui.sequenceCombo.addItems(self.__sequences.keys())
+
+    def on_createMsaButton_clicked(self):
+
+        if self.__msa_input_dialog.exec() == QDialog.Accepted:
+            assert self.__msa_input_dialog.msa_result, "Bug in the code, result should be set"
+            self.__set_sequences(self.__msa_input_dialog.msa_result)
 
     @pyqtSlot()
     def on_selectMsaButton_clicked(self):

@@ -86,7 +86,8 @@ class Clustal(object):
             else:
                 raise Exception("Failed to open standard input for clustal")
             
-            process.wait()
+            if process.wait() != 0:
+                raise ValueError("Invalid input provided to clustal.")
             
             if process.stdout:
                 for text in process.stdout:
