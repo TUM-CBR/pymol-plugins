@@ -1,3 +1,4 @@
+import os
 from PyQt5.QtCore import QMutex, QObject, QThread, pyqtSignal, pyqtSlot
 from typing import Callable, Generic, TypeVar
 
@@ -5,6 +6,11 @@ from .Context import Context
 
 TaskValue = TypeVar("TaskValue")
 TaskSpec = Callable[[], TaskValue]
+
+def debug_qthread():
+    if "QTHREAD_DEBUGGING" in os.environ:
+        import debugpy
+        debugpy.debug_this_thread()
 
 class QMutexWrapper():
 
@@ -107,6 +113,7 @@ class TaskInstance(QObject, Generic[TaskValue]):
 
     @pyqtSlot()
     def do_work(self):
+        debug_qthread()
 
         with self.__mutex:
             if(self.__state == TaskInstance.COMPLETED):
