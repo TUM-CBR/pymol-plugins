@@ -6,8 +6,7 @@ from PyQt5.QtWidgets import QWidget
 from tempfile import TemporaryDirectory
 from typing import List
 
-from cbr.core.TaskManager import TaskManager
-
+from ...core.TaskManager import TaskManager
 from ...clustal import Clustal
 from ...core.Context import Context
 from ...core.pymol import structure
