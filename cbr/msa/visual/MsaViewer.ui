@@ -122,6 +122,16 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_4">
      <item>
+      <widget class="QLabel" name="label_4">
+       <property name="text">
+        <string>Scoring Method</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="scoringCombo"/>
+     </item>
+     <item>
       <widget class="QPushButton" name="colorConservedButton">
        <property name="minimumSize">
         <size>
@@ -148,6 +158,9 @@
       </spacer>
      </item>
     </layout>
+   </item>
+   <item>
+    <widget class="QTableWidget" name="resultsTable"/>
    </item>
    <item>
     <spacer name="verticalSpacer">
