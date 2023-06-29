@@ -35,7 +35,7 @@ def parse_alignments(in_alignments : MsaInput) -> Dict[str, str]:
     with get_alignments_input(in_alignments) as alignments:
 
         for line in alignments.stream.readlines():
-            entry = line.split()
+            entry = line.split()[0:2]
 
             if len(entry) == 2 and \
                 entry[0] != "CLUSTAL" and \
