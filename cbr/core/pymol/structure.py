@@ -29,4 +29,4 @@ def get_structure_offset(structure_name : str, chain : 'str | None' = None) -> i
     if offset[0] is None:
         raise Exception('The required structure "%s" has not been loaded' % structure_name)
 
-    return offset[0] + 1
+    return offset[0]

@@ -5,7 +5,9 @@ from typing import Callable, Dict, List, NamedTuple, Set, Tuple
 
 from ...core.Context import Context
 from ...core import visual
+from ...core.pymol import selection
 from ...core.pymol import structure
+from ...core.pymol.visual.PymolResidueResultsTable import PymolResidueSelector
 from ...clustal import msa
 from ...clustal import Clustal
 from .FastaSequencesInput import FastaSequencesInput
@@ -94,6 +96,7 @@ class MsaViewer(QWidget):
         self.__set_sequences({})
         self.__clustal = Clustal.get_clustal_from_context(context)
         self.__msa_input_dialog = FastaSequencesInput(context, parent = self)
+        self.__residue_selector = PymolResidueSelector(self.__ui.resultsTable)
 
     def __set_sequences(self, sequences : Dict[str, str]):
         self.__sequences = dict(sequences)
@@ -149,7 +152,6 @@ class MsaViewer(QWidget):
         (selected_structure, chain) = self.__selected_structure
         offset = structure.get_structure_offset(selected_structure, chain)
 
-
         for (i, ix) in enumerate(filter(lambda x: x, positions)):
 
             assert ix, "Bug in code, only positions that occur in the structure should be there"
@@ -178,7 +180,11 @@ class MsaViewer(QWidget):
     def __set_results_table(self, results : MsaConservationResults) -> None:
         table = self.__ui.resultsTable
         table.reset()
+        residue_selector = self.__residue_selector
+        residue_selector.reset()
         scoring = self.__scoring_function
+        structure_selection = selection.get_selection_for_model(*self.__selected_structure)
+        self.__residue_selector.set_selection(structure_selection)
 
         table.setColumnCount(len(results.results_keys) + 3)
         table.setRowCount(len(results.results))
@@ -187,7 +193,8 @@ class MsaViewer(QWidget):
             ["%s (%%)" % r for r in results.results_keys]
         )
 
-        for (i,score) in results.results.items():
+        for (i,score) in enumerate(results.results.values()):
+            residue_selector.set_item_riesidues(i, [score.pdb_position])
             table.setItem(i, 0, QTableWidgetItem(str(score.pdb_position)))
             table.setItem(i, 1, QTableWidgetItem(score.residue))
             table.setItem(i, 2, QTableWidgetItem(str(scoring(score))))

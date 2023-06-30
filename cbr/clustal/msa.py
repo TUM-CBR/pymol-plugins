@@ -87,7 +87,7 @@ def get_relative_positions(msa : Dict[str, str], sequence_msa : Dict[str, str]) 
     target_seq = sequence_msa[target]
 
     def get_target_ix():
-        ix = len(clean_msa_blanks(target_seq[0:link_ix])) - 1
+        ix = len(clean_msa_blanks(target_seq[0:link_ix + 1])) - 1
         return max(0, ix)
 
     for aa in msa[link]:
