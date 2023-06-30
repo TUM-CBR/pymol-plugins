@@ -33,6 +33,17 @@ class MsaConservationResult(object):
         self.__pdb_position = pdb_position
 
     @property
+    def blanks(self) -> int:
+        return self.__blanks
+
+    @property
+    def blanks_percent(self) -> float:
+        return round(
+            100 * self.blanks / self.sum_with_blanks,
+            ndigits=2
+        )
+
+    @property
     def residue(self) -> str:
         return self.__structure_residue
 
@@ -51,7 +62,10 @@ class MsaConservationResult(object):
     @property
     def score_percent(self) -> Dict[str, float]:
         total = self.sum_with_blanks
-        return dict([(res, score/total) for (res, score) in self.__score.items()])
+        return dict([
+            (res, round(score/total, ndigits=2))
+            for (res, score) in self.__score.items()
+        ])
 
     @property
     def residue_count_score(self) -> float:
@@ -186,11 +200,12 @@ class MsaViewer(QWidget):
         structure_selection = selection.get_selection_for_model(*self.__selected_structure)
         self.__residue_selector.set_selection(structure_selection)
 
-        table.setColumnCount(len(results.results_keys) + 3)
+        table.setColumnCount(len(results.results_keys) + 4)
         table.setRowCount(len(results.results))
         table.setHorizontalHeaderLabels(
             ['structure position', 'structure residue', 'score'] + \
-            ["%s (%%)" % r for r in results.results_keys]
+            ["%s (%%)" % r for r in results.results_keys] + \
+            ["blanks (%)"]
         )
 
         for (i,score) in enumerate(results.results.values()):
@@ -200,8 +215,14 @@ class MsaViewer(QWidget):
             table.setItem(i, 2, QTableWidgetItem(str(scoring(score))))
 
             for (j, key) in enumerate(results.results_keys):
-                k_score = int(100.0*(score.score_percent.get(key) or 0))
-                table.setItem(i, j + 3, QTableWidgetItem("%i%%" % k_score))
+                k_score = score.score_percent.get(key) or 0.0
+                table.setItem(i, j + 3, QTableWidgetItem("%s%%" % k_score))
+
+            table.setItem(
+                i,
+                len(results.results_keys) + 3,
+                QTableWidgetItem("%s%%" % score.blanks_percent)
+            )
 
     def __color_by_conservation(self):
         (selected_structure, chain) = self.__selected_structure
