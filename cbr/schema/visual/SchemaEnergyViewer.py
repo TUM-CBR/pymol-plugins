@@ -38,6 +38,7 @@ class SchemaEnergyViewer(QWidget):
     def on_openResultsFolder_clicked(self):
         QDesktopServices.openUrl(QUrl.fromLocalFile(self.__results_folder.name))
 
+    @pyqtSlot()
     def on_contactsTable_itemSelectionChanged(self):
 
         selected = self.__ui.contactsTable.selectedIndexes()

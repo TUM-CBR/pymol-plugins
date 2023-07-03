@@ -35,7 +35,7 @@ def parse_alignments(in_alignments : MsaInput) -> Dict[str, str]:
     with get_alignments_input(in_alignments) as alignments:
 
         for line in alignments.stream.readlines():
-            entry = line.split()
+            entry = line.split()[0:2]
 
             if len(entry) == 2 and \
                 entry[0] != "CLUSTAL" and \
@@ -87,7 +87,7 @@ def get_relative_positions(msa : Dict[str, str], sequence_msa : Dict[str, str]) 
     target_seq = sequence_msa[target]
 
     def get_target_ix():
-        ix = len(clean_msa_blanks(target_seq[0:link_ix])) - 1
+        ix = len(clean_msa_blanks(target_seq[0:link_ix + 1])) - 1
         return max(0, ix)
 
     for aa in msa[link]:
