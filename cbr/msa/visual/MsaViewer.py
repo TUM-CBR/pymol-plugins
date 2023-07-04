@@ -16,11 +16,15 @@ from .Ui_MsaViewer import Ui_MsaViewer
 COLOR_MAX = 999
 COLOR_MIN = 600
 
+def perc_str(n : float):
+    return str(round(100*n, ndigits=2))
+
 class MsaConservationResult(object):
 
     def __init__(
             self,
             pdb_position : int,
+            msa_position : int,
             structure_residue : str,
             score : Dict[str, int]
         ):
@@ -31,6 +35,7 @@ class MsaConservationResult(object):
         self.__structure_residue = structure_residue
         self.__score = score
         self.__pdb_position = pdb_position
+        self.__msa_position = msa_position
 
     @property
     def blanks(self) -> int:
@@ -38,10 +43,7 @@ class MsaConservationResult(object):
 
     @property
     def blanks_percent(self) -> float:
-        return round(
-            100 * self.blanks / self.sum_with_blanks,
-            ndigits=2
-        )
+        return self.blanks / self.sum_with_blanks
 
     @property
     def residue(self) -> str:
@@ -50,6 +52,10 @@ class MsaConservationResult(object):
     @property
     def pdb_position(self) -> int:
         return self.__pdb_position
+
+    @property
+    def msa_position(self) -> int:
+        return self.__msa_position
 
     @property
     def score(self) -> Dict[str, int]:
@@ -63,7 +69,7 @@ class MsaConservationResult(object):
     def score_percent(self) -> Dict[str, float]:
         total = self.sum_with_blanks
         return dict([
-            (res, round(score/total, ndigits=2))
+            (res, score/total)
             for (res, score) in self.__score.items()
         ])
 
@@ -95,7 +101,7 @@ class MsaViewer(QWidget):
 
     scoring_methods : Dict[str, Callable[[MsaConservationResult], float]] = {
         'maximum conservation': lambda x: x.max_conservation_score,
-        'maximum conservation (blanks weightd)': lambda x: x.max_conservation_weighted,
+        'maximum conservation (gaps weightd)': lambda x: x.max_conservation_weighted,
         'residue count': lambda x: x.residue_count_score,
         'relative to structure': lambda x: x.relative_to_structure_conservation_score,
         'structure relative to consensus': lambda x: x.structure_relative_to_consensus_score
@@ -166,7 +172,7 @@ class MsaViewer(QWidget):
         (selected_structure, chain) = self.__selected_structure
         offset = structure.get_structure_offset(selected_structure, chain)
 
-        for (i, ix) in enumerate(filter(lambda x: x, positions)):
+        for (i, ix) in filter(lambda x: x[1], enumerate(positions)):
 
             assert ix, "Bug in code, only positions that occur in the structure should be there"
             structure_residue = structure_sequence[ix].lower()
@@ -183,7 +189,7 @@ class MsaViewer(QWidget):
                     conserved[aa] = 1
 
             assert ix, "Bug in filtering criteria!"
-            result[ix] = MsaConservationResult(ix + offset, structure_residue, conserved)
+            result[ix] = MsaConservationResult(ix + offset, i, structure_residue, conserved)
 
         return MsaConservationResults(results_keys, result)
     
@@ -203,40 +209,51 @@ class MsaViewer(QWidget):
         table.setColumnCount(len(results.results_keys) + 4)
         table.setRowCount(len(results.results))
         table.setHorizontalHeaderLabels(
-            ['structure position', 'structure residue', 'score'] + \
+            ['structure position', 'MSA position', 'structure residue', 'score'] + \
             ["%s (%%)" % r for r in results.results_keys] + \
-            ["blanks (%)"]
+            ["gaps (%)"]
         )
 
         for (i,score) in enumerate(results.results.values()):
             residue_selector.set_item_riesidues(i, [score.pdb_position])
             table.setItem(i, 0, QTableWidgetItem(str(score.pdb_position)))
-            table.setItem(i, 1, QTableWidgetItem(score.residue))
-            table.setItem(i, 2, QTableWidgetItem(str(scoring(score))))
+            table.setItem(i, 1, QTableWidgetItem(str(score.msa_position)))
+            table.setItem(i, 2, QTableWidgetItem(score.residue))
+            table.setItem(i, 3, QTableWidgetItem(str(scoring(score))))
 
             for (j, key) in enumerate(results.results_keys):
-                k_score = score.score_percent.get(key) or 0.0
-                table.setItem(i, j + 3, QTableWidgetItem("%s%%" % k_score))
+                k_score = perc_str(score.score_percent.get(key) or 0.0)
+                table.setItem(i, j + 4, QTableWidgetItem("%s%%" % k_score))
 
             table.setItem(
                 i,
                 len(results.results_keys) + 3,
-                QTableWidgetItem("%s%%" % score.blanks_percent)
+                QTableWidgetItem("%s%%" % perc_str(score.blanks_percent))
             )
+
+    @pyqtSlot(int)
+    def on_gapTresholdSlider_sliderMoved(self, value : int):
+        self.__ui.gapTresholdLabel.setText("%i%%" % value)
 
     def __color_by_conservation(self):
         (selected_structure, chain) = self.__selected_structure
         conservation = self.__get_structure_conservation()
         scoring = self.__scoring_function
-        scores = [(result.pdb_position, scoring(result)) for (i, result) in conservation.results.items()]
-        factor = (COLOR_MAX - COLOR_MIN) / max(score for (i, score) in scores)
-        structure_query = structure.get_structure_query(selected_structure, chain) 
+        scores = [(result, scoring(result)) for (i, result) in conservation.results.items()]
+        factor = (COLOR_MAX - COLOR_MIN) / max(score for (r, score) in scores)
+        structure_query = structure.get_structure_query(selected_structure, chain)
+        gaps_treshold = self.__ui.gapTresholdSlider.value()
 
         cmd.color("999", structure_query)
 
-        for (ix,score) in scores:
-            i_score = int(score * factor)
-            cmd.color(str(999 - i_score), "%s and resi %i-%i" % (structure_query, ix, ix))
+        for (result, score) in scores:
+            ix = result.pdb_position
+            if result.blanks_percent > gaps_treshold / 100:
+                color = "white"
+            else:
+                i_score = int(score * factor)
+                color = str(999 - i_score)
+            cmd.color(color, "%s and resi %i-%i" % (structure_query, ix, ix))
 
         self.__set_results_table(conservation)
 
