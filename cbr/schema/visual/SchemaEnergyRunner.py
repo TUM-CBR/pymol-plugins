@@ -4,7 +4,7 @@ from PyQt5.QtCore import pyqtSlot, QRegExp
 from PyQt5.QtGui import QRegExpValidator
 from PyQt5.QtWidgets import QWidget
 from tempfile import TemporaryDirectory
-from typing import List
+from typing import List, Optional
 
 from ...core.TaskManager import TaskManager
 from ...clustal import Clustal
@@ -12,10 +12,19 @@ from ...core.Context import Context
 from ...core.pymol import structure
 from ...core import visual
 from ...support.visual import as_fasta_selector
+from ..raspp import contacts
 from ..raspp import schemacontacts
 from ..raspp import schemaenergy
 from .SchemaEnergyViewer import SchemaEnergyViewer
 from .Ui_SchemaEnergyRunner import Ui_SchemaEnergyRunner
+
+interactions = {
+    'SCHEMA classic' : None,
+    'Simplified Pysics' : [
+        contacts.electrostatic_interactions,
+        contacts.van_der_waals
+    ]
+}
 
 class SchemaEnergyRunner(QWidget):
 
@@ -41,6 +50,13 @@ class SchemaEnergyRunner(QWidget):
         self.__context = context
         self.__stop_progress_bar()
         self.__ui.runSchemaEnergyButton.clicked.connect(self.on_runSchemaEnergyButton_clicked)
+
+        for (i, (name, data)) in enumerate(interactions.items()):
+            self.__ui.energyScoringCombo.insertItem(
+                i,
+                name,
+                userData=data
+            )
 
     def __stop_progress_bar(self):
         self.__ui.schemaProgress.setVisible(False)
@@ -97,6 +113,12 @@ class SchemaEnergyRunner(QWidget):
             "schema_energy.txt"
         )
 
+    def __schema_interactions_file(self, base_path : str) -> str:
+        return path.join(
+            base_path,
+            "schema_interactions.json"
+        )
+
     def __save_crossovers(self, base_path : str, crossovers : List[int]) -> str:
         with open(self.__corssovers_file(base_path), 'w') as xo_file:
             xo_file.write(" ".join(map(str, crossovers)))
@@ -149,6 +171,18 @@ class SchemaEnergyRunner(QWidget):
                 )
         ).show()
 
+    def __get_interactions(self, base_path : str) -> Optional[str]:
+
+        scoring = self.__ui.energyScoringCombo.currentData()
+
+        if scoring is None:
+            return None
+        else:
+            f_name = self.__schema_interactions_file(base_path)
+            with open(f_name, 'w') as f_interactions:
+                contacts.write_interactions(scoring, f_interactions)
+            return f_name
+
     def __run_schema_energy(
         self,
         structure_name : str,
@@ -172,7 +206,8 @@ class SchemaEnergyRunner(QWidget):
             schemacontacts.ARG_PDB_FILE: pdb_file,
             schemacontacts.ARG_MULTIPLE_SEQUENCE_ALIGNMENT_FILE: self.__msa_file(base_path),
             schemacontacts.ARG_PDB_ALIGNMENT_FILE: self.__structure_msa_file(base_path),
-            schemacontacts.ARG_OUTPUT_FILE: self.__contacts_file(base_path)
+            schemacontacts.ARG_OUTPUT_FILE: self.__contacts_file(base_path),
+            schemacontacts.ARG_INTERACTIONS: self.__get_interactions(base_path)
         })
 
         xo_file = self.__save_crossovers(base_path, crossovers)

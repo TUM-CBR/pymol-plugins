@@ -51,7 +51,7 @@ class SchemaEnergyViewer(QWidget):
         selected = self.__ui.contactsTable.selectedIndexes()
         contacts = self.__contacts
         residues = " | ".join(
-            "resi %i | resi %i" % (contacts[sel.row()].pdb_i, contacts[sel.row()].pdb_j)
+            "resi %i | resi %i" % (contacts.contacts[sel.row()].pdb_i, contacts.contacts[sel.row()].pdb_j)
             for sel in selected
         )
 
