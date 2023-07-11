@@ -1,7 +1,7 @@
 import os
 from PyQt5.QtCore import pyqtSignal, QObject, QTimer
 from threading import Thread
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from ..clustal import fasta
 from ..clustal.Clustal import Clustal
@@ -60,6 +60,10 @@ class SchemaTaskManager(QObject):
         action(self.get_results())
         return self.__results_updated_signal.connect(action)
 
+    @property
+    def base_directory(self) -> str:
+        return self.__working_directory
+
     def get_pdb_file_name(self, name : str) -> str:
         return SchemaTask.get_pdb_file_name(self.__working_directory, name)
 
@@ -103,8 +107,15 @@ class SchemaTaskManager(QObject):
     def get_results(self):
         return list(self.__get_results())
 
-    def run_schema(self, name: str, sequences_str: str, shuffling_points: List[int], min_fragment_size: int, max_fragment_size : int) -> None:
-        task = SchemaTask(self.__schema_context, name, self.__working_directory, sequences_str, shuffling_points, min_fragment_size, max_fragment_size)
+    def run_schema(
+        self,
+        name: str,
+        sequences_str: str,
+        shuffling_points: List[int],
+        min_fragment_size: int,
+        max_fragment_size : int,
+        schema_energy_file : Optional[str]) -> None:
+        task = SchemaTask(self.__schema_context, name, self.__working_directory, sequences_str, shuffling_points, min_fragment_size, max_fragment_size, schema_energy_file)
         self.__current_tasks.append(task)
         self.__check_tasks()
 
@@ -120,13 +131,15 @@ class SchemaTask(QObject):
         sequences_str : str,
         shuffling_points : List[int],
         min_fragment_size: int,
-        max_fragment_size : int):
+        max_fragment_size : int,
+        schema_energy_file : Optional[str]):
 
         super(SchemaTask, self).__init__()
         self.__clustal = Clustal()
         self.__schema_context = schema_context
         self.__name = name
         self.__working_directory = working_directory
+        self.__schema_energy_file = schema_energy_file
         self.__schema_thread = Thread(
             target = self.__run_schema_action,
             args = [sequences_str, shuffling_points, min_fragment_size, max_fragment_size]
@@ -256,7 +269,8 @@ class SchemaTask(QObject):
             schemacontacts.ARG_PDB_FILE: self.pdb_file,
             schemacontacts.ARG_PDB_ALIGNMENT_FILE: self.pdb_aln_file,
             schemacontacts.ARG_MULTIPLE_SEQUENCE_ALIGNMENT_FILE: self.msa_aln_file,
-            schemacontacts.ARG_OUTPUT_FILE: self.contacts_file
+            schemacontacts.ARG_OUTPUT_FILE: self.contacts_file,
+            schemacontacts.ARG_INTERACTIONS: self.__schema_energy_file
         }
 
         schemacontacts.main_impl(args)

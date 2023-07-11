@@ -9,6 +9,7 @@ from ...core import visual
 from ...core.pymol import structure
 from ..SchemaTaskManager import SchemaTask, SchemaTaskManager
 
+from .energy import EnergySelector
 from .Ui_SchemaRunnerWidget import Ui_SchemaRunnerWidget
 
 input_validation_error = \
@@ -33,6 +34,7 @@ class SchemaRunnerWidget(QWidget):
         self.__manager.is_busy_signal.connect(self.__on_busy_status_changed)
         self.__load_previous_sequences()
         self.__on_busy_status_changed(False)
+        self.__energy_selector = EnergySelector(self.__ui.energyScoringCombo)
         visual.as_structure_selector(self.__ui.structuresCombo, self.__ui.refreshButton)
 
     def __on_busy_status_changed(self, is_busy : int):
@@ -86,7 +88,14 @@ class SchemaRunnerWidget(QWidget):
             pymol.cmd.load(pdb_file)
             sequences = "%s\n\n>%s\n%s" % (self.__ui.sequencesText.toPlainText(), structure_name, self.__get_pdb_sequence(structure_name))
 
-            self.__manager.run_schema(name, sequences, xos, min_length, max_length)
+            self.__manager.run_schema(
+                name,
+                sequences,
+                xos,
+                min_length,
+                max_length,
+                self.__energy_selector.write_interactions(self.__manager.base_directory)
+            )
             
         except QuietException:
             self.__schema_context.raise_error_message("The structure '%s' is invalid" % self.__ui.structuresCombo.currentText)
