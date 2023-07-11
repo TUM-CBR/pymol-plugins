@@ -140,26 +140,6 @@
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
-         <column>
-          <property name="text">
-           <string>i</string>
-          </property>
-         </column>
-         <column>
-          <property name="text">
-           <string>j</string>
-          </property>
-         </column>
-         <column>
-          <property name="text">
-           <string>pdb i</string>
-          </property>
-         </column>
-         <column>
-          <property name="text">
-           <string>pdb j</string>
-          </property>
-         </column>
         </widget>
        </item>
       </layout>

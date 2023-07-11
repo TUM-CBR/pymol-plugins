@@ -77,6 +77,23 @@
      <item>
       <widget class="QLineEdit" name="crossoversText"/>
      </item>
+     <item>
+      <widget class="QLabel" name="label_6">
+       <property name="text">
+        <string>Energy Scoring</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="energyScoringCombo">
+       <property name="minimumSize">
+        <size>
+         <width>150</width>
+         <height>0</height>
+        </size>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
    <item>

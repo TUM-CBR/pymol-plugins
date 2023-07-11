@@ -14,6 +14,7 @@ from ...core import visual
 from ...support.visual import as_fasta_selector
 from ..raspp import schemacontacts
 from ..raspp import schemaenergy
+from .energy import EnergySelector
 from .SchemaEnergyViewer import SchemaEnergyViewer
 from .Ui_SchemaEnergyRunner import Ui_SchemaEnergyRunner
 
@@ -41,6 +42,8 @@ class SchemaEnergyRunner(QWidget):
         self.__context = context
         self.__stop_progress_bar()
         self.__ui.runSchemaEnergyButton.clicked.connect(self.on_runSchemaEnergyButton_clicked)
+        self.__energy_selector = EnergySelector(self.__ui.energyScoringCombo)
+
 
     def __stop_progress_bar(self):
         self.__ui.schemaProgress.setVisible(False)
@@ -172,7 +175,8 @@ class SchemaEnergyRunner(QWidget):
             schemacontacts.ARG_PDB_FILE: pdb_file,
             schemacontacts.ARG_MULTIPLE_SEQUENCE_ALIGNMENT_FILE: self.__msa_file(base_path),
             schemacontacts.ARG_PDB_ALIGNMENT_FILE: self.__structure_msa_file(base_path),
-            schemacontacts.ARG_OUTPUT_FILE: self.__contacts_file(base_path)
+            schemacontacts.ARG_OUTPUT_FILE: self.__contacts_file(base_path),
+            schemacontacts.ARG_INTERACTIONS: self.__energy_selector.write_interactions(base_path)
         })
 
         xo_file = self.__save_crossovers(base_path, crossovers)

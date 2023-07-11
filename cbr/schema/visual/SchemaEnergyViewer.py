@@ -11,6 +11,13 @@ from .Ui_SchemaEnergyViewer import Ui_SchemaEnergyViewer
 
 class SchemaEnergyViewer(QWidget):
 
+    CONTACTS_HEADERS = [
+        "i",
+        "j",
+        "pdb i",
+        "pdb j",
+    ]
+
     def __init__(
         self,
         context : Context,
@@ -42,9 +49,9 @@ class SchemaEnergyViewer(QWidget):
     def on_contactsTable_itemSelectionChanged(self):
 
         selected = self.__ui.contactsTable.selectedIndexes()
-        contacts = list(self.__contacts.contacts)
+        contacts = self.__contacts
         residues = " | ".join(
-            "resi %i | resi %i" % (contacts[sel.row()].pdb_i, contacts[sel.row()].pdb_i)
+            "resi %i | resi %i" % (contacts.contacts[sel.row()].pdb_i, contacts.contacts[sel.row()].pdb_j)
             for sel in selected
         )
 
@@ -61,6 +68,8 @@ class SchemaEnergyViewer(QWidget):
         entries = list(self.__results.entries)
         results_table.setRowCount(len(entries) + 1)
 
+        interactions_meta = self.__contacts.interactions
+
         results_table.setItem(0, 0, QTableWidgetItem('<average>'))
         results_table.setItem(0, 1, QTableWidgetItem(str(self.__results.average_energy)))
         results_table.setItem(0, 2, QTableWidgetItem(str(self.__results.average_mutations)))
@@ -74,8 +83,13 @@ class SchemaEnergyViewer(QWidget):
 
         contacts_table = self.__ui.contactsTable
         contacts_table.reset()
-        contacts = list(self.__contacts.contacts)
-        contacts_table.setRowCount(len(contacts))
+        contacts = self.__contacts
+        contacts_table.setRowCount(len(contacts.contacts))
+        contacts_table.setColumnCount(4 + len(interactions_meta))
+        contacts_table.setHorizontalHeaderLabels(
+            SchemaEnergyViewer.CONTACTS_HEADERS + \
+            [interaction.name for interaction in interactions_meta]
+        )
         residues = {}
         cmd.iterate(
             'model %s & chain %s' % (self.__structure_name, self.__chain_name),
@@ -83,9 +97,9 @@ class SchemaEnergyViewer(QWidget):
             space = { 'residues' : residues, 'to_int': int }
         )
 
-        for (i, contact) in enumerate(contacts):
-            contacts_table.setItem(i, 0, QTableWidgetItem(str(contact.i)))
-            contacts_table.setItem(i, 1, QTableWidgetItem(str(contact.j)))
+        for (i, contact) in enumerate(contacts.contacts):
+            contacts_table.setItem(i, 0, QTableWidgetItem(str(contact.seq_i)))
+            contacts_table.setItem(i, 1, QTableWidgetItem(str(contact.seq_j)))
             
             pdb_i = contact.pdb_i
             pdb_i_name = residues.get(pdb_i) or "?"
@@ -102,5 +116,13 @@ class SchemaEnergyViewer(QWidget):
                 3,
                 QTableWidgetItem("%i (%s)" % (pdb_j, pdb_j_name))
             )
+
+            interactions_summary = dict((meta.name, 0.0) for meta in interactions_meta)
+            for interaction in contact.interactions:
+                interactions_summary[interaction.name] += interaction.strength
+
+            for (j, meta) in enumerate(interactions_meta):
+                value = round(interactions_summary[meta.name], ndigits=2)
+                contacts_table.setItem(i, j + 4, QTableWidgetItem(str(value)))
 
 
