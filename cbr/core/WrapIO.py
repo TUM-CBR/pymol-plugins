@@ -1,9 +1,9 @@
 from io import StringIO, TextIOBase
-from typing import Any, Callable, cast, TypeVar
+from typing import Any, Callable, Optional, cast, TextIO, TypeVar
 
-NewStreamSpec = TypeVar('NewStreamSpec', str, Callable[[], TextIOBase])
+NewStreamSpec = TypeVar('NewStreamSpec', str, Callable[[], TextIO])
 
-def stream_builder(spec : NewStreamSpec) -> TextIOBase:
+def stream_builder(spec : NewStreamSpec) -> TextIO:
 
     if isinstance(spec, str):
         return open(spec, 'r')
@@ -12,14 +12,14 @@ def stream_builder(spec : NewStreamSpec) -> TextIOBase:
     else:
         raise ValueError("Cannot build a stream from '%s'" % str(spec))
 
-InitStreamSpec = TypeVar('InitStreamSpec', str, None, Callable[[TextIOBase], None])
+InitStreamSpec = TypeVar('InitStreamSpec', str, None, Callable[[TextIO], None])
 
-def get_init_stream(spec : InitStreamSpec) -> 'Callable[[TextIOBase], None] | None':
+def get_init_stream(spec : InitStreamSpec) -> 'Callable[[TextIO], None] | None':
 
     if(isinstance(spec, str)):
         data = spec
 
-        def python_is_the_worse_language(stream : TextIOBase):
+        def python_is_the_worse_language(stream : TextIO):
             stream.write(data)
 
         return python_is_the_worse_language
@@ -27,20 +27,22 @@ def get_init_stream(spec : InitStreamSpec) -> 'Callable[[TextIOBase], None] | No
     else:
         return cast(Any, spec)
 
+LegitStream = TypeVar('LegitStream', TextIO, TextIOBase)
+
 class WrapIO(object):
 
     def __init__(
         self,
-        stream : 'TextIOBase | None' = None,
+        stream : Optional[LegitStream] = None,
         open_stream : NewStreamSpec = StringIO,
         init : InitStreamSpec = None):
 
-        self.__stream = stream or stream_builder(open_stream)
+        self.__stream = cast(TextIO, stream or stream_builder(open_stream))
         self.__init = get_init_stream(init)
         self.__percolate = not stream
 
     @property
-    def stream(self) -> TextIOBase:
+    def stream(self) -> TextIO:
         return self.__stream
 
     def __enter__(self, *args, **kwargs):

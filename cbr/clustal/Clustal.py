@@ -1,9 +1,10 @@
 from io import StringIO, TextIOBase
 import os
 import subprocess
-from typing import Dict, Iterable, Tuple, TypeVar
+from typing import Dict, Iterable, Tuple, TextIO, TypeVar
 
 from ..core.Context import Context
+from ..core.process import simple_execute
 from ..core.WrapIO import WrapIO
 from . import msa
 
@@ -17,9 +18,9 @@ def find_clustal():
 class ClustalResult(object):
     pass
 
-MsaInput = TypeVar('MsaInput', str, Iterable[Tuple[str, str]], TextIOBase)
+MsaInput = TypeVar('MsaInput', str, Iterable[Tuple[str, str]], TextIO, TextIOBase)
 
-MsaOutput = TypeVar('MsaOutput', str, TextIOBase)
+MsaOutput = TypeVar('MsaOutput', str, TextIO)
 
 def get_clustal_from_context(context : Context):
     return Clustal()
@@ -39,7 +40,7 @@ class Clustal(object):
         if(isinstance(in_msa, TextIOBase)):
             return WrapIO(stream = in_msa)
 
-        def init(result : TextIOBase):
+        def init(result : TextIO):
             if isinstance(in_msa, str):
                 result.write(in_msa)
 
@@ -54,7 +55,7 @@ class Clustal(object):
     @staticmethod
     def __get_msa_output(out_msa : MsaOutput) -> WrapIO:
 
-        if(isinstance(out_msa, TextIOBase)):
+        if(isinstance(out_msa, TextIO)):
             return WrapIO(stream = out_msa)
         elif(isinstance(out_msa, str)):
             return WrapIO(open_stream = lambda: open(out_msa, 'w'))
@@ -66,6 +67,14 @@ class Clustal(object):
         in_msa : MsaInput,
         out_result : MsaOutput
         ) -> ClustalResult:
+
+        with Clustal.__get_msa_input(in_msa) as in_msa_stream \
+            , Clustal.__get_msa_output(out_result) as out_result_stream:
+            simple_execute(
+                [self.__clustal_executable, '-i', '-', '--force', '--outfmt=clustal'],
+                in_msa_stream.stream,
+                out_result_stream.stream
+            )
 
         process = subprocess.Popen(
             [self.__clustal_executable, '-i', '-', '--force', '--outfmt=clustal'],
