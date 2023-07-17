@@ -1,22 +1,48 @@
+import json
 import os
 from os import path
 import pymol
+from pymol.wizard.mutagenesis import Mutagenesis
 import tempfile
-from typing import Dict, List, NamedTuple
+from typing import Dict, List, NamedTuple, Tuple
 
 from ..gromacs import gmx_box, gmx_configure_emin, gmx_emin_script, gmx_neutralize, gmx_solvate, gmx_topology
 from ..packmol import pack_structure
+
+batch_all_script = \
+    """
+    ls | xargs 
+    """
+
+class Mutation(NamedTuple):
+    selection : str
+    mutation : str
+
+    def to_json_dict(self):
+        return {
+            'selection' : self.selection,
+            'mutation' : self.mutation
+        }
 
 class MutationContext(NamedTuple):
 
     name : str
     directory : str
-    selection : str
-    mutation : str
+    mutations : List[Mutation]
+
+    def to_json_dict(self):
+        return {
+            'name' : self.name,
+            'directory' : self.directory,
+            'mutations': [m.to_json_dict() for m in self.mutations]
+        }
 
     @property
-    def model_copy_selection(self) -> str:
-        return 'model %s and %s' % (self.name, self.selection)
+    def structure_selection(self):
+        return 'model %s' % self.name
+
+    def mutation(self, i : int) -> str:
+        return self.mutations[i].mutation
 
     @property
     def __pdb_base_filename(self) -> str:
@@ -59,7 +85,11 @@ class MutationContext(NamedTuple):
 
     @property
     def emin_config_file(self) -> str:
-        return self.__full_path("emin.%s.tpr")
+        return self.__full_path("emin.%s.tpr" % self.name)
+
+    @property
+    def emin_log_file(self) -> str:
+        return self.__full_path("emin.%s.log" % self.name)
 
     @property
     def energy_file(self) -> str:
@@ -80,6 +110,7 @@ class ScoreMutationSpace():
         self.__structure = structure
         self.__mutations = mutations
         self.__working_directory = tempfile.TemporaryDirectory()
+        self.__wizzard = Mutagenesis()
 
     def __del__(self):
         self.__working_directory.cleanup()
@@ -88,16 +119,23 @@ class ScoreMutationSpace():
         try:
             # Create a copy of the structure
             pymol.cmd.copy(ctx.name, self.__structure)
-            pymol.cmd.alter(
-                ctx.model_copy_selection,
-                ctx.mutation
-            )
-            pymol.cmd.rebuild()
+            sele_name = ctx.name + "_mut"
+
+            for mutation in ctx.mutations:
+                self.__wizzard.cleanup()
+                pymol.cmd.select(
+                    sele_name,
+                    "%s and %s" % (ctx.structure_selection, mutation.selection)
+                )
+                self.__wizzard.do_select(sele_name)
+                self.__wizzard.set_mode(mutation.mutation)
+                self.__wizzard.apply()
             pymol.cmd.save(
-                ctx.directory,
-                ctx.model_copy_selection
+                ctx.structure_file,
+                ctx.structure_selection
             )
         finally:
+            pass
             pymol.cmd.delete(ctx.name)
 
     def __repackage_structure(self, ctx : MutationContext):
@@ -106,9 +144,10 @@ class ScoreMutationSpace():
             ctx.packed_structure_file
         )
 
-    def __score_mutation(self, selection : str, mutation : str):
+    def __score_mutation(self, mutations : List[Tuple[str, str]]):
 
-        name = "%s_%s" % (selection[0:8], str(hash(selection))[-4:])
+        suffix = str(hash("".join([str(hash(m)) for m in mutations])))[-8:]
+        name = "%s_%s" % (self.__structure, suffix)
         directory = path.join(self.__working_directory.name, name)
 
         if not path.exists(directory):
@@ -117,19 +156,56 @@ class ScoreMutationSpace():
         context = MutationContext(
             name = name,
             directory = directory,
-            selection = selection,
-            mutation = mutation
+            mutations = [Mutation(*m) for m in mutations]
         )
 
         self.__apply_muation(context)
-        self.__repackage_structure(context)
-        gmx_topology(context.packed_structure_file, context.topology_file, context.topology_file)
-        gmx_box(context.topology_structure_file, context.box_file)
-        gmx_solvate(context.box_file, context.solvated_file, context.topology_file)
-        gmx_neutralize(context.solvated_file, context.neutralized_file, context.topology_file)
-        gmx_configure_emin(context.neutralized_file, context.emin_config_file, context.topology_file)
-        gmx_emin_script(context.emin_config_file, context.md_script_emin, context.energy_file)
+        # self.__repackage_structure(context)
+        gmx_topology(context.directory, context.structure_file, context.topology_structure_file, context.topology_file)
+        gmx_box(context.directory, context.topology_structure_file, context.box_file)
+        gmx_solvate(context.directory, context.box_file, context.solvated_file, context.topology_file)
+        gmx_neutralize(context.directory, context.solvated_file, context.neutralized_file, context.topology_file)
+        gmx_configure_emin(context.directory, context.neutralized_file, context.emin_config_file, context.topology_file)
+        gmx_emin_script(context.emin_config_file, context.md_script_emin, context.energy_file, context.emin_log_file)
 
-    def scoring_test(self, selection, mutation):
-        self.__score_mutation(selection, mutation)
+        with open(path.join(directory, 'metadata.json'), 'w') as metadata:
+            json.dump(context.to_json_dict(), metadata)
+
+    def write_batch_script(self):
+        pass
+
+    def scoring_test(self, mutations : List[Tuple[str, str]]):
+        self.__score_mutation(mutations)
         return self.__working_directory
+
+    def score_all(self):
+        for (src, mutations) in CANDIDATES.items():
+            for mutation in mutations:
+                self.__score_mutation([(src, mutation)])
+
+        self.__score_mutation([])
+        return self.__working_directory
+
+CANDIDATES = {
+    "resi 168": [
+        "ARG",
+        "GLN",
+        "THR"
+    ],
+    "resi 297": [
+        "GLN",
+        "GLU"
+    ],
+    "resi 329": [
+        "LYS",
+        "GLN",
+        "GLU",
+        "ASP"
+    ],
+    "resi 390": [
+        "GLN",
+        "ASP",
+        "GLU",
+        "THR"
+    ]
+}

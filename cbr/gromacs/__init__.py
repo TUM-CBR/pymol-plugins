@@ -7,11 +7,12 @@ from ..core.process import simple_execute
 def gmx_executable():
     return "gmx_mpi"
 
-def gmx_topology(input_pdb : str, output_file : str, topology : str):
+def gmx_topology(workdir : str, input_pdb : str, output_file : str, topology : str):
 
     #!gmx pdb2gmx -f 1fjs_protein.pdb -o 1fjs_processed.gro -water tip3p -ff "charmm27"
     simple_execute(
         [ gmx_executable()
+        , "pdb2gmx"
         , "-f"
         , input_pdb
         , "-o"
@@ -22,9 +23,11 @@ def gmx_topology(input_pdb : str, output_file : str, topology : str):
         , "amber99sb-ildn"
         , "-p"
         , topology
-    ])
+        ],
+        cwd = workdir
+    )
 
-def gmx_box(input_gr : str, output_gr : str):
+def gmx_box(workdir : str, input_gr : str, output_gr : str):
     # gmx editconf -f 1fjs_processed.gro -o 1fjs_newbox.gro -c -d 1.0 -bt dodecahedron
     simple_execute(
         [ gmx_executable()
@@ -33,12 +36,13 @@ def gmx_box(input_gr : str, output_gr : str):
         , "-o", output_gr
         , "-c"
         , "-d", "1.0"
-        , "-bt", "cube"
+        , "-bt", "cubic"
         , "-box", "10.0" #todo: we need to be smarter here
-        ]
+        ],
+        cwd = workdir
     )
 
-def gmx_solvate(input_gr : str, output_gr : str, topl : str):
+def gmx_solvate(workdir : str, input_gr : str, output_gr : str, topl : str):
     # !gmx solvate -cp 1fjs_newbox.gro -cs spc216.gro -o 1fjs_solv.gro -p topol.top
     simple_execute(
         [ gmx_executable()
@@ -47,10 +51,11 @@ def gmx_solvate(input_gr : str, output_gr : str, topl : str):
         , "-cs", "spc216.gro"
         , "-o", output_gr
         , "-p", topl
-        ]
+        ],
+        cwd = workdir
     )
 
-def gmx_neutralize(input_gr : str, output_gr : str, topl : str):
+def gmx_neutralize(workdir : str, input_gr : str, output_gr : str, topl : str):
     # !gmx grompp -f ions.mdp -c 1fjs_solv.gro -p topol.top -o ions.tpr
 
     with tempfile.TemporaryDirectory() as workdir:
@@ -64,7 +69,8 @@ def gmx_neutralize(input_gr : str, output_gr : str, topl : str):
             , "-c", input_gr
             , "-p", topl
             , "-o", ions_tpr
-            ]
+            ],
+            cwd = workdir
         )
 
         # !printf "SOL\n" | gmx genion -s ions.tpr
@@ -80,7 +86,8 @@ def gmx_neutralize(input_gr : str, output_gr : str, topl : str):
             , "-neutral"
             , "-o", output_gr
             ],
-            "SOL"
+            "SOL",
+            cwd = workdir
         )
 
 amber_emin_cfg = \
@@ -103,7 +110,7 @@ amber_emin_cfg = \
     fourierspacing          = 0.125     ; grid spacing for FFT
     """
 
-def gmx_configure_emin(input_gr : str, output_gr : str, topl : str, maxwarns = 1):
+def gmx_configure_emin(workdir : str, input_gr : str, output_gr : str, topl : str, maxwarns = 1):
 # !gmx grompp -f input/emin-charmm.mdp -c 1fjs_solv_ions.gro -p topol.top -o em.tpr
     with tempfile.TemporaryDirectory() as workdir:
         mdp_config = path.join(workdir, "emin_amber.mdp")
@@ -118,19 +125,20 @@ def gmx_configure_emin(input_gr : str, output_gr : str, topl : str, maxwarns = 1
             , "-p", topl
             , "-o", output_gr
             , "-maxwarn", str(maxwarns)
-            ]
+            ],
+            cwd = workdir
         )
 
 run_em_sh_template = \
-    """
-    #!/bin/bash
-    $GMX_BIN mdrun %s
-    """
+"""#!/bin/bash
+$GMX_BIN mdrun %s
+"""
 
-def gmx_emin_script(input_tpr : str, output_script : str, output_energy : str):
+def gmx_emin_script(input_tpr : str, output_script : str, output_energy : str, output_log : str):
     args = " ".join(
-        [ "-s", input_tpr
-        , "-e", output_energy
+        [ "-s", path.basename(input_tpr)
+        , "-e", path.basename(output_energy)
+        , "-g", path.basename(output_log)
         , "-v"
         ]
     )
