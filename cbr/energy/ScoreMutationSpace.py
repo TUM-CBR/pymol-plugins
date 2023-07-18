@@ -1,3 +1,4 @@
+from io import StringIO
 import json
 import os
 from os import path
@@ -9,10 +10,7 @@ from typing import Dict, List, NamedTuple, Tuple
 from ..gromacs import gmx_box, gmx_configure_emin, gmx_emin_script, gmx_neutralize, gmx_solvate, gmx_topology
 from ..packmol import pack_structure
 
-batch_all_script = \
-    """
-    ls | xargs 
-    """
+RUN_ITEM_SCRIPT = "srun -D $PWD/{directory} --export GMX_BIN=$GMX_BIN /bin/sh $PWD/{directory}/run_em.sh\n"
 
 class Mutation(NamedTuple):
     selection : str
@@ -144,7 +142,7 @@ class ScoreMutationSpace():
             ctx.packed_structure_file
         )
 
-    def __score_mutation(self, mutations : List[Tuple[str, str]]):
+    def __score_mutation(self, mutations : List[Tuple[str, str]]) -> MutationContext:
 
         suffix = str(hash("".join([str(hash(m)) for m in mutations])))[-8:]
         name = "%s_%s" % (self.__structure, suffix)
@@ -171,22 +169,42 @@ class ScoreMutationSpace():
         with open(path.join(directory, 'metadata.json'), 'w') as metadata:
             json.dump(context.to_json_dict(), metadata)
 
-    def write_batch_script(self):
-        pass
+        return context
 
     def scoring_test(self, mutations : List[Tuple[str, str]]):
         self.__score_mutation(mutations)
         return self.__working_directory
 
     def score_all(self):
+
+        run_all = StringIO()
+        run_all.write("#!/bin/sh\n\n")
         for (src, mutations) in CANDIDATES.items():
             for mutation in mutations:
-                self.__score_mutation([(src, mutation)])
+                context = self.__score_mutation([(src, mutation)])
+                directory = path.basename(context.directory)
+                run_all.write(RUN_ITEM_SCRIPT.format(directory=directory))
 
-        self.__score_mutation([])
+        context = self.__score_mutation([])
+        directory = path.basename(context.directory)
+        run_all.write(RUN_ITEM_SCRIPT.format(directory=directory))
+
+        with open(path.join(self.__working_directory.name, "run.sh"), 'w') as run_script:
+            run_all.seek(0)
+            run_script.write(run_all.read())
+
         return self.__working_directory
 
 CANDIDATES = {
+    "resi 40": [
+        "GLU"
+    ],
+    "resi 67": [
+        "VAL"
+    ],
+    "resi 89": [
+        "ASP"
+    ],
     "resi 168": [
         "ARG",
         "GLN",
@@ -207,5 +225,11 @@ CANDIDATES = {
         "ASP",
         "GLU",
         "THR"
+    ],
+    "resi 465": [
+        "ILE"
+    ],
+    "resi 469": [
+        "MET"
     ]
 }

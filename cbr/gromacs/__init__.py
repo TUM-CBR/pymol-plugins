@@ -20,7 +20,7 @@ def gmx_topology(workdir : str, input_pdb : str, output_file : str, topology : s
         , "-water"
         , "tip3p"
         , "-ff"
-        , "amber99sb-ildn"
+        , "amber03"
         , "-p"
         , topology
         ],
@@ -90,21 +90,40 @@ def gmx_neutralize(workdir : str, input_gr : str, output_gr : str, topl : str):
             cwd = workdir
         )
 
+charmm36_emin_cfg = \
+    """
+    title       = CHARMM36 steepest descent enrgy minimisation
+
+    ; Parameters describing what to do, when to stop and what to save
+    integrator  = steep  ; Algorithm (steep = steepest descent minimization)
+    ; emtol       = 1000.0 ; Stop minimization when the maximum force < 1000.0 kJ/mol/nm
+    emstep      = 0.01   ; Minimization step size
+    nstenergy   = 500    ; save energies every 1.0 ps, so we can observe if we are successful
+    nsteps      = 10000   ; run for 500 steps
+    ; Settings that make sure we run with parameters in harmony with the selected force-field
+    constraints             = h-bonds   ; bonds involving H are constrained
+    rcoulomb                = 1.2       ; short-range electrostatic cutoff (in nm)
+    rvdw                    = 1.2       ; short-range van der Waals cutoff (in nm)
+    vdw-modifier            = force-switch
+    DispCorr                = no
+    coulombtype             = PME       ; Particle Mesh Ewald for long-range electrostatics
+    """
+
 amber_emin_cfg = \
     """
     title       = Amber steepest descent enrgy minimisation
 
     ; Parameters describing what to do, when to stop and what to save
     integrator  = steep  ; Algorithm (steep = steepest descent minimization)
-    emtol       = 1000.0 ; Stop minimization when the maximum force < 1000.0 kJ/mol/nm
+    ; emtol       = 1000.0 ; Stop minimization when the maximum force < 1000.0 kJ/mol/nm
     emstep      = 0.01   ; Minimization step size
     nstenergy   = 500    ; save energies every 1.0 ps, so we can observe if we are successful
-    nsteps      = -1     ; run as long as we need
+    nsteps      = 10000   ; run as long as we need
     ; Settings that make sure we run with parameters in harmony with the selected force-field
     constraints             = h-bonds   ; bonds involving H are constrained
     rcoulomb                = 1.0       ; short-range electrostatic cutoff (in nm)
     rvdw                    = 1.0       ; short-range van der Waals cutoff (in nm)
-    vdw-modifier            = Potential-shift ; Amber specific
+    vdw-modifier            = Potential-shift-Verlet ; Amber specific
     DispCorr                = EnerPres  ; account for cut-off vdW scheme
     coulombtype             = PME       ; Particle Mesh Ewald for long-range electrostatics
     fourierspacing          = 0.125     ; grid spacing for FFT
@@ -131,7 +150,10 @@ def gmx_configure_emin(workdir : str, input_gr : str, output_gr : str, topl : st
 
 run_em_sh_template = \
 """#!/bin/bash
-$GMX_BIN mdrun %s
+export OMP_NUM_THREADS=8
+if ! [test -f {output_energy}]; then
+    $GMX_BIN mdrun -s {input_tpr} -e {output_energy} -g {output_log}
+fi
 """
 
 def gmx_emin_script(input_tpr : str, output_script : str, output_energy : str, output_log : str):
@@ -144,4 +166,4 @@ def gmx_emin_script(input_tpr : str, output_script : str, output_energy : str, o
     )
 
     with open(output_script, 'w') as output_script_file:
-        output_script_file.write(run_em_sh_template % args)
+        output_script_file.write(run_em_sh_template.format(output_energy=output_energy, input_tpr=input_tpr, output_log=output_log))
