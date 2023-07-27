@@ -1,7 +1,11 @@
 from io import StringIO, TextIOBase
 import os
 import subprocess
+<<<<<<< Updated upstream
 from typing import Dict, Iterable, Tuple, TypeVar
+=======
+from typing import cast, Dict, Iterable, Tuple, TextIO, TypeVar
+>>>>>>> Stashed changes
 
 from ..core.Context import Context
 from ..core.WrapIO import WrapIO
@@ -55,7 +59,11 @@ class Clustal(object):
     def __get_msa_output(out_msa : MsaOutput) -> WrapIO:
 
         if(isinstance(out_msa, TextIOBase)):
+<<<<<<< Updated upstream
             return WrapIO(stream = out_msa)
+=======
+            return WrapIO(stream = cast(TextIO, out_msa))
+>>>>>>> Stashed changes
         elif(isinstance(out_msa, str)):
             return WrapIO(open_stream = lambda: open(out_msa, 'w'))
         else:
