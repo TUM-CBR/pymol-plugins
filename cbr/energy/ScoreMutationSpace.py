@@ -5,35 +5,28 @@ from os import path
 import pymol
 from pymol.wizard.mutagenesis import Mutagenesis
 import tempfile
-from typing import Dict, List, NamedTuple, Tuple
+from typing import Dict, List, Optional, Tuple
 
-from ..gromacs import gmx_box, gmx_configure_emin, gmx_emin_script, gmx_neutralize, gmx_solvate, gmx_topology
+from ..core import sequence
+from ..gromacs import ForceField, gmx_box, gmx_configure_emin, gmx_emin_script, gmx_neutralize, gmx_solvate, gmx_topology
 from ..packmol import pack_structure
 
-RUN_ITEM_SCRIPT = "srun -D $PWD/{directory} --export GMX_BIN=$GMX_BIN /bin/sh $PWD/{directory}/run_em.sh\n"
+from .Foundations import F_METADATA, Mutation, MutationContextBase
+from . import ProThermDB
 
-class Mutation(NamedTuple):
-    selection : str
-    mutation : str
+RUN_ITEM_SCRIPT = \
+"""
+if ! [[ -f {output_log} ]]; then
+    srun -D $PWD/{directory} --export GMX_BIN=$GMX_BIN /bin/sh $PWD/{directory}/run_em.sh
+#    sbatch -D $PWD --time 02:00:00 --export GMX_BIN=$GMX_BIN $PWD/run.sh
+fi
 
-    def to_json_dict(self):
-        return {
-            'selection' : self.selection,
-            'mutation' : self.mutation
-        }
+"""
 
-class MutationContext(NamedTuple):
+def hash_mutations(mutations : List[Tuple[str, str]]) -> int:
+    return hash("".join([str(hash(m)) for m in mutations]))
 
-    name : str
-    directory : str
-    mutations : List[Mutation]
-
-    def to_json_dict(self):
-        return {
-            'name' : self.name,
-            'directory' : self.directory,
-            'mutations': [m.to_json_dict() for m in self.mutations]
-        }
+class MutationContext(MutationContextBase):
 
     @property
     def structure_selection(self):
@@ -127,6 +120,7 @@ class ScoreMutationSpace():
                 )
                 self.__wizzard.do_select(sele_name)
                 self.__wizzard.set_mode(mutation.mutation)
+                self.__wizzard.set_hyd("none")
                 self.__wizzard.apply()
             pymol.cmd.save(
                 ctx.structure_file,
@@ -142,9 +136,9 @@ class ScoreMutationSpace():
             ctx.packed_structure_file
         )
 
-    def __score_mutation(self, mutations : List[Tuple[str, str]]) -> MutationContext:
+    def __score_mutation(self, mutations : List[Tuple[str, str]], force_field : ForceField) -> MutationContext:
 
-        suffix = str(hash("".join([str(hash(m)) for m in mutations])))[-8:]
+        suffix = str(hash_mutations(mutations))[-8:]
         name = "%s_%s" % (self.__structure, suffix)
         directory = path.join(self.__working_directory.name, name)
 
@@ -159,41 +153,76 @@ class ScoreMutationSpace():
 
         self.__apply_muation(context)
         # self.__repackage_structure(context)
-        gmx_topology(context.directory, context.structure_file, context.topology_structure_file, context.topology_file)
+        gmx_topology(context.directory, context.structure_file, context.topology_structure_file, context.topology_file, force_field)
         gmx_box(context.directory, context.topology_structure_file, context.box_file)
         gmx_solvate(context.directory, context.box_file, context.solvated_file, context.topology_file)
         gmx_neutralize(context.directory, context.solvated_file, context.neutralized_file, context.topology_file)
-        gmx_configure_emin(context.directory, context.neutralized_file, context.emin_config_file, context.topology_file)
+        gmx_configure_emin(context.directory, context.neutralized_file, context.emin_config_file, context.topology_file, force_field)
         gmx_emin_script(context.emin_config_file, context.md_script_emin, context.energy_file, context.emin_log_file)
 
-        with open(path.join(directory, 'metadata.json'), 'w') as metadata:
+        with open(path.join(directory, F_METADATA), 'w') as metadata:
             json.dump(context.to_json_dict(), metadata)
 
         return context
 
-    def scoring_test(self, mutations : List[Tuple[str, str]]):
-        self.__score_mutation(mutations)
+    def scoring_test(self, mutations : List[Tuple[str, str]], force_field : ForceField):
+        self.__score_mutation(mutations, force_field)
         return self.__working_directory
 
-    def score_all(self):
+    def score_all(self, force_field : ForceField, m_candidates : Optional[dict] = None):
 
+        candidates = m_candidates or CANDIDATES
         run_all = StringIO()
         run_all.write("#!/bin/sh\n\n")
-        for (src, mutations) in CANDIDATES.items():
-            for mutation in mutations:
-                context = self.__score_mutation([(src, mutation)])
-                directory = path.basename(context.directory)
-                run_all.write(RUN_ITEM_SCRIPT.format(directory=directory))
+        done = set()
 
-        context = self.__score_mutation([])
-        directory = path.basename(context.directory)
-        run_all.write(RUN_ITEM_SCRIPT.format(directory=directory))
+        def write_run_item(run_args):
+            nonlocal run_all
+            context = self.__score_mutation(run_args, force_field)
+            directory = path.basename(context.directory)
+            output_log = path.join("$PWD", directory, path.basename(context.emin_log_file))
+            run_all.write(
+                RUN_ITEM_SCRIPT.format(
+                    directory=directory,
+                    output_log=output_log
+                )
+            )
+
+        for (src, mutations) in candidates.items():
+            for mutation in mutations:
+                space = [(src, mutation)]
+                id = hash_mutations(space)
+
+                if id not in done:
+                    write_run_item([(src, mutation)])
+                    done.add(id)
+
+        write_run_item([])
 
         with open(path.join(self.__working_directory.name, "run.sh"), 'w') as run_script:
             run_all.seek(0)
             run_script.write(run_all.read())
 
         return self.__working_directory
+
+    def score_pro_therm_db(self, db: str, force_field : ForceField):
+        entries = ProThermDB.parse(db)
+        candidates = {}
+        for entry in entries:
+            mutation = entry.mutation
+            if entry.pdb_code.lower() != self.__structure.lower() \
+                or not mutation:
+                continue
+
+            key = "resi %i" % mutation.position
+
+            if key not in candidates:
+                candidates[key] = []
+            mutations = candidates[key]
+            mutations.append(sequence.aa_from_letter(mutation.new_residue))
+
+        self.score_all(force_field, m_candidates = candidates)
+
 
 CANDIDATES = {
     "resi 40": [

@@ -1,13 +1,22 @@
 from os import path
 import pathlib
 import tempfile
+from typing import Dict
+from typing_extensions import Literal
 
 from ..core.process import simple_execute
+
+ForceField = Literal["amber03", "charmm36-jul2022"]
 
 def gmx_executable():
     return "gmx_mpi"
 
-def gmx_topology(workdir : str, input_pdb : str, output_file : str, topology : str):
+def gmx_topology(
+    workdir : str,
+    input_pdb : str,
+    output_file : str,
+    topology : str,
+    force_field : ForceField):
 
     #!gmx pdb2gmx -f 1fjs_protein.pdb -o 1fjs_processed.gro -water tip3p -ff "charmm27"
     simple_execute(
@@ -20,7 +29,7 @@ def gmx_topology(workdir : str, input_pdb : str, output_file : str, topology : s
         , "-water"
         , "tip3p"
         , "-ff"
-        , "amber03"
+        , force_field
         , "-p"
         , topology
         ],
@@ -37,7 +46,7 @@ def gmx_box(workdir : str, input_gr : str, output_gr : str):
         , "-c"
         , "-d", "1.0"
         , "-bt", "cubic"
-        , "-box", "10.0" #todo: we need to be smarter here
+        #, "-box", "10.0" #todo: we need to be smarter here
         ],
         cwd = workdir
     )
@@ -129,12 +138,23 @@ amber_emin_cfg = \
     fourierspacing          = 0.125     ; grid spacing for FFT
     """
 
-def gmx_configure_emin(workdir : str, input_gr : str, output_gr : str, topl : str, maxwarns = 1):
+FORCE_FIELD_DEFAULTS : Dict[ForceField, str] = \
+    { "amber03": amber_emin_cfg
+    , "charmm36-jul2022": charmm36_emin_cfg
+    }
+
+def gmx_configure_emin(
+    workdir : str,
+    input_gr : str,
+    output_gr : str,
+    topl : str,
+    force_field : ForceField,
+    maxwarns = 1):
 # !gmx grompp -f input/emin-charmm.mdp -c 1fjs_solv_ions.gro -p topol.top -o em.tpr
     with tempfile.TemporaryDirectory() as workdir:
         mdp_config = path.join(workdir, "emin_amber.mdp")
         with open(mdp_config, 'w') as mdp:
-            mdp.write(amber_emin_cfg)
+            mdp.write(FORCE_FIELD_DEFAULTS[force_field])
 
         simple_execute(
             [ gmx_executable()
@@ -149,21 +169,22 @@ def gmx_configure_emin(workdir : str, input_gr : str, output_gr : str, topl : st
         )
 
 run_em_sh_template = \
-"""#!/bin/bash
+"""#!/bin/sh
+
 export OMP_NUM_THREADS=8
-if ! [test -f {output_energy}]; then
-    $GMX_BIN mdrun -s {input_tpr} -e {output_energy} -g {output_log}
-fi
+$GMX_BIN mdrun -s {input_tpr} -e {output_energy} -g {output_log}
 """
 
 def gmx_emin_script(input_tpr : str, output_script : str, output_energy : str, output_log : str):
-    args = " ".join(
-        [ "-s", path.basename(input_tpr)
-        , "-e", path.basename(output_energy)
-        , "-g", path.basename(output_log)
-        , "-v"
-        ]
-    )
+
+    def rel(loc : str):
+        return path.join("$PWD", path.basename(loc))
 
     with open(output_script, 'w') as output_script_file:
-        output_script_file.write(run_em_sh_template.format(output_energy=output_energy, input_tpr=input_tpr, output_log=output_log))
+        output_script_file.write(
+            run_em_sh_template.format(
+                output_energy=rel(output_energy),
+                input_tpr=rel(input_tpr),
+                output_log=rel(output_log)
+            )
+        )
