@@ -11,6 +11,8 @@ class Mutation(NamedTuple):
 class ProThermEntry(NamedTuple):
     pdb_code : str
     mutation : Optional[Mutation]
+    ddG : Optional[float]
+    pH : str
 
 def parse_mutation(mutation : str) -> Optional[Mutation]:
     item = re.match(mutation_re, mutation)
@@ -22,10 +24,18 @@ def parse_mutation(mutation : str) -> Optional[Mutation]:
             new_residue = item.group('new')
         )
 
+def read_ddg(item : str) -> Optional[float]:
+    try:
+        return float(item)
+    except ValueError:
+        return None
+
 def read_entry(entry : dict) -> ProThermEntry:
     return ProThermEntry(
         pdb_code = entry['PDB_wild'],
-        mutation = parse_mutation(entry['MUTATION'])
+        mutation = parse_mutation(entry['MUTATION']),
+        ddG = read_ddg(entry["∆∆G_(kcal/mol)"]),
+        pH = entry['pH']
     )
 
 def read_entries(entries : Iterable[dict]) -> List[ProThermEntry]:

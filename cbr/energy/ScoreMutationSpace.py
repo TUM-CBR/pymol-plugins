@@ -3,13 +3,12 @@ import json
 import os
 from os import path
 import pymol
-from pymol.wizard.mutagenesis import Mutagenesis
+from pymol.wizard.mutagenesis import Mutagenesis, obj_name
 import tempfile
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, NamedTuple, Optional, TextIO, Tuple
 
 from ..core import sequence
 from ..gromacs import ForceField, gmx_box, gmx_configure_emin, gmx_emin_script, gmx_neutralize, gmx_solvate, gmx_topology
-from ..packmol import pack_structure
 
 from .Foundations import F_METADATA, Mutation, MutationContextBase
 from . import ProThermDB
@@ -26,11 +25,30 @@ fi
 def hash_mutations(mutations : List[Tuple[str, str]]) -> int:
     return hash("".join([str(hash(m)) for m in mutations]))
 
+
 class MutationContext(MutationContextBase):
+    runs : List['MutationContextRun']
+    force_field : ForceField
 
     @property
     def structure_selection(self):
         return 'model %s' % self.name
+
+class MutationContextRun(NamedTuple):
+    name : str
+    context : 'MutationContext'
+
+    @property
+    def force_field(self):
+        return self.context.force_field
+
+    @property
+    def directory(self):
+        return path.join(self.context.directory, self.name)
+
+    @property
+    def mutations(self):
+        return self.context.mutations
 
     def mutation(self, i : int) -> str:
         return self.mutations[i].mutation
@@ -106,34 +124,73 @@ class ScoreMutationSpace():
     def __del__(self):
         self.__working_directory.cleanup()
 
-    def __apply_muation(self, ctx : MutationContext):
+    def __apply_muation(self, ctx : MutationContext, reps = 5) -> MutationContext:
         try:
             # Create a copy of the structure
             pymol.cmd.copy(ctx.name, self.__structure)
             sele_name = ctx.name + "_mut"
 
-            for mutation in ctx.mutations:
-                self.__wizzard.cleanup()
-                pymol.cmd.select(
-                    sele_name,
-                    "%s and %s" % (ctx.structure_selection, mutation.selection)
-                )
-                self.__wizzard.do_select(sele_name)
-                self.__wizzard.set_mode(mutation.mutation)
-                self.__wizzard.set_hyd("none")
-                self.__wizzard.apply()
-            pymol.cmd.save(
-                ctx.structure_file,
-                ctx.structure_selection
-            )
+            #for mutation in ctx.mutations:
+            mutation = next(ctx.mutations.__iter__(), None)
+            runs = []
+
+            if mutation:
+
+                rot_state = 1
+                done = False
+                while(not done):
+                    run = MutationContextRun(
+                        name="rot_%i" % rot_state,
+                        context = ctx
+                    )
+                    self.__wizzard.cleanup()
+                    pymol.cmd.select(
+                        sele_name,
+                        "%s and %s" % (ctx.structure_selection, mutation.selection)
+                    )
+                    self.__wizzard.do_select(sele_name)
+                    self.__wizzard.set_mode(mutation.mutation)
+                    self.__wizzard.set_hyd("none")
+                    total_states = pymol.cmd.count_states(obj_name)
+                    self.__wizzard.do_state(rot_state)
+                    self.__wizzard.apply()
+                    pymol.cmd.save(
+                        run.structure_file,
+                        ctx.structure_selection
+                    )
+                    runs.append(run)
+                    rot_state = rot_state + 1
+                    done = rot_state <= total_states
+            else:
+                runs.append(MutationContextRun(name="run_1", context = ctx))
+
+            return ctx._replace(runs = ctx.runs + runs)
+
         finally:
             pass
             pymol.cmd.delete(ctx.name)
 
-    def __repackage_structure(self, ctx : MutationContext):
-        pack_structure(
-            ctx.structure_file,
-            ctx.packed_structure_file
+    #def __repackage_structure(self, ctx : MutationContext):
+    #    pack_structure(
+    #        ctx.structure_file,
+    #        ctx.packed_structure_file
+    #    )
+
+    def __create_run(self, context : MutationContextRun, run_all : TextIO):
+        force_field = context.force_field
+        gmx_topology(context.directory, context.structure_file, context.topology_structure_file, context.topology_file, force_field)
+        gmx_box(context.directory, context.topology_structure_file, context.box_file)
+        gmx_solvate(context.directory, context.box_file, context.solvated_file, context.topology_file)
+        gmx_neutralize(context.directory, context.solvated_file, context.neutralized_file, context.topology_file)
+        gmx_configure_emin(context.directory, context.neutralized_file, context.emin_config_file, context.topology_file, force_field)
+        gmx_emin_script(context.emin_config_file, context.md_script_emin, context.energy_file, context.emin_log_file)
+        directory = path.basename(context.directory)
+        output_log = path.join("$PWD", directory, path.basename(context.emin_log_file))
+        run_all.write(
+            RUN_ITEM_SCRIPT.format(
+                directory=directory,
+                output_log=output_log
+            )
         )
 
     def __score_mutation(self, mutations : List[Tuple[str, str]], force_field : ForceField) -> MutationContext:
@@ -151,14 +208,8 @@ class ScoreMutationSpace():
             mutations = [Mutation(*m) for m in mutations]
         )
 
-        self.__apply_muation(context)
+        context = self.__apply_muation(context)
         # self.__repackage_structure(context)
-        gmx_topology(context.directory, context.structure_file, context.topology_structure_file, context.topology_file, force_field)
-        gmx_box(context.directory, context.topology_structure_file, context.box_file)
-        gmx_solvate(context.directory, context.box_file, context.solvated_file, context.topology_file)
-        gmx_neutralize(context.directory, context.solvated_file, context.neutralized_file, context.topology_file)
-        gmx_configure_emin(context.directory, context.neutralized_file, context.emin_config_file, context.topology_file, force_field)
-        gmx_emin_script(context.emin_config_file, context.md_script_emin, context.energy_file, context.emin_log_file)
 
         with open(path.join(directory, F_METADATA), 'w') as metadata:
             json.dump(context.to_json_dict(), metadata)
@@ -179,14 +230,10 @@ class ScoreMutationSpace():
         def write_run_item(run_args):
             nonlocal run_all
             context = self.__score_mutation(run_args, force_field)
-            directory = path.basename(context.directory)
-            output_log = path.join("$PWD", directory, path.basename(context.emin_log_file))
-            run_all.write(
-                RUN_ITEM_SCRIPT.format(
-                    directory=directory,
-                    output_log=output_log
-                )
-            )
+
+            for run in context.runs:
+                self.__create_run(run, run_all)
+
 
         for (src, mutations) in candidates.items():
             for mutation in mutations:
