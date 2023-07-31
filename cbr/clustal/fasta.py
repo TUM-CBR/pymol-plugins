@@ -56,7 +56,10 @@ def parse_fasta(in_fasta : FastaInput) -> 'Iterable[Tuple[str, str] | Exception]
 
                 current_header = line[1:]
                 current_seq = ''
-            elif current_seq is not None and \
+                continue
+            
+            line = line.replace(" ", "")
+            if current_seq is not None and \
                 all([c in allowed_characters for c in line.upper()]):
                 current_seq += line
             elif current_header:

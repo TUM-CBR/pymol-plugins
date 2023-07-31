@@ -1,10 +1,13 @@
+import json
 from os import path
 import pymol
 from PyQt5.QtCore import pyqtSlot, QRegExp
 from PyQt5.QtGui import QRegExpValidator
 from PyQt5.QtWidgets import QWidget
 from tempfile import TemporaryDirectory
-from typing import List
+from typing import List, Optional
+
+from cbr.schema.visual.substitution import SubstitutionSelector
 
 from ...core.TaskManager import TaskManager
 from ...clustal import Clustal
@@ -12,8 +15,10 @@ from ...core.Context import Context
 from ...core.pymol import structure
 from ...core import visual
 from ...support.visual import as_fasta_selector
+
 from ..raspp import schemacontacts
 from ..raspp import schemaenergy
+
 from .energy import EnergySelector
 from .SchemaEnergyViewer import SchemaEnergyViewer
 from .Ui_SchemaEnergyRunner import Ui_SchemaEnergyRunner
@@ -43,7 +48,7 @@ class SchemaEnergyRunner(QWidget):
         self.__stop_progress_bar()
         self.__ui.runSchemaEnergyButton.clicked.connect(self.on_runSchemaEnergyButton_clicked)
         self.__energy_selector = EnergySelector(self.__ui.energyScoringCombo)
-
+        self.__substitution_selector = SubstitutionSelector(self.__ui.substitutionSelector)
 
     def __stop_progress_bar(self):
         self.__ui.schemaProgress.setVisible(False)
@@ -120,7 +125,8 @@ class SchemaEnergyRunner(QWidget):
                 structure_name,
                 chain_name,
                 crossovers,
-                results_directory.name
+                results_directory.name,
+                self.__substitution_selector.selection
             )
 
         result = self.__task_manager.run_task(
@@ -152,12 +158,21 @@ class SchemaEnergyRunner(QWidget):
                 )
         ).show()
 
+    def __with_blosum(self, base_path : str, matrix : dict) -> str:
+        location = path.join(base_path, "blosum.json")
+        with open(location, 'w') as blosum:
+            json.dump(matrix, blosum)
+
+        return location
+
     def __run_schema_energy(
         self,
         structure_name : str,
         chain_name : str,
         crossovers : List[int],
-        base_path : str):
+        base_path : str,
+        blosum : Optional[dict]
+    ):
         
         pdb_file = self.__save_pdb(base_path, structure_name, chain_name)
         sequences = dict(self.__fasta_selector.get_items())
@@ -180,13 +195,18 @@ class SchemaEnergyRunner(QWidget):
         })
 
         xo_file = self.__save_crossovers(base_path, crossovers)
-        schemaenergy.main_impl({
+        schemaenergy_args = {
             schemaenergy.ARG_CONTACT_FILE: self.__contacts_file(base_path),
             schemaenergy.ARG_CROSSOVER_FILE: xo_file,
             schemaenergy.ARG_MULTIPLE_SEQUENCE_ALIGNMENT_FILE: self.__msa_file(base_path),
             schemaenergy.ARG_OUTPUT_FILE: self.__schema_energy_file(base_path),
             schemaenergy.ARG_PDB_ALIGNMENT_FILE: self.__structure_msa_file(base_path),
             schemaenergy.ARG_PRINT_M: True,
-            schemaenergy.ARG_PRINT_E: True
-        })
+            schemaenergy.ARG_PRINT_E: True,
+        }
+
+        if blosum:
+            schemaenergy_args[schemaenergy.ARG_DISRUPTION] = self.__with_blosum(base_path, blosum)
+
+        schemaenergy.main_impl(schemaenergy_args)
 
