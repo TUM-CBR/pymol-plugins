@@ -6,7 +6,6 @@ from PyQt5.QtWidgets import QWidget
 from tempfile import TemporaryDirectory
 from typing import List, Optional
 
-from cbr.schema.visual.substitution import SubstitutionSelector
 
 from ...core.TaskManager import TaskManager
 from ...clustal import Clustal
@@ -21,6 +20,7 @@ from ..raspp import schemaenergy
 
 from .energy import EnergySelector
 from .SchemaEnergyViewer import SchemaEnergyViewer
+from .substitution import SubstitutionSelector
 from .Ui_SchemaEnergyRunner import Ui_SchemaEnergyRunner
 
 class SchemaEnergyRunner(QWidget):
