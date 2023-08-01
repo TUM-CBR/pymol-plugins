@@ -1,4 +1,3 @@
-import json
 from os import path
 import pymol
 from PyQt5.QtCore import pyqtSlot, QRegExp
@@ -16,6 +15,7 @@ from ...core.pymol import structure
 from ...core import visual
 from ...support.visual import as_fasta_selector
 
+from ..blosum import BlosumMatrix, write_matrix
 from ..raspp import schemacontacts
 from ..raspp import schemaenergy
 
@@ -161,7 +161,7 @@ class SchemaEnergyRunner(QWidget):
     def __with_blosum(self, base_path : str, matrix : dict) -> str:
         location = path.join(base_path, "blosum.json")
         with open(location, 'w') as blosum:
-            json.dump(matrix, blosum)
+            write_matrix(matrix, blosum)
 
         return location
 
@@ -171,7 +171,7 @@ class SchemaEnergyRunner(QWidget):
         chain_name : str,
         crossovers : List[int],
         base_path : str,
-        blosum : Optional[dict]
+        blosum : Optional[BlosumMatrix]
     ):
         
         pdb_file = self.__save_pdb(base_path, structure_name, chain_name)

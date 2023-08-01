@@ -10,6 +10,7 @@ from ...core.pymol import structure
 from ..SchemaTaskManager import SchemaTask, SchemaTaskManager
 
 from .energy import EnergySelector
+from .substitution import SubstitutionSelector
 from .Ui_SchemaRunnerWidget import Ui_SchemaRunnerWidget
 
 input_validation_error = \
@@ -36,6 +37,7 @@ class SchemaRunnerWidget(QWidget):
         self.__on_busy_status_changed(False)
         self.__energy_selector = EnergySelector(self.__ui.energyScoringCombo)
         visual.as_structure_selector(self.__ui.structuresCombo, self.__ui.refreshButton)
+        self.__blosum_selector = SubstitutionSelector(self.__ui.substitutionScoringCombo)
 
     def __on_busy_status_changed(self, is_busy : int):
         if is_busy > 0:
@@ -94,7 +96,8 @@ class SchemaRunnerWidget(QWidget):
                 xos,
                 min_length,
                 max_length,
-                self.__energy_selector.write_interactions(self.__manager.base_directory)
+                self.__energy_selector.write_interactions(self.__manager.base_directory),
+                self.__blosum_selector.selection
             )
             
         except QuietException:

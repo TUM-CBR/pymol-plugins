@@ -2,11 +2,12 @@ from PyQt5.QtCore import QObject
 from PyQt5.QtWidgets import QComboBox
 
 
-from ..blosum import blosum80
+from ..blosum import blosum62, blosum80
 
 SUBSTITUTION_OPTIONS = {
     "SHCEMA classic": None,
-    "BLOSUM 80": blosum80
+    "BLOSUM 80": blosum80,
+    "BLOSUM 62": blosum62
 }
 
 class SubstitutionSelector(QObject):
