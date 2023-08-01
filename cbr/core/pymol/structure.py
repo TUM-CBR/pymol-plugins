@@ -6,15 +6,18 @@ def get_structure_query(structure_name : str, chain : 'str | None' = None) -> st
     else:
         return "model %s" % structure_name
 
-def get_pdb_sequence(structure_name : str, chain : 'str | None' = None) -> str:
+def get_selection_sequece(selection : str) -> str:
     result = []
 
     pymol.cmd.iterate(
-        "%s & guide & alt +A" % get_structure_query(structure_name, chain),
+        "%s & guide & alt +A" % selection,
         'result.append(oneletter)',
         space={'result': result}
     )
     return "".join(result)
+
+def get_pdb_sequence(structure_name : str, chain : 'str | None' = None) -> str:
+    return get_selection_sequece("%s & guide & alt +A" % get_structure_query(structure_name, chain))
 
 def get_structure_offset(structure_name : str, chain : 'str | None' = None) -> int:
     offset = [None]

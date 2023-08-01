@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>682</width>
-    <height>518</height>
+    <width>884</width>
+    <height>649</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -67,6 +67,13 @@
            <width>152</width>
            <height>0</height>
           </size>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="copySequenceButton">
+         <property name="text">
+          <string>Copy Sequence</string>
          </property>
         </widget>
        </item>

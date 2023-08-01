@@ -40,6 +40,13 @@
       </widget>
      </item>
      <item>
+      <widget class="QPushButton" name="copySequenceButton">
+       <property name="text">
+        <string>Copy Sequence</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="refreshButton">
        <property name="text">
         <string>Refresh</string>

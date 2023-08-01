@@ -4,7 +4,9 @@ from PyQt5.QtWidgets import QTableWidgetItem, QWidget
 from pymol import cmd
 from tempfile import TemporaryDirectory
 
+
 from ...core.Context import Context
+from ...core.visual import StructureSelection
 from ..support import parsers
 from .Ui_SchemaEnergyViewer import Ui_SchemaEnergyViewer
 
@@ -21,8 +23,7 @@ class SchemaEnergyViewer(QWidget):
     def __init__(
         self,
         context : Context,
-        structure_name : str,
-        chain_name : str,
+        structure_seleciton : StructureSelection,
         raw_results : str,
         raw_contacts : str,
         results_folder : TemporaryDirectory,
@@ -33,8 +34,7 @@ class SchemaEnergyViewer(QWidget):
         self.__ui.setupUi(self)
         self.__results = parsers.parse_schema_energy(raw_results)
         self.__contacts = parsers.parse_schema_contacts(raw_contacts)
-        self.__structure_name = structure_name
-        self.__chain_name = chain_name
+        self.__structure_selection = structure_seleciton
         self.__render_everything()
         self.__results_folder = results_folder
 
@@ -58,7 +58,7 @@ class SchemaEnergyViewer(QWidget):
         if(len(residues) > 0):
             cmd.select(
                 'SCHEMA_CONTACTS',
-                "model %s & chain %s & (%s)" % (self.__structure_name, self.__chain_name, residues)
+                "%s & (%s)" % (self.__structure_selection.selection, residues)
             )
 
     def __render_everything(self):
@@ -92,7 +92,7 @@ class SchemaEnergyViewer(QWidget):
         )
         residues = {}
         cmd.iterate(
-            'model %s & chain %s' % (self.__structure_name, self.__chain_name),
+            self.__structure_selection.selection,
             'residues[to_int(resi)] = resn',
             space = { 'residues' : residues, 'to_int': int }
         )

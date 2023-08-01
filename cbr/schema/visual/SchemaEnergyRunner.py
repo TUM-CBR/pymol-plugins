@@ -32,9 +32,11 @@ class SchemaEnergyRunner(QWidget):
 
         self.__ui = Ui_SchemaEnergyRunner()
         self.__ui.setupUi(self)
-        visual.as_structure_selector(
+        self.__structure_selector = visual.as_structure_selector(
             self.__ui.structuresCombo,
-            self.__ui.refreshStructuresButton)
+            self.__ui.refreshStructuresButton,
+            copy_button = self.__ui.copySequenceButton
+        )
 
         self.__fasta_selector = as_fasta_selector(
             self.__ui.fastaTextEdit,
@@ -79,11 +81,11 @@ class SchemaEnergyRunner(QWidget):
             "structure.aln"
         )
 
-    def __save_pdb(self, base_path : str, structure_name : str, chain_name : str) -> str:
-        file_name = self.__structure_file(base_path, structure_name, chain_name)
+    def __save_pdb(self, base_path : str, selection : visual.StructureSelection) -> str:
+        file_name = self.__structure_file(base_path, selection.structure_name, selection.chain_name)
         pymol.cmd.save(
             file_name,
-            "(model %s) & (chain %s)" % (structure_name, chain_name)
+            selection.selection
         )
         return file_name
 
@@ -112,7 +114,11 @@ class SchemaEnergyRunner(QWidget):
 
     @pyqtSlot()
     def on_runSchemaEnergyButton_clicked(self):
-        (structure_name, chain_name) = self.__ui.structuresCombo.currentData()
+        selection = self.__structure_selector.currentSelection
+
+        if not selection:
+            raise ValueError("Select a structure!")
+
         crossovers = [ \
             int(xo) \
             for xo in self.__ui.shufflingPointsEdit.text().split(",") \
@@ -122,27 +128,25 @@ class SchemaEnergyRunner(QWidget):
 
         def task():
             return self.__run_schema_energy(
-                structure_name,
-                chain_name,
+                selection,
                 crossovers,
                 results_directory.name,
                 self.__substitution_selector.selection
             )
 
         result = self.__task_manager.run_task(
-            "schema-energy/%s/%s" % (structure_name, chain_name),
+            "schema-energy/%s/%s" % (selection.structure_name, selection.chain_name),
             task)
 
         result.on_started(self.__start_progress_bar)
         result.on_completed(self.__stop_progress_bar)
         result.on_completed(
-            lambda: self.__show_results(structure_name, chain_name, results_directory)
+            lambda: self.__show_results(selection, results_directory)
         )
 
     def __show_results(
         self,
-        structure_name : str,
-        chain_name : str,
+        structure_seleciton : visual.StructureSelection,
         results_folder : TemporaryDirectory
         ):
 
@@ -150,8 +154,7 @@ class SchemaEnergyRunner(QWidget):
             lambda _: \
                 SchemaEnergyViewer(
                     self.__context,
-                    structure_name,
-                    chain_name,
+                    structure_seleciton,
                     self.__schema_energy_file(results_folder.name),
                     self.__contacts_file(results_folder.name),
                     results_folder
@@ -167,14 +170,13 @@ class SchemaEnergyRunner(QWidget):
 
     def __run_schema_energy(
         self,
-        structure_name : str,
-        chain_name : str,
+        structure_selection : visual.StructureSelection,
         crossovers : List[int],
         base_path : str,
         blosum : Optional[BlosumMatrix]
     ):
         
-        pdb_file = self.__save_pdb(base_path, structure_name, chain_name)
+        pdb_file = self.__save_pdb(base_path, structure_selection)
         sequences = dict(self.__fasta_selector.get_items())
         self.__clustal.run_msa(
             sequences.items(),
@@ -182,7 +184,7 @@ class SchemaEnergyRunner(QWidget):
         )
         self.__clustal.run_msa(
             [ self.__fasta_selector.selected_sequence()
-            , (structure_name, structure.get_pdb_sequence(structure_name, chain_name))
+            , (structure_selection.structure_name, structure.get_selection_sequece(structure_selection.selection))
             ],
             self.__structure_msa_file(base_path)
         )

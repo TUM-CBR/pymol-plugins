@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'SchemaEnergyRunner.ui'
+# Form implementation generated from reading ui file 'cbr/schema/visual/SchemaEnergyRunner.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.9
 #
@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_SchemaEnergyRunner(object):
     def setupUi(self, SchemaEnergyRunner):
         SchemaEnergyRunner.setObjectName("SchemaEnergyRunner")
-        SchemaEnergyRunner.resize(682, 518)
+        SchemaEnergyRunner.resize(884, 649)
         SchemaEnergyRunner.setStyleSheet(".QComboBox {\n"
 "    min-width: 150;\n"
 "}")
@@ -43,6 +43,9 @@ class Ui_SchemaEnergyRunner(object):
         self.structuresCombo.setMinimumSize(QtCore.QSize(152, 0))
         self.structuresCombo.setObjectName("structuresCombo")
         self.horizontalLayout_2.addWidget(self.structuresCombo)
+        self.copySequenceButton = QtWidgets.QPushButton(SchemaEnergyRunner)
+        self.copySequenceButton.setObjectName("copySequenceButton")
+        self.horizontalLayout_2.addWidget(self.copySequenceButton)
         self.refreshStructuresButton = QtWidgets.QPushButton(SchemaEnergyRunner)
         self.refreshStructuresButton.setObjectName("refreshStructuresButton")
         self.horizontalLayout_2.addWidget(self.refreshStructuresButton)
@@ -127,6 +130,7 @@ class Ui_SchemaEnergyRunner(object):
         SchemaEnergyRunner.setWindowTitle(_translate("SchemaEnergyRunner", "Form"))
         self.label.setText(_translate("SchemaEnergyRunner", "Schema Energy"))
         self.label_2.setText(_translate("SchemaEnergyRunner", "Select Structure"))
+        self.copySequenceButton.setText(_translate("SchemaEnergyRunner", "Copy Sequence"))
         self.refreshStructuresButton.setText(_translate("SchemaEnergyRunner", "Refresh"))
         self.label_5.setText(_translate("SchemaEnergyRunner", "Shuffling Points"))
         self.label_4.setText(_translate("SchemaEnergyRunner", "Select Structure Sequence"))

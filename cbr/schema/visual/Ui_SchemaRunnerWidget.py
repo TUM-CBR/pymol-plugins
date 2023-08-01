@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'SchemaRunnerWidget.ui'
+# Form implementation generated from reading ui file 'cbr/schema/visual/SchemaRunnerWidget.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.9
 #
@@ -30,6 +30,9 @@ class Ui_SchemaRunnerWidget(object):
         self.structuresCombo.setMinimumSize(QtCore.QSize(152, 0))
         self.structuresCombo.setObjectName("structuresCombo")
         self.horizontalLayout.addWidget(self.structuresCombo)
+        self.copySequenceButton = QtWidgets.QPushButton(SchemaRunnerWidget)
+        self.copySequenceButton.setObjectName("copySequenceButton")
+        self.horizontalLayout.addWidget(self.copySequenceButton)
         self.refreshButton = QtWidgets.QPushButton(SchemaRunnerWidget)
         self.refreshButton.setObjectName("refreshButton")
         self.horizontalLayout.addWidget(self.refreshButton)
@@ -101,6 +104,7 @@ class Ui_SchemaRunnerWidget(object):
         _translate = QtCore.QCoreApplication.translate
         SchemaRunnerWidget.setWindowTitle(_translate("SchemaRunnerWidget", "Form"))
         self.label.setText(_translate("SchemaRunnerWidget", "Select Structure:"))
+        self.copySequenceButton.setText(_translate("SchemaRunnerWidget", "Copy Sequence"))
         self.refreshButton.setText(_translate("SchemaRunnerWidget", "Refresh"))
         self.label_2.setText(_translate("SchemaRunnerWidget", "Select Parents"))
         self.label_3.setText(_translate("SchemaRunnerWidget", "Corssover Counts"))
