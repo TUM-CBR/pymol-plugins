@@ -4,6 +4,7 @@ from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QWidget
 
 from ..core.Context import Context
+from ..chimeras import Applications as Chimeras
 from ..msa import Applications as Msa
 from ..schema import Applications as Schema
 from .Ui_Main import Ui_Main
@@ -31,3 +32,8 @@ class Main(QWidget):
     def on_schemaEnergyButton_clicked(self):
         print("starting schema energy")
         Schema.schema_energy(self.__context)
+
+    @pyqtSlot()
+    def on_chimerasButton_clicked(self):
+        print("Starting chimeras")
+        Chimeras.chimeras_generator(self.__context)

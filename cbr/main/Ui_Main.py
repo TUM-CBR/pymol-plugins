@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'Main.ui'
+# Form implementation generated from reading ui file 'cbr/main/Main.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.9
 #
@@ -20,6 +20,7 @@ class Ui_Main(object):
 "    min-width: 128px;\n"
 "    min-height: 128px;\n"
 "    font-weight: bold;\n"
+"    color: blue;\n"
 "}")
         self.verticalLayout = QtWidgets.QVBoxLayout(Main)
         self.verticalLayout.setObjectName("verticalLayout")
@@ -68,6 +69,11 @@ class Ui_Main(object):
         self.msaViewerButton.setIconSize(QtCore.QSize(128, 128))
         self.msaViewerButton.setObjectName("msaViewerButton")
         self.horizontalLayout_3.addWidget(self.msaViewerButton)
+        self.chimerasButton = QtWidgets.QPushButton(Main)
+        self.chimerasButton.setStyleSheet("image: url(:/resources/chimeras.jpg);\n"
+"")
+        self.chimerasButton.setObjectName("chimerasButton")
+        self.horizontalLayout_3.addWidget(self.chimerasButton)
         spacerItem1 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
         self.horizontalLayout_3.addItem(spacerItem1)
         self.verticalLayout.addLayout(self.horizontalLayout_3)
@@ -84,3 +90,4 @@ class Ui_Main(object):
         self.schemaRasppButton.setText(_translate("Main", "SCHEMA-RASPP"))
         self.schemaEnergyButton.setText(_translate("Main", "SCHEMA Energy"))
         self.msaViewerButton.setText(_translate("Main", "MSA Viewer"))
+        self.chimerasButton.setText(_translate("Main", "Chimeras Generator"))
