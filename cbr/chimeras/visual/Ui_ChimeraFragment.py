@@ -17,12 +17,6 @@ class Ui_ChimeraFragment(object):
         ChimeraFragment.resize(400, 300)
         self.verticalLayout = QtWidgets.QVBoxLayout(ChimeraFragment)
         self.verticalLayout.setObjectName("verticalLayout")
-        self.label = QtWidgets.QLabel(ChimeraFragment)
-        font = QtGui.QFont()
-        font.setBold(True)
-        self.label.setFont(font)
-        self.label.setObjectName("label")
-        self.verticalLayout.addWidget(self.label)
         self.fragmentTable = QtWidgets.QTableWidget(ChimeraFragment)
         self.fragmentTable.setObjectName("fragmentTable")
         self.fragmentTable.setColumnCount(1)
@@ -37,6 +31,5 @@ class Ui_ChimeraFragment(object):
     def retranslateUi(self, ChimeraFragment):
         _translate = QtCore.QCoreApplication.translate
         ChimeraFragment.setWindowTitle(_translate("ChimeraFragment", "Form"))
-        self.label.setText(_translate("ChimeraFragment", "Fragments"))
         item = self.fragmentTable.horizontalHeaderItem(0)
         item.setText(_translate("ChimeraFragment", "Sequence"))

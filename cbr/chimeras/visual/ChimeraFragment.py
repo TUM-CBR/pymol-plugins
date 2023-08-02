@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtWidgets import QHeaderView, QWidget
 
 from ..Fragment import Fragment
 
@@ -19,14 +19,17 @@ class ChimeraFragment(QWidget):
         for _ in range(20):
             self.__ui.fragmentTable.insertRow(0)
 
+        self.__ui.fragmentTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
     def __on_item_changed(self, item):
 
         table = self.__ui.fragmentTable
         self.__fragment = Fragment(
             options = list(
-                 item.text()
+                item.text()
                 for i in range(self.__ui.fragmentTable.rowCount())
-                for item in [table.itemAt(i, 0)] if item is not None
+                for item in [table.item(i,0)] if item is not None
+                for text in [item.text().replace(" ", "")] if len(text) > 0
             )
         )
 
