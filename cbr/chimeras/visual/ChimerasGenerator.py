@@ -1,9 +1,10 @@
 import itertools
-from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtCore import QPoint, Qt, pyqtSlot
 from PyQt5.QtWidgets import QHeaderView, QListWidgetItem, QTableWidgetItem, QWidget
 from typing import Dict
 
 from ...core.Context import Context
+from ...core.Qt.QtWidgets import open_copy_context_menu
 
 from .ChimeraFragment import ChimeraFragment
 from .Ui_ChimerasGenerator import Ui_ChimerasGenerator
@@ -22,6 +23,13 @@ class ChimerasGenerator(QWidget):
         self.__ui.fragmentsStack.setCurrentIndex(0)
         self.__ui.generateButton.clicked.connect(self.__generate_sequences)
         self.__ui.resultsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+        self.__ui.resultsTable.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.__ui.resultsTable.customContextMenuRequested.connect(self.__on_results_context_menu)
+
+    @pyqtSlot(QPoint)
+    def __on_results_context_menu(self, pos):
+        open_copy_context_menu(self.__ui.resultsTable, pos)
 
     @pyqtSlot(QListWidgetItem)
     def __selected_item(self, item : QListWidgetItem):

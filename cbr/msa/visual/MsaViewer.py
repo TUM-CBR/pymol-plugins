@@ -1,5 +1,5 @@
 import pymol.cmd as cmd
-from PyQt5.QtCore import pyqtSlot, QPoint
+from PyQt5.QtCore import pyqtSlot, QPoint, Qt
 from PyQt5.QtWidgets import QDialog, QFileDialog, QTableWidgetItem, QWidget
 from typing import Callable, Dict, List, NamedTuple, Set, Tuple
 
@@ -119,6 +119,9 @@ class MsaViewer(QWidget):
         self.__clustal = Clustal.get_clustal_from_context(context)
         self.__msa_input_dialog = FastaSequencesInput(context, parent = self)
         self.__residue_selector = PymolResidueSelector(self.__ui.resultsTable)
+
+        # Context menu for copy/paste
+        self.__ui.resultsTable.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.__ui.resultsTable.customContextMenuRequested.connect(self.__on_results_context_menu)
 
     @pyqtSlot(QPoint)
