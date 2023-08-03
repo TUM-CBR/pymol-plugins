@@ -19,6 +19,7 @@
 	min-width: 128px;
 	min-height: 128px;
 	font-weight: bold;
+	color: blue;
 }</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
@@ -133,6 +134,17 @@
          <width>128</width>
          <height>128</height>
         </size>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="chimerasButton">
+       <property name="styleSheet">
+        <string notr="true">image: url(:/resources/chimeras.jpg);
+</string>
+       </property>
+       <property name="text">
+        <string>Chimeras Generator</string>
        </property>
       </widget>
      </item>

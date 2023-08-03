@@ -1,15 +1,17 @@
 import pymol.cmd as cmd
-from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtCore import pyqtSlot, QPoint, Qt
 from PyQt5.QtWidgets import QDialog, QFileDialog, QTableWidgetItem, QWidget
 from typing import Callable, Dict, List, NamedTuple, Set, Tuple
 
+from ...clustal import msa
+from ...clustal import Clustal
 from ...core.Context import Context
 from ...core import visual
 from ...core.pymol import selection
 from ...core.pymol import structure
 from ...core.pymol.visual.PymolResidueResultsTable import PymolResidueSelector
-from ...clustal import msa
-from ...clustal import Clustal
+from ...core.Qt.QtWidgets import open_copy_context_menu
+
 from .FastaSequencesInput import FastaSequencesInput
 from .Ui_MsaViewer import Ui_MsaViewer
 
@@ -117,6 +119,14 @@ class MsaViewer(QWidget):
         self.__clustal = Clustal.get_clustal_from_context(context)
         self.__msa_input_dialog = FastaSequencesInput(context, parent = self)
         self.__residue_selector = PymolResidueSelector(self.__ui.resultsTable)
+
+        # Context menu for copy/paste
+        self.__ui.resultsTable.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.__ui.resultsTable.customContextMenuRequested.connect(self.__on_results_context_menu)
+
+    @pyqtSlot(QPoint)
+    def __on_results_context_menu(self, pos):
+        open_copy_context_menu(self.__ui.resultsTable, pos)
 
     def __set_sequences(self, sequences : Dict[str, str]):
         self.__sequences = dict(sequences)

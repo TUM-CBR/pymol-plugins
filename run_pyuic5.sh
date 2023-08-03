@@ -40,4 +40,15 @@ do
         # Run pyuic5 and output to a .py file with the "Ui_" prefix
         pyuic5 "$filepath" -o "$dir/Ui_${base}.py"
     fi
+
+    if [[ $filepath == *.qrc ]]
+    then
+        echo "File $filepath has changed, running pyrcc5..."
+        dir=$(dirname "$filepath")
+        base=$(basename "$filepath" .qrc)
+
+        # Run pyuic5 and output to a .py file with the "Ui_" prefix
+        sh -c "cd $dir; pyrcc5 '$base.qrc' -o '${base}.py'"
+    fi
+
 done
