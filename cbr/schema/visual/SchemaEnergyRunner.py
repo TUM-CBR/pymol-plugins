@@ -2,13 +2,14 @@ from os import path
 import pymol
 from PyQt5.QtCore import pyqtSlot, QRegExp
 from PyQt5.QtGui import QRegExpValidator
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtWidgets import QMessageBox, QWidget
 from tempfile import TemporaryDirectory
 from typing import List, Optional
 
 
 from ...core.TaskManager import TaskManager
 from ...clustal import Clustal
+from ...clustal import msa
 from ...core.Context import Context
 from ...core.pymol import structure
 from ...core import visual
@@ -141,9 +142,13 @@ class SchemaEnergyRunner(QWidget):
 
         result.on_started(self.__start_progress_bar)
         result.on_completed(self.__stop_progress_bar)
-        result.on_completed(
-            lambda: self.__show_results(selection, results_directory)
-        )
+
+        def __on_task_completed():
+            if result.error:
+                QMessageBox.critical(self, "Error", str(result.error))
+            else:
+                self.__show_results(selection, results_directory)
+        result.on_completed(__on_task_completed)
 
     def __show_results(
         self,
@@ -169,6 +174,27 @@ class SchemaEnergyRunner(QWidget):
 
         return location
 
+    def __map_crossovers_to_msa(
+        self,
+        structure_selection : visual.StructureSelection,
+        parents_msa_location : str,
+        structure_msa_location : str,
+        crossovers : List[int]
+    ):
+
+        offset = structure.get_structure_offset(structure_selection)
+        positions_seq = msa.get_relative_positions(
+            msa.parse_alignments(parents_msa_location),
+            msa.parse_alignments(structure_msa_location)
+        )
+
+        positions = dict((v,k) for k,v in enumerate(positions_seq))
+
+        try:
+            return [positions[i - offset] for i in crossovers]
+        except KeyError:
+            raise Exception("The assembly points provided are not valid positions in the structure.")
+
     def __run_schema_energy(
         self,
         structure_selection : visual.StructureSelection,
@@ -179,24 +205,27 @@ class SchemaEnergyRunner(QWidget):
         
         pdb_file = self.__save_pdb(base_path, structure_selection)
         sequences = dict(self.__fasta_selector.get_items())
+        parents_msa = self.__msa_file(base_path)
+        structure_msa = self.__structure_msa_file(base_path)
         self.__clustal.run_msa(
             sequences.items(),
-            self.__msa_file(base_path)
+            parents_msa
         )
         self.__clustal.run_msa(
             [ self.__fasta_selector.selected_sequence()
             , (structure_selection.structure_name, structure.get_selection_sequece(structure_selection.selection))
             ],
-            self.__structure_msa_file(base_path)
+            structure_msa
         )
         schemacontacts.main_impl({
             schemacontacts.ARG_PDB_FILE: pdb_file,
-            schemacontacts.ARG_MULTIPLE_SEQUENCE_ALIGNMENT_FILE: self.__msa_file(base_path),
-            schemacontacts.ARG_PDB_ALIGNMENT_FILE: self.__structure_msa_file(base_path),
+            schemacontacts.ARG_MULTIPLE_SEQUENCE_ALIGNMENT_FILE: parents_msa,
+            schemacontacts.ARG_PDB_ALIGNMENT_FILE: structure_msa,
             schemacontacts.ARG_OUTPUT_FILE: self.__contacts_file(base_path),
             schemacontacts.ARG_INTERACTIONS: self.__energy_selector.write_interactions(base_path)
         })
 
+        crossovers = self.__map_crossovers_to_msa(structure_selection, parents_msa, structure_msa, crossovers)
         xo_file = self.__save_crossovers(base_path, crossovers)
         schemaenergy_args = {
             schemaenergy.ARG_CONTACT_FILE: self.__contacts_file(base_path),
