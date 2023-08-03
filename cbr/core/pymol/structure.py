@@ -1,19 +1,21 @@
 import pymol
 
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 
 class StructureSelection(NamedTuple):
     structure_name : str
-    chain_name : str
-    segment_identifier : str
+    chain_name : Optional[str]
+    segment_identifier : Optional[str]
 
     @property
     def selection(self) -> str:
-        return "model %s and chain %s and segi %s" % \
-            ( self.structure_name
-            , self.chain_name
-            , self.segment_identifier
-            )
+        selectors = \
+            [ self.structure_name
+            , self.chain_name and "chain %s" % self.chain_name
+            , self.segment_identifier and "segi %s" % self.segment_identifier
+            ]
+
+        return " and ".join(s for s in selectors if s)
 
 def get_structure_query(structure_name : str, chain : 'str | None' = None) -> str:
     if chain:

@@ -1,4 +1,5 @@
 from PyQt5.QtWidgets import QHeaderView, QWidget
+import re
 
 from ..Fragment import Fragment
 
@@ -26,10 +27,10 @@ class ChimeraFragment(QWidget):
         table = self.__ui.fragmentTable
         self.__fragment = Fragment(
             options = list(
-                item.text()
+                text
                 for i in range(self.__ui.fragmentTable.rowCount())
                 for item in [table.item(i,0)] if item is not None
-                for text in [item.text().replace(" ", "")] if len(text) > 0
+                for text in [re.sub("\\s", "", item.text())] if len(text) > 0
             )
         )
 

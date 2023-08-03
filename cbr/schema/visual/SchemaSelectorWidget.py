@@ -7,6 +7,7 @@ import pymol
 
 from ...core.Qt.QtWidgets import get_qtable_content, open_copy_context_menu
 from ...core.pymol import structure
+from ...core.pymol.structure import StructureSelection
 from ...clustal import msa
 
 from ..SchemaContext import SchemaContext
@@ -42,6 +43,14 @@ class SchemaSelectorWidget(QWidget):
             item = QListWidgetItem(result.name, self.__ui.resultsList)
             item.setData(SchemaSelectorWidget.RESULT_DATA_ROLE, result)
 
+    @property
+    def __result_selector(self) -> StructureSelection:
+        return StructureSelection(
+            structure_name=self.__result.structure_name,
+            chain_name=None,
+            segment_identifier=None
+        )
+
     def __set_result(self, result : SchemaResult):
 
         pymol.cmd.load(result.pdb)
@@ -52,7 +61,7 @@ class SchemaSelectorWidget(QWidget):
         results_viewer = self.__ui.resultsViewer
         results_viewer.clearContents()
         results_viewer.setRowCount(len(self.__result_items))
-        offset = structure.get_structure_offset(self.__result.structure_name)
+        offset = structure.get_structure_offset(self.__result_selector)
 
         parents_msa = self.__result.parents_msa()
 
@@ -102,7 +111,7 @@ class SchemaSelectorWidget(QWidget):
 
     def __select_item(self, row):
         item = self.__result_items[row]
-        offset = structure.get_structure_offset(self.__result.structure_name)
+        offset = structure.get_structure_offset(self.__result_selector)
         shuffling_points = item.shuffling_points(offset)
 
         # Ensure that we color the whole structure so the last fragment

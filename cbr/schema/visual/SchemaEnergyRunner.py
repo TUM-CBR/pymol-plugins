@@ -83,7 +83,7 @@ class SchemaEnergyRunner(QWidget):
         )
 
     def __save_pdb(self, base_path : str, selection : visual.StructureSelection) -> str:
-        file_name = self.__structure_file(base_path, selection.structure_name, selection.chain_name)
+        file_name = self.__structure_file(base_path, selection.structure_name, selection.chain_name or "")
         pymol.cmd.save(
             file_name,
             selection.selection
