@@ -1,23 +1,11 @@
-from typing import NamedTuple, Optional
+from typing import Optional
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import QObject, pyqtSlot
 from PyQt5.QtWidgets import QComboBox, QPushButton
 from pymol import cmd as pymol
 
 from ..core.pymol import structure
-
-class StructureSelection(NamedTuple):
-    structure_name : str
-    chain_name : str
-    segment_identifier : str
-
-    @property
-    def selection(self) -> str:
-        return "model %s and chain %s and segi %s" % \
-            ( self.structure_name
-            , self.chain_name
-            , self.segment_identifier
-            )
+from ..core.pymol.structure import StructureSelection
 
 class StructureSelector(QObject):
 

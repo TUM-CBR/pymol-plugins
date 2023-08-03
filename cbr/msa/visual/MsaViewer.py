@@ -1,14 +1,14 @@
 import pymol.cmd as cmd
 from PyQt5.QtCore import pyqtSlot, QPoint, Qt
 from PyQt5.QtWidgets import QDialog, QFileDialog, QTableWidgetItem, QWidget
-from typing import Callable, Dict, List, NamedTuple, Set, Tuple
+from typing import Callable, Dict, List, NamedTuple, Optional, Set
 
 from ...clustal import msa
 from ...clustal import Clustal
 from ...core.Context import Context
 from ...core import visual
-from ...core.pymol import selection
 from ...core.pymol import structure
+from ...core.pymol.structure import StructureSelection
 from ...core.pymol.visual.PymolResidueResultsTable import PymolResidueSelector
 from ...core.Qt.QtWidgets import open_copy_context_menu
 
@@ -109,12 +109,17 @@ class MsaViewer(QWidget):
         'structure relative to consensus': lambda x: x.structure_relative_to_consensus_score
     }
 
+    NoStructureSelectedException = ValueError("No structure has been selected for the alignment")
+
     def __init__(self, context : Context, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.__ui = Ui_MsaViewer()
         self.__ui.setupUi(self)
         self.__ui.scoringCombo.addItems(MsaViewer.scoring_methods)
-        visual.as_structure_selector(self.__ui.structuresCombo, self.__ui.structuresRefreshButton)
+        self.__structure_selector = visual.as_structure_selector(
+            self.__ui.structuresCombo,
+            self.__ui.structuresRefreshButton
+        )
         self.__set_sequences({})
         self.__clustal = Clustal.get_clustal_from_context(context)
         self.__msa_input_dialog = FastaSequencesInput(context, parent = self)
@@ -133,6 +138,7 @@ class MsaViewer(QWidget):
         self.__ui.sequenceCombo.clear()
         self.__ui.sequenceCombo.addItems(self.__sequences.keys())
 
+    @pyqtSlot()
     def on_createMsaButton_clicked(self):
 
         if self.__msa_input_dialog.exec() == QDialog.Accepted:
@@ -154,12 +160,15 @@ class MsaViewer(QWidget):
         self.__set_sequences(msa.parse_alignments(file_path))
 
     @property
-    def __selected_structure(self) -> Tuple[str, str]:
-        return self.__ui.structuresCombo.currentData()
+    def __selected_structure(self) -> Optional[StructureSelection]:
+        return self.__structure_selector.currentSelection
 
     def __get_structure_sequence(self):
-        (structure_name, chain) = self.__selected_structure
-        return structure.get_pdb_sequence(structure_name, chain)
+
+        if self.__selected_structure:
+            return structure.get_pdb_sequence(self.__selected_structure)
+        else:
+            raise MsaViewer.NoStructureSelectedException
 
     def __get_structure_positions(self)  -> 'List[int | None]':
         sequence_name = self.__ui.sequenceCombo.currentText()
@@ -174,13 +183,16 @@ class MsaViewer(QWidget):
         return list(msa.get_relative_positions(self.__sequences, result))
 
     def __get_structure_conservation(self) -> MsaConservationResults:
+        selection = self.__selected_structure
+        if selection is None:
+            raise MsaViewer.NoStructureSelectedException
+
         sequences = list(self.__sequences.values())
         positions = self.__get_structure_positions()
         structure_sequence = self.__get_structure_sequence()
         result = {}
         results_keys = set()
-        (selected_structure, chain) = self.__selected_structure
-        offset = structure.get_structure_offset(selected_structure, chain)
+        offset = structure.get_structure_offset(selection)
 
         for (i, ix) in filter(lambda x: x[1], enumerate(positions)):
 
@@ -213,16 +225,20 @@ class MsaViewer(QWidget):
         residue_selector = self.__residue_selector
         residue_selector.reset()
         scoring = self.__scoring_function
-        structure_selection = selection.get_selection_for_model(*self.__selected_structure)
-        self.__residue_selector.set_selection(structure_selection)
+        structure_selection = self.__selected_structure
 
-        table.setColumnCount(len(results.results_keys) + 4)
-        table.setRowCount(len(results.results))
-        table.setHorizontalHeaderLabels(
-            ['structure position', 'MSA position', 'structure residue', 'score'] + \
+        if structure_selection is None:
+            raise MsaViewer.NoStructureSelectedException
+
+        self.__residue_selector.set_selection(structure_selection.selection)
+
+        base_columns = ['structure position', 'MSA position', 'structure residue', 'score']
+        column_names = base_columns + \
             ["%s (%%)" % r for r in results.results_keys] + \
             ["gaps (%)"]
-        )
+        table.setColumnCount(len(column_names))
+        table.setRowCount(len(results.results))
+        table.setHorizontalHeaderLabels(column_names)
 
         for (i,score) in enumerate(results.results.values()):
             residue_selector.set_item_riesidues(i, [score.pdb_position])
@@ -233,11 +249,11 @@ class MsaViewer(QWidget):
 
             for (j, key) in enumerate(results.results_keys):
                 k_score = perc_str(score.score_percent.get(key) or 0.0)
-                table.setItem(i, j + 4, QTableWidgetItem("%s%%" % k_score))
+                table.setItem(i, j + len(base_columns), QTableWidgetItem("%s%%" % k_score))
 
             table.setItem(
                 i,
-                len(results.results_keys) + 3,
+                len(column_names) - 1,
                 QTableWidgetItem("%s%%" % perc_str(score.blanks_percent))
             )
 
@@ -246,12 +262,16 @@ class MsaViewer(QWidget):
         self.__ui.gapTresholdLabel.setText("%i%%" % value)
 
     def __color_by_conservation(self):
-        (selected_structure, chain) = self.__selected_structure
+        selection = self.__selected_structure
+
+        if selection is None:
+            raise MsaViewer.NoStructureSelectedException
+
         conservation = self.__get_structure_conservation()
         scoring = self.__scoring_function
         scores = [(result, scoring(result)) for (i, result) in conservation.results.items()]
         factor = (COLOR_MAX - COLOR_MIN) / max(score for (r, score) in scores)
-        structure_query = structure.get_structure_query(selected_structure, chain)
+        structure_query = selection.selection
         gaps_treshold = self.__ui.gapTresholdSlider.value()
 
         cmd.color("999", structure_query)

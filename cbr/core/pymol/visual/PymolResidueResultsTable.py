@@ -4,8 +4,6 @@ from PyQt5.QtCore import QObject, pyqtSlot
 from PyQt5.QtWidgets import QTableWidget
 from typing import Dict, List, Optional
 
-from ..selection import PymolSelection
-
 class PymolResidueSelector(QObject):
 
     __counter = itertools.count()
@@ -13,14 +11,14 @@ class PymolResidueSelector(QObject):
     def __init__(
         self,
         qtable : QTableWidget,
-        selection : Optional[PymolSelection] = None,
+        selection : Optional[str] = None,
         selection_name : Optional[str] = None,
         *args,
         **kwargs
     ):
         super(PymolResidueSelector, self).__init__(*args, **kwargs)
         self.__default_selection_name = "TableSelection_%i" % next(PymolResidueSelector.__counter)
-        self.__selection = selection
+        self.__selection : Optional[str] = selection
         self.__mappings : Dict[int, List[int]] = {}
         self.__qtable = qtable
         qtable.itemSelectionChanged.connect(self.__on_item_selection_changed)
@@ -30,7 +28,7 @@ class PymolResidueSelector(QObject):
         self.__selection = None
         self.__mappings = {}
 
-    def set_selection(self, selection : Optional[PymolSelection]=None):
+    def set_selection(self, selection : Optional[str]=None):
         self.__selection = selection
 
     def set_item_riesidues(self, item : int, residue : List[int]):
@@ -57,7 +55,7 @@ class PymolResidueSelector(QObject):
             )
         else:
             selection_str = " & ".join([
-                self.__selection.query(),
+                self.__selection,
                 " | ".join(residues)
             ])
             cmd.select(

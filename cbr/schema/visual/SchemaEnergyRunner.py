@@ -40,7 +40,8 @@ class SchemaEnergyRunner(QWidget):
 
         self.__fasta_selector = as_fasta_selector(
             self.__ui.fastaTextEdit,
-            self.__ui.structureSequenceCombo)
+            self.__ui.structureSequenceCombo
+        )
 
         self.__ui.shufflingPointsEdit.setValidator(SchemaEnergyRunner.XoValidator)
 
