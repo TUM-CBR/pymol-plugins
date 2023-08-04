@@ -10,7 +10,7 @@ class StructureSelection(NamedTuple):
     @property
     def selection(self) -> str:
         selectors = \
-            [ self.structure_name
+            [ "model %s" % self.structure_name
             , self.chain_name and "chain %s" % self.chain_name
             , self.segment_identifier and "segi %s" % self.segment_identifier
             ]
