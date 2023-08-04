@@ -6,12 +6,17 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>682</width>
-    <height>518</height>
+    <width>884</width>
+    <height>649</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">.QComboBox {
+	min-width: 150;
+}</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>
@@ -59,9 +64,16 @@
         <widget class="QComboBox" name="structuresCombo">
          <property name="minimumSize">
           <size>
-           <width>150</width>
+           <width>152</width>
            <height>0</height>
           </size>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="copySequenceButton">
+         <property name="text">
+          <string>Copy Sequence</string>
          </property>
         </widget>
        </item>
@@ -87,7 +99,21 @@
        </item>
       </layout>
      </item>
-     <item row="1" column="0" colspan="2">
+     <item row="0" column="1">
+      <layout class="QHBoxLayout" name="horizontalLayout_6">
+       <item>
+        <widget class="QLabel" name="label_5">
+         <property name="text">
+          <string>Shuffling Points</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="shufflingPointsEdit"/>
+       </item>
+      </layout>
+     </item>
+     <item row="1" column="0">
       <layout class="QHBoxLayout" name="horizontalLayout_4">
        <item>
         <widget class="QLabel" name="label_4">
@@ -100,7 +126,7 @@
         <widget class="QComboBox" name="structureSequenceCombo">
          <property name="minimumSize">
           <size>
-           <width>150</width>
+           <width>152</width>
            <height>0</height>
           </size>
          </property>
@@ -121,39 +147,7 @@
        </item>
       </layout>
      </item>
-     <item row="2" column="2">
-      <layout class="QHBoxLayout" name="horizontalLayout_5">
-       <item>
-        <widget class="QPushButton" name="runSchemaEnergyButton">
-         <property name="text">
-          <string>Run SCHEMA Energy</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QProgressBar" name="schemaProgress">
-         <property name="value">
-          <number>24</number>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item row="0" column="2">
-      <layout class="QHBoxLayout" name="horizontalLayout_6">
-       <item>
-        <widget class="QLabel" name="label_5">
-         <property name="text">
-          <string>Shuffling Points</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLineEdit" name="shufflingPointsEdit"/>
-       </item>
-      </layout>
-     </item>
-     <item row="1" column="2">
+     <item row="1" column="1">
       <layout class="QHBoxLayout" name="horizontalLayout_7">
        <item>
         <widget class="QLabel" name="label_6">
@@ -166,7 +160,7 @@
         <widget class="QComboBox" name="energyScoringCombo">
          <property name="minimumSize">
           <size>
-           <width>150</width>
+           <width>152</width>
            <height>0</height>
           </size>
          </property>
@@ -184,6 +178,51 @@
           </size>
          </property>
         </spacer>
+       </item>
+      </layout>
+     </item>
+     <item row="2" column="0">
+      <layout class="QHBoxLayout" name="horizontalLayout_8">
+       <item>
+        <widget class="QLabel" name="label_7">
+         <property name="text">
+          <string>Substitution Scoring</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="substitutionSelector"/>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer_6">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </item>
+     <item row="2" column="1">
+      <layout class="QHBoxLayout" name="horizontalLayout_5">
+       <item>
+        <widget class="QPushButton" name="runSchemaEnergyButton">
+         <property name="text">
+          <string>Run SCHEMA Energy</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QProgressBar" name="schemaProgress">
+         <property name="value">
+          <number>24</number>
+         </property>
+        </widget>
        </item>
       </layout>
      </item>

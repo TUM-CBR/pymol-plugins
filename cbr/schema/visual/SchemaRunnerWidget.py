@@ -10,6 +10,7 @@ from ...core.pymol import structure
 from ..SchemaTaskManager import SchemaTask, SchemaTaskManager
 
 from .energy import EnergySelector
+from .substitution import SubstitutionSelector
 from .Ui_SchemaRunnerWidget import Ui_SchemaRunnerWidget
 
 input_validation_error = \
@@ -35,7 +36,8 @@ class SchemaRunnerWidget(QWidget):
         self.__load_previous_sequences()
         self.__on_busy_status_changed(False)
         self.__energy_selector = EnergySelector(self.__ui.energyScoringCombo)
-        visual.as_structure_selector(self.__ui.structuresCombo, self.__ui.refreshButton)
+        self.__structure_selector = visual.as_structure_selector(self.__ui.structuresCombo, self.__ui.refreshButton)
+        self.__blosum_selector = SubstitutionSelector(self.__ui.substitutionScoringCombo)
 
     def __on_busy_status_changed(self, is_busy : int):
         if is_busy > 0:
@@ -57,9 +59,6 @@ class SchemaRunnerWidget(QWidget):
             SchemaRunnerWidget.SEQUENCES_KEY,
             self.__ui.sequencesText.toPlainText()
         )
-
-    def __get_pdb_sequence(self, structure_name):
-        return structure.get_pdb_sequence(structure_name)
 
     def __validate_crossovers(self):
         xos = self.__ui.crossoversText.text()
@@ -83,10 +82,14 @@ class SchemaRunnerWidget(QWidget):
             xos = self.__validate_crossovers()
             min_length = int(self.__ui.minLengthText.text())
             max_length = int(self.__ui.maxLengthText.text())
+            structure_selection = self.__structure_selector.currentSelection
+
+            if structure_selection is None:
+                raise ValueError("No structure selected")
             
-            pymol.cmd.save(pdb_file, "(model %s) & (chain %s)" % self.__ui.structuresCombo.currentData())
+            pymol.cmd.save(pdb_file, structure_selection.selection)
             pymol.cmd.load(pdb_file)
-            sequences = "%s\n\n>%s\n%s" % (self.__ui.sequencesText.toPlainText(), structure_name, self.__get_pdb_sequence(structure_name))
+            sequences = "%s\n\n>%s\n%s" % (self.__ui.sequencesText.toPlainText(), structure_name, structure.get_pdb_sequence(structure_selection))
 
             self.__manager.run_schema(
                 name,
@@ -94,7 +97,8 @@ class SchemaRunnerWidget(QWidget):
                 xos,
                 min_length,
                 max_length,
-                self.__energy_selector.write_interactions(self.__manager.base_directory)
+                self.__energy_selector.write_interactions(self.__manager.base_directory),
+                self.__blosum_selector.selection
             )
             
         except QuietException:

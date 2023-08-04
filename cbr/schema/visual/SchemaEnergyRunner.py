@@ -2,20 +2,26 @@ from os import path
 import pymol
 from PyQt5.QtCore import pyqtSlot, QRegExp
 from PyQt5.QtGui import QRegExpValidator
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtWidgets import QMessageBox, QWidget
 from tempfile import TemporaryDirectory
-from typing import List
+from typing import List, Optional
+
 
 from ...core.TaskManager import TaskManager
 from ...clustal import Clustal
+from ...clustal import msa
 from ...core.Context import Context
 from ...core.pymol import structure
 from ...core import visual
 from ...support.visual import as_fasta_selector
+
+from ..blosum import BlosumMatrix, write_matrix
 from ..raspp import schemacontacts
 from ..raspp import schemaenergy
+
 from .energy import EnergySelector
 from .SchemaEnergyViewer import SchemaEnergyViewer
+from .substitution import SubstitutionSelector
 from .Ui_SchemaEnergyRunner import Ui_SchemaEnergyRunner
 
 class SchemaEnergyRunner(QWidget):
@@ -27,13 +33,16 @@ class SchemaEnergyRunner(QWidget):
 
         self.__ui = Ui_SchemaEnergyRunner()
         self.__ui.setupUi(self)
-        visual.as_structure_selector(
+        self.__structure_selector = visual.as_structure_selector(
             self.__ui.structuresCombo,
-            self.__ui.refreshStructuresButton)
+            self.__ui.refreshStructuresButton,
+            copy_button = self.__ui.copySequenceButton
+        )
 
         self.__fasta_selector = as_fasta_selector(
             self.__ui.fastaTextEdit,
-            self.__ui.structureSequenceCombo)
+            self.__ui.structureSequenceCombo
+        )
 
         self.__ui.shufflingPointsEdit.setValidator(SchemaEnergyRunner.XoValidator)
 
@@ -43,7 +52,7 @@ class SchemaEnergyRunner(QWidget):
         self.__stop_progress_bar()
         self.__ui.runSchemaEnergyButton.clicked.connect(self.on_runSchemaEnergyButton_clicked)
         self.__energy_selector = EnergySelector(self.__ui.energyScoringCombo)
-
+        self.__substitution_selector = SubstitutionSelector(self.__ui.substitutionSelector)
 
     def __stop_progress_bar(self):
         self.__ui.schemaProgress.setVisible(False)
@@ -74,11 +83,11 @@ class SchemaEnergyRunner(QWidget):
             "structure.aln"
         )
 
-    def __save_pdb(self, base_path : str, structure_name : str, chain_name : str) -> str:
-        file_name = self.__structure_file(base_path, structure_name, chain_name)
+    def __save_pdb(self, base_path : str, selection : visual.StructureSelection) -> str:
+        file_name = self.__structure_file(base_path, selection.structure_name, selection.chain_name or "")
         pymol.cmd.save(
             file_name,
-            "(model %s) & (chain %s)" % (structure_name, chain_name)
+            selection.selection
         )
         return file_name
 
@@ -107,7 +116,11 @@ class SchemaEnergyRunner(QWidget):
 
     @pyqtSlot()
     def on_runSchemaEnergyButton_clicked(self):
-        (structure_name, chain_name) = self.__ui.structuresCombo.currentData()
+        selection = self.__structure_selector.currentSelection
+
+        if not selection:
+            raise ValueError("Select a structure!")
+
         crossovers = [ \
             int(xo) \
             for xo in self.__ui.shufflingPointsEdit.text().split(",") \
@@ -117,26 +130,29 @@ class SchemaEnergyRunner(QWidget):
 
         def task():
             return self.__run_schema_energy(
-                structure_name,
-                chain_name,
+                selection,
                 crossovers,
-                results_directory.name
+                results_directory.name,
+                self.__substitution_selector.selection
             )
 
         result = self.__task_manager.run_task(
-            "schema-energy/%s/%s" % (structure_name, chain_name),
+            "schema-energy/%s/%s" % (selection.structure_name, selection.chain_name),
             task)
 
         result.on_started(self.__start_progress_bar)
         result.on_completed(self.__stop_progress_bar)
-        result.on_completed(
-            lambda: self.__show_results(structure_name, chain_name, results_directory)
-        )
+
+        def __on_task_completed():
+            if result.error:
+                QMessageBox.critical(self, "Error", str(result.error))
+            else:
+                self.__show_results(selection, results_directory)
+        result.on_completed(__on_task_completed)
 
     def __show_results(
         self,
-        structure_name : str,
-        chain_name : str,
+        structure_seleciton : visual.StructureSelection,
         results_folder : TemporaryDirectory
         ):
 
@@ -144,49 +160,85 @@ class SchemaEnergyRunner(QWidget):
             lambda _: \
                 SchemaEnergyViewer(
                     self.__context,
-                    structure_name,
-                    chain_name,
+                    structure_seleciton,
                     self.__schema_energy_file(results_folder.name),
                     self.__contacts_file(results_folder.name),
                     results_folder
                 )
         ).show()
 
+    def __with_blosum(self, base_path : str, matrix : dict) -> str:
+        location = path.join(base_path, "blosum.json")
+        with open(location, 'w') as blosum:
+            write_matrix(matrix, blosum)
+
+        return location
+
+    def __map_crossovers_to_msa(
+        self,
+        structure_selection : visual.StructureSelection,
+        parents_msa_location : str,
+        structure_msa_location : str,
+        crossovers : List[int]
+    ):
+
+        offset = structure.get_structure_offset(structure_selection)
+        positions_seq = msa.get_relative_positions(
+            msa.parse_alignments(parents_msa_location),
+            msa.parse_alignments(structure_msa_location)
+        )
+
+        positions = dict((v,k) for k,v in enumerate(positions_seq))
+
+        try:
+            return [positions[i - offset] for i in crossovers]
+        except KeyError:
+            raise Exception("The assembly points provided are not valid positions in the structure.")
+
     def __run_schema_energy(
         self,
-        structure_name : str,
-        chain_name : str,
+        structure_selection : visual.StructureSelection,
         crossovers : List[int],
-        base_path : str):
+        base_path : str,
+        blosum : Optional[BlosumMatrix]
+    ):
         
-        pdb_file = self.__save_pdb(base_path, structure_name, chain_name)
+        pdb_file = self.__save_pdb(base_path, structure_selection)
         sequences = dict(self.__fasta_selector.get_items())
+        parents_msa = self.__msa_file(base_path)
+        structure_msa = self.__structure_msa_file(base_path)
         self.__clustal.run_msa(
             sequences.items(),
-            self.__msa_file(base_path)
+            parents_msa
         )
         self.__clustal.run_msa(
             [ self.__fasta_selector.selected_sequence()
-            , (structure_name, structure.get_pdb_sequence(structure_name, chain_name))
+            , (structure_selection.structure_name, structure.get_selection_sequece(structure_selection.selection))
             ],
-            self.__structure_msa_file(base_path)
+            structure_msa
         )
         schemacontacts.main_impl({
             schemacontacts.ARG_PDB_FILE: pdb_file,
-            schemacontacts.ARG_MULTIPLE_SEQUENCE_ALIGNMENT_FILE: self.__msa_file(base_path),
-            schemacontacts.ARG_PDB_ALIGNMENT_FILE: self.__structure_msa_file(base_path),
+            schemacontacts.ARG_MULTIPLE_SEQUENCE_ALIGNMENT_FILE: parents_msa,
+            schemacontacts.ARG_PDB_ALIGNMENT_FILE: structure_msa,
             schemacontacts.ARG_OUTPUT_FILE: self.__contacts_file(base_path),
             schemacontacts.ARG_INTERACTIONS: self.__energy_selector.write_interactions(base_path)
         })
 
+        crossovers = self.__map_crossovers_to_msa(structure_selection, parents_msa, structure_msa, crossovers)
         xo_file = self.__save_crossovers(base_path, crossovers)
-        schemaenergy.main_impl({
+        schemaenergy_args = {
             schemaenergy.ARG_CONTACT_FILE: self.__contacts_file(base_path),
             schemaenergy.ARG_CROSSOVER_FILE: xo_file,
             schemaenergy.ARG_MULTIPLE_SEQUENCE_ALIGNMENT_FILE: self.__msa_file(base_path),
             schemaenergy.ARG_OUTPUT_FILE: self.__schema_energy_file(base_path),
             schemaenergy.ARG_PDB_ALIGNMENT_FILE: self.__structure_msa_file(base_path),
             schemaenergy.ARG_PRINT_M: True,
-            schemaenergy.ARG_PRINT_E: True
-        })
+            schemaenergy.ARG_PRINT_E: True,
+        }
+
+        if blosum:
+            schemaenergy_args[schemaenergy.ARG_DISRUPTION] = self.__with_blosum(base_path, blosum)
+
+        schemaenergy.main_impl(schemaenergy_args)
 

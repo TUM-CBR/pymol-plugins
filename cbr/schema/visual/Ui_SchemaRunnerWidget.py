@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'SchemaRunnerWidget.ui'
+# Form implementation generated from reading ui file 'cbr/schema/visual/SchemaRunnerWidget.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.9
 #
@@ -15,6 +15,10 @@ class Ui_SchemaRunnerWidget(object):
     def setupUi(self, SchemaRunnerWidget):
         SchemaRunnerWidget.setObjectName("SchemaRunnerWidget")
         SchemaRunnerWidget.resize(813, 582)
+        SchemaRunnerWidget.setStyleSheet(".QComboBox{\n"
+"\n"
+"    min-width: 150px;\n"
+"}")
         self.verticalLayout = QtWidgets.QVBoxLayout(SchemaRunnerWidget)
         self.verticalLayout.setObjectName("verticalLayout")
         self.horizontalLayout = QtWidgets.QHBoxLayout()
@@ -23,9 +27,12 @@ class Ui_SchemaRunnerWidget(object):
         self.label.setObjectName("label")
         self.horizontalLayout.addWidget(self.label)
         self.structuresCombo = QtWidgets.QComboBox(SchemaRunnerWidget)
-        self.structuresCombo.setMinimumSize(QtCore.QSize(200, 0))
+        self.structuresCombo.setMinimumSize(QtCore.QSize(152, 0))
         self.structuresCombo.setObjectName("structuresCombo")
         self.horizontalLayout.addWidget(self.structuresCombo)
+        self.copySequenceButton = QtWidgets.QPushButton(SchemaRunnerWidget)
+        self.copySequenceButton.setObjectName("copySequenceButton")
+        self.horizontalLayout.addWidget(self.copySequenceButton)
         self.refreshButton = QtWidgets.QPushButton(SchemaRunnerWidget)
         self.refreshButton.setObjectName("refreshButton")
         self.horizontalLayout.addWidget(self.refreshButton)
@@ -50,9 +57,15 @@ class Ui_SchemaRunnerWidget(object):
         self.label_6.setObjectName("label_6")
         self.horizontalLayout_2.addWidget(self.label_6)
         self.energyScoringCombo = QtWidgets.QComboBox(SchemaRunnerWidget)
-        self.energyScoringCombo.setMinimumSize(QtCore.QSize(150, 0))
+        self.energyScoringCombo.setMinimumSize(QtCore.QSize(152, 0))
         self.energyScoringCombo.setObjectName("energyScoringCombo")
         self.horizontalLayout_2.addWidget(self.energyScoringCombo)
+        self.label_7 = QtWidgets.QLabel(SchemaRunnerWidget)
+        self.label_7.setObjectName("label_7")
+        self.horizontalLayout_2.addWidget(self.label_7)
+        self.substitutionScoringCombo = QtWidgets.QComboBox(SchemaRunnerWidget)
+        self.substitutionScoringCombo.setObjectName("substitutionScoringCombo")
+        self.horizontalLayout_2.addWidget(self.substitutionScoringCombo)
         self.verticalLayout.addLayout(self.horizontalLayout_2)
         self.horizontalLayout_3 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_3.setObjectName("horizontalLayout_3")
@@ -91,10 +104,12 @@ class Ui_SchemaRunnerWidget(object):
         _translate = QtCore.QCoreApplication.translate
         SchemaRunnerWidget.setWindowTitle(_translate("SchemaRunnerWidget", "Form"))
         self.label.setText(_translate("SchemaRunnerWidget", "Select Structure:"))
+        self.copySequenceButton.setText(_translate("SchemaRunnerWidget", "Copy Sequence"))
         self.refreshButton.setText(_translate("SchemaRunnerWidget", "Refresh"))
         self.label_2.setText(_translate("SchemaRunnerWidget", "Select Parents"))
         self.label_3.setText(_translate("SchemaRunnerWidget", "Corssover Counts"))
         self.label_6.setText(_translate("SchemaRunnerWidget", "Energy Scoring"))
+        self.label_7.setText(_translate("SchemaRunnerWidget", "Substitution Scoring"))
         self.label_4.setText(_translate("SchemaRunnerWidget", "Min Length"))
         self.minLengthText.setText(_translate("SchemaRunnerWidget", "30"))
         self.label_5.setText(_translate("SchemaRunnerWidget", "Max Length"))

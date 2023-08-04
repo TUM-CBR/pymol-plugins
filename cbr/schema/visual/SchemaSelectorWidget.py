@@ -1,12 +1,19 @@
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QAction, QApplication, QMenu, QListWidgetItem, QTableWidgetItem, QWidget
+from os import path
+from PyQt5 import QtCore
+from PyQt5.QtCore import QUrl, Qt, pyqtSlot
+from PyQt5.QtGui import QDesktopServices
+from PyQt5.QtWidgets import QListWidgetItem, QTableWidgetItem, QWidget
 import pymol
 
+from ...core.Qt.QtWidgets import get_qtable_content, open_copy_context_menu
 from ...core.pymol import structure
+from ...core.pymol.structure import StructureSelection
 from ...clustal import msa
+
 from ..SchemaContext import SchemaContext
 from ..SchemaResult import SchemaResult
 from ..SchemaTaskManager import SchemaTaskManager
+
 from .Ui_SchemaSelectorWidget import Ui_SchemaSelectorWidget
 
 class SchemaSelectorWidget(QWidget):
@@ -23,33 +30,11 @@ class SchemaSelectorWidget(QWidget):
         self.__manager.subscribe_results_updated(self.__on_results_updated)
         self.__ui.resultsViewer.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.__ui.resultsViewer.customContextMenuRequested.connect(self.__on_results_context_menu)
+        self.__ui.resultsList.itemDoubleClicked.connect(self.__on_item_double_clicked)
 
+    @pyqtSlot(QtCore.QPoint)
     def __on_results_context_menu(self, pos):
-        context_menu = QMenu(self)
-        copy_action = QAction("Copy", self)
-        copy_action.triggered.connect(self.__copyTable)
-        context_menu.addAction(copy_action)
-        context_menu.exec_(self.__ui.resultsViewer.mapToGlobal(pos))
-
-    def __copyTable(self):
-        table_widget = self.__ui.resultsViewer
-        selected_indexes = table_widget.selectedIndexes()
-        if len(selected_indexes) > 0:
-            selected_cells = set()
-            for index in selected_indexes:
-                selected_cells.add((index.row(), index.column()))
-
-            copied_data = ""
-            for row in range(table_widget.rowCount()):
-                for column in range(table_widget.columnCount()):
-                    if (row, column) in selected_cells:
-                        item = table_widget.item(row, column)
-                        assert item is not None, "Item should be found. Bug in the code!"
-                        copied_data += str(item.text()) + "\t"
-                copied_data += "\n"
-
-            clipboard = QApplication.clipboard()
-            clipboard.setText(copied_data)
+        open_copy_context_menu(self.__ui.resultsViewer, pos)
 
     def __on_results_updated(self, results):
         self.__ui.resultsList.clear()
@@ -57,6 +42,14 @@ class SchemaSelectorWidget(QWidget):
         for result in results:
             item = QListWidgetItem(result.name, self.__ui.resultsList)
             item.setData(SchemaSelectorWidget.RESULT_DATA_ROLE, result)
+
+    @property
+    def __result_selector(self) -> StructureSelection:
+        return StructureSelection(
+            structure_name=self.__result.structure_name,
+            chain_name=None,
+            segment_identifier=None
+        )
 
     def __set_result(self, result : SchemaResult):
 
@@ -68,7 +61,7 @@ class SchemaSelectorWidget(QWidget):
         results_viewer = self.__ui.resultsViewer
         results_viewer.clearContents()
         results_viewer.setRowCount(len(self.__result_items))
-        offset = structure.get_structure_offset(self.__result.structure_name)
+        offset = structure.get_structure_offset(self.__result_selector)
 
         parents_msa = self.__result.parents_msa()
 
@@ -94,6 +87,19 @@ class SchemaSelectorWidget(QWidget):
 
         results_viewer.resizeColumnsToContents()
 
+        directory = path.dirname(result.results_file)
+        results_with_positions = path.join(directory, "results_with_pdb_positions.txt")
+
+        if not path.exists(results_with_positions):
+            with open(results_with_positions, 'w') as results_stream:
+                results_stream.write(get_qtable_content(self.__ui.resultsViewer, lambda _1,_2: True))
+
+    @pyqtSlot(QListWidgetItem)
+    def __on_item_double_clicked(self, item : QListWidgetItem):
+        result : SchemaResult = item.data(SchemaSelectorWidget.RESULT_DATA_ROLE)
+        QDesktopServices.openUrl(QUrl.fromLocalFile(path.dirname(result.results_file)))
+
+    @pyqtSlot(QListWidgetItem)
     def on_resultsList_itemClicked(self, item : QListWidgetItem):
         self.__set_result(item.data(SchemaSelectorWidget.RESULT_DATA_ROLE))
 
@@ -105,7 +111,7 @@ class SchemaSelectorWidget(QWidget):
 
     def __select_item(self, row):
         item = self.__result_items[row]
-        offset = structure.get_structure_offset(self.__result.structure_name)
+        offset = structure.get_structure_offset(self.__result_selector)
         shuffling_points = item.shuffling_points(offset)
 
         # Ensure that we color the whole structure so the last fragment

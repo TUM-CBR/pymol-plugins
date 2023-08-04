@@ -13,6 +13,12 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
+  <property name="styleSheet">
+   <string notr="true">.QComboBox{
+
+	min-width: 150px;
+}</string>
+  </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
@@ -27,9 +33,16 @@
       <widget class="QComboBox" name="structuresCombo">
        <property name="minimumSize">
         <size>
-         <width>200</width>
+         <width>152</width>
          <height>0</height>
         </size>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="copySequenceButton">
+       <property name="text">
+        <string>Copy Sequence</string>
        </property>
       </widget>
      </item>
@@ -88,11 +101,21 @@
       <widget class="QComboBox" name="energyScoringCombo">
        <property name="minimumSize">
         <size>
-         <width>150</width>
+         <width>152</width>
          <height>0</height>
         </size>
        </property>
       </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_7">
+       <property name="text">
+        <string>Substitution Scoring</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="substitutionScoringCombo"/>
      </item>
     </layout>
    </item>

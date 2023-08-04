@@ -1,7 +1,7 @@
 from io import StringIO, TextIOBase
 import os
 import subprocess
-from typing import Dict, Iterable, Tuple, TextIO, TypeVar
+from typing import cast, Dict, Iterable, TextIO, Tuple, TypeVar
 
 from ..core.Context import Context
 from ..core.process import simple_execute
@@ -55,8 +55,8 @@ class Clustal(object):
     @staticmethod
     def __get_msa_output(out_msa : MsaOutput) -> WrapIO:
 
-        if(isinstance(out_msa, TextIO)):
-            return WrapIO(stream = out_msa)
+        if(isinstance(out_msa, TextIOBase)):
+            return WrapIO(stream = cast(TextIOBase, out_msa))
         elif(isinstance(out_msa, str)):
             return WrapIO(open_stream = lambda: open(out_msa, 'w'))
         else:

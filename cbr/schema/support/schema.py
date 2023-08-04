@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import cast, Dict, List
 
 from ...clustal import msa
 from .strings import MAIN_SEQUENCE_NAME
@@ -28,14 +28,26 @@ class SchemaAlignments(object):
             or MAIN_SEQUENCE_NAME not in parents_msa:
             raise ValueError("A sequence called %s must be in both msa" % MAIN_SEQUENCE_NAME)
 
-        for (name, sequence) in structure_msa.items():
+#        for (name, sequence) in structure_msa.items():
+#
+#            if name == MAIN_SEQUENCE_NAME:
+#                self.__main_msa = sequence
+#            else:
+#                self.__structure_msa = sequence
 
-            if name == MAIN_SEQUENCE_NAME:
-                self.__main_msa = sequence
-            else:
-                self.__structure_msa = sequence
-
+        self.__structure_msa = structure_msa
         self.__parents_msa = parents_msa
+        self.__position_mappings_items = None
+
+
+    @property
+    def __position_mappings(self) -> List[int]:
+        if self.__position_mappings_items is None:
+            self.__position_mappings_items = list(
+                msa.get_relative_positions(self.__parents_msa, self.__structure_msa)
+            )
+
+        return cast(List[int], self.__position_mappings_items)
 
     @property
     def __main_parents_msa(self) -> str:
@@ -46,6 +58,8 @@ class SchemaAlignments(object):
         This function converts an index relative to a position in the msa file of all
         parents to the position that index corresponds in the structure.
         """
+
+        return next(i for i in self.__position_mappings[i:].__iter__() if i is not None)
 
         main_parents_prefix = msa.remove_spacers(self.__main_parents_msa[0:i])
         main_parents_prefix_pos = 0

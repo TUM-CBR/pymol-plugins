@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 from ..clustal import fasta
 from ..clustal.Clustal import Clustal
 
+from .blosum import BlosumMatrix, write_matrix
 from .raspp import schemacontacts
 from .raspp import rasppcurve
 from .SchemaResult import SchemaResult
@@ -114,8 +115,21 @@ class SchemaTaskManager(QObject):
         shuffling_points: List[int],
         min_fragment_size: int,
         max_fragment_size : int,
-        schema_energy_file : Optional[str]) -> None:
-        task = SchemaTask(self.__schema_context, name, self.__working_directory, sequences_str, shuffling_points, min_fragment_size, max_fragment_size, schema_energy_file)
+        schema_energy_file : Optional[str],
+        blosum : Optional[BlosumMatrix]
+    ) -> None:
+
+        task = SchemaTask(
+            self.__schema_context,
+            name,
+            self.__working_directory,
+            sequences_str,
+            shuffling_points,
+            min_fragment_size,
+            max_fragment_size,
+            schema_energy_file,
+            blosum
+        )
         self.__current_tasks.append(task)
         self.__check_tasks()
 
@@ -132,11 +146,14 @@ class SchemaTask(QObject):
         shuffling_points : List[int],
         min_fragment_size: int,
         max_fragment_size : int,
-        schema_energy_file : Optional[str]):
+        schema_energy_file : Optional[str],
+        blosum : Optional[BlosumMatrix]
+    ):
 
         super(SchemaTask, self).__init__()
         self.__clustal = Clustal()
         self.__schema_context = schema_context
+        self.__blosum = blosum
         self.__name = name
         self.__working_directory = working_directory
         self.__schema_energy_file = schema_energy_file
@@ -175,6 +192,10 @@ class SchemaTask(QObject):
     @staticmethod
     def get_structure_name(name: str):
         return 'SCHEMA_%s' % name
+
+    @property
+    def blosum_file(self):
+        return SchemaTask.__location(self.__working_directory, "blosum.json")
 
     @staticmethod
     def get_pdb_aln_file_name(working_directory : str, result_name: str):
@@ -287,6 +308,12 @@ class SchemaTask(QObject):
                 rasppcurve.ARG_MIN_FRAGMENT_SIZE: min_fragment_size,
                 rasppcurve.ARG_MAX_FRAGMENT_SIZE: max_fragment_size
             }
+
+            if self.__blosum:
+                with open(self.blosum_file, 'w') as blosum:
+                    write_matrix(self.__blosum, blosum)
+
+                args[rasppcurve.ARG_DISRUPTION] = self.blosum_file
 
             rasppcurve.main_impl(args)
 
