@@ -1,3 +1,4 @@
+import json
 from typing import Iterable, List, NamedTuple, Optional, TextIO
 
 def split_ixs(line : str, indexes : Iterable[int]):
@@ -44,7 +45,7 @@ class EnergyLogEntry(NamedTuple):
     potential : float
 
     @staticmethod
-    def from_dict(entry_dict : dict):
+    def from_dict(entry_dict : dict) -> 'EnergyLogEntry':
 
         K_POTENTIAL = "Potential"
         K_STEP = "Step"

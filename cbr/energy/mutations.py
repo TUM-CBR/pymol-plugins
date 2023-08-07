@@ -4,7 +4,7 @@ from os import path
 import pymol
 from pymol.wizard.mutagenesis import Mutagenesis, obj_name
 import random
-from typing import Iterable, List, NamedTuple, Optional
+from typing import Iterable, List, NamedTuple, Optional, TextIO
 
 from ..core.pymol.structure import get_selection_sequece, StructureSelection
 from ..core.sequence import ensure_abbreviation, ensure_oneletter
@@ -26,6 +26,17 @@ class MutationResult(NamedTuple):
             'mutation_position': self.mutation_position,
             'new_reside': self.new_reside
         }
+
+    @staticmethod
+    def from_json_dict(json_dict : dict) -> 'MutationResult':
+        return MutationResult(**json_dict)
+
+    @staticmethod
+    def from_stream(stream : TextIO) -> 'MutationResult':
+        return MutationResult.from_json_dict(json.load(stream))
+
+    def get_energy_log_file(self, directory : str):
+        return path.join(directory, "%s.log" % self.structure_name)
 
 class Mutation(NamedTuple):
     structure_position : int
