@@ -17,6 +17,14 @@ class Ui_ChimeraFragment(object):
         ChimeraFragment.resize(400, 300)
         self.verticalLayout = QtWidgets.QVBoxLayout(ChimeraFragment)
         self.verticalLayout.setObjectName("verticalLayout")
+        self.horizontalLayout = QtWidgets.QHBoxLayout()
+        self.horizontalLayout.setObjectName("horizontalLayout")
+        spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout.addItem(spacerItem)
+        self.pasteButton = QtWidgets.QPushButton(ChimeraFragment)
+        self.pasteButton.setObjectName("pasteButton")
+        self.horizontalLayout.addWidget(self.pasteButton)
+        self.verticalLayout.addLayout(self.horizontalLayout)
         self.fragmentTable = QtWidgets.QTableWidget(ChimeraFragment)
         self.fragmentTable.setObjectName("fragmentTable")
         self.fragmentTable.setColumnCount(1)
@@ -31,5 +39,6 @@ class Ui_ChimeraFragment(object):
     def retranslateUi(self, ChimeraFragment):
         _translate = QtCore.QCoreApplication.translate
         ChimeraFragment.setWindowTitle(_translate("ChimeraFragment", "Form"))
+        self.pasteButton.setText(_translate("ChimeraFragment", "Paste"))
         item = self.fragmentTable.horizontalHeaderItem(0)
         item.setText(_translate("ChimeraFragment", "Sequence"))
