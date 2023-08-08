@@ -46,7 +46,6 @@ class ChimerasGeneratorArgs(NamedTuple):
         if(self.overhang_length > 0 and last[-self.overhang_length:] != seq_b[0:self.overhang_length]):
             raise ValueError("The sequence '%s' and '%s' have mismatched overhangs" % (last, seq_b))
 
-        seq_a[-1] = last[0:-self.overhang_length]
         return seq_a + [seq_b[self.overhang_length:]]
 
     def __make_chimera(self, sequences : List[Tuple[int, str]]):
@@ -63,7 +62,7 @@ class ChimerasGeneratorArgs(NamedTuple):
 
     def __generate_chimeras(self):
         catalogue = [
-            [(i,self.__clean_sequence(sequence)) for i,sequence in enumerate(position.sequences)]
+            [(i + 1,self.__clean_sequence(sequence)) for i,sequence in enumerate(position.sequences)]
             for position in self.positions
         ]
         return [
