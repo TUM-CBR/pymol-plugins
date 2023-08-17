@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'SchemaSelectorWidget.ui'
+# Form implementation generated from reading ui file 'cbr/schema/visual/SchemaSelectorWidget.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.9
 #
@@ -15,13 +15,18 @@ class Ui_SchemaSelectorWidget(object):
     def setupUi(self, SchemaSelectorWidget):
         SchemaSelectorWidget.setObjectName("SchemaSelectorWidget")
         SchemaSelectorWidget.resize(915, 654)
-        self.verticalLayout = QtWidgets.QVBoxLayout(SchemaSelectorWidget)
-        self.verticalLayout.setObjectName("verticalLayout")
-        self.splitter = QtWidgets.QSplitter(SchemaSelectorWidget)
-        self.splitter.setOrientation(QtCore.Qt.Horizontal)
-        self.splitter.setObjectName("splitter")
-        self.resultsList = QtWidgets.QListWidget(self.splitter)
+        self.horizontalLayout = QtWidgets.QHBoxLayout(SchemaSelectorWidget)
+        self.horizontalLayout.setObjectName("horizontalLayout")
+        self.splitter_2 = QtWidgets.QSplitter(SchemaSelectorWidget)
+        self.splitter_2.setOrientation(QtCore.Qt.Horizontal)
+        self.splitter_2.setHandleWidth(4)
+        self.splitter_2.setChildrenCollapsible(True)
+        self.splitter_2.setObjectName("splitter_2")
+        self.resultsList = QtWidgets.QListWidget(self.splitter_2)
         self.resultsList.setObjectName("resultsList")
+        self.splitter = QtWidgets.QSplitter(self.splitter_2)
+        self.splitter.setOrientation(QtCore.Qt.Vertical)
+        self.splitter.setObjectName("splitter")
         self.resultsViewer = QtWidgets.QTableWidget(self.splitter)
         self.resultsViewer.setColumnCount(4)
         self.resultsViewer.setObjectName("resultsViewer")
@@ -34,7 +39,11 @@ class Ui_SchemaSelectorWidget(object):
         self.resultsViewer.setHorizontalHeaderItem(2, item)
         item = QtWidgets.QTableWidgetItem()
         self.resultsViewer.setHorizontalHeaderItem(3, item)
-        self.verticalLayout.addWidget(self.splitter)
+        self.alignmentViewer = QtWidgets.QTableWidget(self.splitter)
+        self.alignmentViewer.setObjectName("alignmentViewer")
+        self.alignmentViewer.setColumnCount(0)
+        self.alignmentViewer.setRowCount(0)
+        self.horizontalLayout.addWidget(self.splitter_2)
 
         self.retranslateUi(SchemaSelectorWidget)
         QtCore.QMetaObject.connectSlotsByName(SchemaSelectorWidget)
