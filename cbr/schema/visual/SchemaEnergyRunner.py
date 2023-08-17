@@ -182,7 +182,7 @@ class SchemaEnergyRunner(QWidget):
         crossovers : List[int]
     ):
 
-        offset = structure.get_structure_offset(structure_selection)
+        offset = list(sorted(structure.get_pdb_sequence_index(structure_selection).keys()))
         positions_seq = msa.get_relative_positions(
             msa.parse_alignments(parents_msa_location),
             msa.parse_alignments(structure_msa_location)
@@ -191,7 +191,7 @@ class SchemaEnergyRunner(QWidget):
         positions = dict((v,k) for k,v in enumerate(positions_seq))
 
         try:
-            return [positions[i - offset] for i in crossovers]
+            return [positions[offset[i]] for i in crossovers]
         except KeyError:
             raise Exception("The assembly points provided are not valid positions in the structure.")
 

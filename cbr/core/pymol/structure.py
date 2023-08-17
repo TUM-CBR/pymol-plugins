@@ -1,6 +1,6 @@
 import pymol
 
-from typing import NamedTuple, Optional
+from typing import Dict, NamedTuple, Optional
 
 class StructureSelection(NamedTuple):
     structure_name : str
@@ -23,15 +23,27 @@ def get_structure_query(structure_name : str, chain : 'str | None' = None) -> st
     else:
         return "model %s" % structure_name
 
-def get_selection_sequece(selection : str) -> str:
+def get_selection_sequence_index(selection : str) -> Dict[int, str]:
     result = []
 
     pymol.cmd.iterate(
         "%s & guide & alt +A" % selection,
-        'result.append(oneletter)',
-        space={'result': result}
+        'result.append((int(resi), oneletter))',
+        space={'result': result, 'int': int}
     )
-    return "".join(result)
+    return dict(result)
+
+def get_pdb_sequence_index(selection : StructureSelection) -> Dict[int, str]:
+    return get_selection_sequence_index(
+        selection.selection
+    )
+
+def get_selection_sequece(selection : str) -> str:
+    sequence = get_selection_sequence_index(selection)
+    return "".join(
+        sequence[k]
+        for k in sorted(sequence.keys())
+    )
 
 def get_pdb_sequence(selection : StructureSelection) -> str:
     return "".join(
@@ -43,18 +55,3 @@ def get_pdb_sequence(selection : StructureSelection) -> str:
         ) >= 0
         for name in buffer
     )
-
-def get_structure_offset(selection : StructureSelection) -> int:
-    offset = [None]
-    pymol.cmd.iterate(
-        selection.selection,
-        # if a protein has 999999999 residues, you probably
-        # have bigger problems in life than your PhD thesis
-        'offset[0] = min(resv, offset[0] or 999999999)',
-        space={'offset' : offset, 'min' : min}
-    )
-
-    if offset[0] is None:
-        raise Exception('The required structure "%s" has not been loaded' % selection.structure_name)
-
-    return offset[0]

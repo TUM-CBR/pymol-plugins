@@ -59,21 +59,4 @@ class SchemaAlignments(object):
         parents to the position that index corresponds in the structure.
         """
 
-        return next(i for i in self.__position_mappings[i:].__iter__() if i is not None)
-
-        main_parents_prefix = msa.remove_spacers(self.__main_parents_msa[0:i])
-        main_parents_prefix_pos = 0
-        result = 0
-
-        while(main_parents_prefix_pos < len(main_parents_prefix)):
-            parent_current = main_parents_prefix[main_parents_prefix_pos]
-            seq_current = self.__main_msa[result]
-            result += 1
-
-            if seq_current == parent_current:
-                main_parents_prefix_pos += 1
-            elif not msa.is_spacer(seq_current):
-                raise ValueError("The character '%s' is not a valid clustal character." % seq_current)
-
-        return len(msa.remove_spacers(self.__structure_msa[0:result - 1])) - 1
-
+        return self.__position_mappings[i]

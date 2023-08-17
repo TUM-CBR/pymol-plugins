@@ -61,7 +61,7 @@ class SchemaSelectorWidget(QWidget):
         results_viewer = self.__ui.resultsViewer
         results_viewer.clearContents()
         results_viewer.setRowCount(len(self.__result_items))
-        offset = structure.get_structure_offset(self.__result_selector)
+        mappings = structure.get_pdb_sequence_index(self.__result_selector)
 
         parents_msa = self.__result.parents_msa()
 
@@ -78,7 +78,7 @@ class SchemaSelectorWidget(QWidget):
             self.__ui.resultsViewer.setItem(row, 0, QTableWidgetItem(item.energy))
             self.__ui.resultsViewer.setItem(row, 1, QTableWidgetItem(item.mutations))
             self.__ui.resultsViewer.setItem(row, 2, QTableWidgetItem(" ".join(map(str, item.msa_shuffling_points))))
-            self.__ui.resultsViewer.setItem(row, 3, QTableWidgetItem(" ".join(map(str, item.shuffling_points(offset)))))
+            self.__ui.resultsViewer.setItem(row, 3, QTableWidgetItem(" ".join(map(str, item.shuffling_points(mappings)))))
 
             for (i, seq_name) in enumerate(parents_msa.keys()):
                 ix = i + 4
@@ -111,7 +111,7 @@ class SchemaSelectorWidget(QWidget):
 
     def __select_item(self, row):
         item = self.__result_items[row]
-        offset = structure.get_structure_offset(self.__result_selector)
+        offset = structure.get_pdb_sequence_index(self.__result_selector)
         shuffling_points = item.shuffling_points(offset)
 
         # Ensure that we color the whole structure so the last fragment

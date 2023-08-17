@@ -59,7 +59,7 @@ def clean_msa_blanks(msa_sequence : str) -> str:
         msa_sequence = msa_sequence.replace(blank, "")
     return msa_sequence
 
-def get_relative_positions(msa : Dict[str, str], sequence_msa : Dict[str, str]) -> 'Iterable[int | None]':
+def get_relative_positions(msa : Dict[str, str], join_msa : Dict[str, str]) -> Iterable[int]:
     """
     This is a function often used to compute positions in an MSA file relative to an arbitrary
     sequence. The idea is that two inputs are provided, an MSA with multiple sequences and an
@@ -70,33 +70,25 @@ def get_relative_positions(msa : Dict[str, str], sequence_msa : Dict[str, str]) 
     it means the position in the MSA file doesn't exactly match any position of the target
     sequence.
     """
-    link = next((x for x in sequence_msa.keys() if x in msa.keys()), None)
-    target = next((x for x in sequence_msa.keys() if x != link), None)
+    link = next((x for x in join_msa.keys() if x in msa.keys()))
+    target = next((x for x in join_msa.keys() if x != link))
+    link_seq_all = msa[link]
+    link_seq_join = join_msa[link]
+    target_seq_join = join_msa[target]
 
-    if link is None or target is None:
-        raise ValueError("The MSA and sequence MSA must have a common entry")
+    for i in range(len(link_seq_all)):
+        link_fragment_gaps = link_seq_all[0:i]
+        link_fragment = clean_msa_blanks(link_fragment_gaps)
+        canary = True
 
-    link_seq = sequence_msa[link]
+        for j in range(len(link_seq_join)):
+            join_fragment = link_seq_join[0:j]
+            if link_fragment == clean_msa_blanks(join_fragment):
+                target_fragment = target_seq_join[0:j]
+                ix = len(clean_msa_blanks(target_fragment)) - 1
+                yield ix
+                canary = False
+                break
 
-    def next_link_ix(i):
-        return next(
-            (j for (j,aa) in enumerate(link_seq) if j > i and not is_blank(aa)),
-            i)
-
-    link_ix = next_link_ix(-1)
-    target_seq = sequence_msa[target]
-
-    def get_target_ix():
-        ix = len(clean_msa_blanks(target_seq[0:link_ix + 1])) - 1
-        return max(0, ix)
-
-    for aa in msa[link]:
-        link_aa = link_seq[link_ix]
-
-        # Position in MSA and the sequence MSA match
-        # we yield and move the link_ix
-        if aa == link_aa:
-            yield get_target_ix()
-            link_ix = next_link_ix(link_ix)
-        else:
-            yield None
+        if canary:
+            raise Exception("The position %i of the msa could not be matched" % i)
