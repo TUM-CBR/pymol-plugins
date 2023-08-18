@@ -162,9 +162,16 @@ class SchemaSelectorWidget(QWidget):
             "model %s" % self.__result.structure_name
         )
 
-        e = 0
+        structure_start = min(offset.keys())
+        visiable_sp = [
+            (i,sp)
+            for i,sp in enumerate(shuffling_points)
+            if sp > structure_start
+        ]
+        e = structure_start - 1
 
-        for (i,loc) in enumerate(shuffling_points):
+        for (i,loc) in visiable_sp:
+
             s = e + 1
             e = loc
             sele = "(model %s) and (resi %i-%i)" % (self.__result.structure_name, s, e)
