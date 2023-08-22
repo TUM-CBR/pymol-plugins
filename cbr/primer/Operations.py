@@ -1,6 +1,6 @@
-from typing import Iterable, NamedTuple, Optional, Sequence, Tuple
+from typing import Dict, Iterable, NamedTuple, Optional, Tuple
 
-from .Primer3 import Primer3
+from .MeltingTemp import MeltingTemp
 
 CODON_SIZE = 3
 
@@ -12,16 +12,19 @@ class PrimerResult(NamedTuple):
     inner_seq : str
     tm_all : float
 
-    @staticmethod
-    def __get_error(target_tm : float, result : 'PrimerResult') -> float:
+    def __get_error(self, target_tm : float) -> float:
         return sum([
-            abs(result.tm_left - target_tm),
-            abs(result.tm_right - target_tm),
-            abs(result.tm_all - target_tm)
+            abs(self.tm_left - target_tm),
+            abs(self.tm_right - target_tm),
+            abs(self.tm_all - target_tm)
         ])
 
-    def is_worse_than(self, target_tm : float, other : 'PrimerResult'):
-        return self.__get_error(target_tm, self) > self.__get_error(target_tm, other)
+    @staticmethod
+    def choose_best(target_tm : float, opt1 : 'PrimerResult', opt2 : 'PrimerResult') -> 'PrimerResult':
+        if opt1.__get_error(target_tm) < opt2.__get_error(target_tm):
+            return opt1
+        else:
+            return opt2
 
 class Operations:
 
@@ -34,20 +37,23 @@ class Operations:
         min_lenght : int
         max_length : int
 
-        def design_primers(self):
-            pass
+        def design_primers(self) -> Iterable[Dict[str, PrimerResult]]:
 
-        def design_primer_at(self, position : int):
-            primer3 = self.operations.primer3
+            for i in range(self.start, self.count):
+                yield self.design_primer_at(i)
+
+        def design_primer_at(self, position : int) -> Dict[str, PrimerResult]:
+            tm_calc = self.operations.tm_calc
             results = {}
 
-            for (p_left, _, p_right) in self.generate_primers_at(position):
-                tm_left = primer3.oligo_tm(p_left)
-                tm_right = primer3.oligo_tm(p_right)
+            for (p_left, o_codon, p_right) in self.generate_primers_at(position):
+                tm_left = tm_calc.oligo_tm(p_left)
+                tm_right = tm_calc.oligo_tm(p_right)
 
                 for aa,codons in CODONS.items():
                     codon = codons[0]
-                    tm_all = primer3.oligo_tm(p_left + codon + p_right)
+                    seq = p_left + o_codon + p_right
+                    tm_all = tm_calc.oligo_tm_mis(seq, {len(seq): codon})
                     result = PrimerResult(
                         left_primer=p_left,
                         tm_left=tm_left,
@@ -57,8 +63,10 @@ class Operations:
                         tm_all=tm_all
                     )
 
+                    best_result = results.get(aa) or result
+                    results[aa] = PrimerResult.choose_best(self.tm, best_result, result)
 
-            pass
+            return results
 
         def generate_primers_at(
             self,
@@ -78,12 +86,12 @@ class Operations:
                             self.sequence[count:r_start]
                         )
 
-    def __init__(self, primer3 : Optional[Primer3]):
-        self.__primer3 = primer3 or Primer3()
+    def __init__(self, tm_calc : Optional[MeltingTemp]):
+        self.__tm_calc = tm_calc or MeltingTemp()
 
     @property
-    def primer3(self) -> Primer3:
-        return self.__primer3
+    def tm_calc(self) -> MeltingTemp:
+        return self.__tm_calc
 
     def design_primers(
         self,
@@ -91,18 +99,17 @@ class Operations:
         tm : float,
         start : int,
         count : int
-    ):
-
-        pass
-
-    def __design_primers_at_position(
-        self,
-        args : DesignPrimersArgs,
-        position : int
-    ):
+    ) -> Iterable[Dict[str, PrimerResult]]:
         
+        return Operations.DesignPrimers(
+            sequence=sequence,
+            tm=tm,
+            start=start,
+            count=count,
+            min_lenght=6,
+            max_length=36
+        ).design_primers()
 
-        pass
 
 CODONS = {
   "Alanine": ["GCT", "GCC", "GCA", "GCG"],
