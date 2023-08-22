@@ -1,7 +1,7 @@
 from io import StringIO
 from typing import Callable, Set
 from PyQt5.QtCore import pyqtSlot
-from PyQt5.QtWidgets import QAction, QApplication, QMenu, QTableWidget
+from PyQt5.QtWidgets import QAction, QApplication, QMenu, QMessageBox, QTableWidget, QWidget
 
 def open_copy_context_menu(qtable : QTableWidget, pos):
 
@@ -62,3 +62,17 @@ def copy_qtable_to_clipboard(table_widget : QTableWidget):
 
         clipboard = QApplication.clipboard()
         clipboard.setText(copied_data)
+
+def show_error(
+    parent : QWidget,
+    title : str,
+    description : str = '',
+    window_title : str = 'Error'
+):
+    error_dialog = QMessageBox(parent)
+    error_dialog.setIcon(QMessageBox.Critical)
+    error_dialog.setWindowTitle(window_title)
+    error_dialog.setText(title)
+    error_dialog.setInformativeText(description)
+    error_dialog.setStandardButtons(QMessageBox.Ok)
+    error_dialog.exec_()
