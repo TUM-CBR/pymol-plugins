@@ -36,10 +36,6 @@ class PrimerDesign(QWidget):
         except ValueError:
             show_error(self, "Enter a valid Tm")
             return
-        
-
-
-        
 
 invalid_sequence_error =\
 """The sequence must only consists of C,T,G,A and must contain a region surrounded
