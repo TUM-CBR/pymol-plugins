@@ -1,13 +1,44 @@
 from . import resources # pyright: ignore
 
-from PyQt5.QtCore import pyqtSlot
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont, QPixmap
+from PyQt5.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QLayout, QSizePolicy, QSpacerItem, QWidget, QVBoxLayout
+from os import path
+from typing import Any, Callable, NamedTuple
 
 from ..core.Context import Context
 from ..chimeras import Applications as Chimeras
 from ..msa import Applications as Msa
 from ..schema import Applications as Schema
-from .Ui_Main import Ui_Main
+from .AppIcon import AppIcon
+
+class AppDefinition(NamedTuple):
+    icon : str
+    text : str
+    init : Callable[[Context], Any]
+
+APP_DEFINITIONS = [
+    AppDefinition(
+        icon = "schema.png",
+        text = "SCHEMA RASPP",
+        init = Schema.schema_raspp
+    ),
+    AppDefinition(
+        icon = "schema.png",
+        text = "SCHEMA Energy",
+        init = Schema.schema_energy
+    ),
+    AppDefinition(
+        icon = "msa.png",
+        text = "MSA Viewer",
+        init = Msa.msa_viewer
+    ),
+    AppDefinition(
+        icon = "chimeras.jpg",
+        text = "Chimeras Generator",
+        init = Chimeras.chimeras_generator
+    )
+]
 
 class Main(QWidget):
 
@@ -15,25 +46,62 @@ class Main(QWidget):
         super().__init__(*args, **kwargs)
 
         self.__context = context
-        self.__ui = Ui_Main()
-        self.__ui.setupUi(self)
+        self.__init_ui()
 
-    @pyqtSlot()
-    def on_schemaRasppButton_clicked(self):
-        print("starting raspp")
-        Schema.schema_raspp(self.__context)
+    def __get_image_path(self, name : str) -> str:
+        return path.join(
+            path.dirname(__file__),
+            "resources",
+            name
+        )
 
-    @pyqtSlot()
-    def on_msaViewerButton_clicked(self):
-        print("starting msa viewer")
-        Msa.msa_viewer(self.__context)
+    def __init_ui(self):
 
-    @pyqtSlot()
-    def on_schemaEnergyButton_clicked(self):
-        print("starting schema energy")
-        Schema.schema_energy(self.__context)
+        main_layout = QVBoxLayout()
 
-    @pyqtSlot()
-    def on_chimerasButton_clicked(self):
-        print("Starting chimeras")
-        Chimeras.chimeras_generator(self.__context)
+        title_layout = QHBoxLayout()
+
+        pixmap = QPixmap(self.__get_image_path("tumcs.png"))
+        pixmap = pixmap.scaledToWidth(160, Qt.SmoothTransformation)
+        image_label = QLabel()
+        image_label.setPixmap(pixmap)
+        title_layout.addWidget(image_label)
+
+        label = QLabel()
+        font = QFont()
+        font.setPointSize(28)
+        font.setBold(True)
+        label.setFont(font)
+        label.setText("CBR Bioinformatics Tools")
+
+        title_layout.addWidget(label)
+        title_layout.addItem(
+            QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Expanding)
+        )
+
+        main_layout.addLayout(title_layout)
+
+        apps_layout = QGridLayout()
+
+        for i,app_definition in enumerate(APP_DEFINITIONS):
+             self.__add_app(i, app_definition, apps_layout)
+
+        main_layout.addLayout(apps_layout)
+        main_layout.addItem(
+            QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Expanding)
+        )
+
+        self.setLayout(main_layout)
+
+
+    def __add_app(self, i: int, app_definition : AppDefinition, apps_layout : QLayout):
+            columns = 4
+            row = int(i / columns)
+            col = i % columns
+            icon = self.__get_image_path(app_definition.icon)
+
+            def __init_app__():
+                 app_definition.init(self.__context)
+
+            app_icon = AppIcon(app_definition.text, icon, __init_app__)
+            apps_layout.addWidget(app_icon, row, col)

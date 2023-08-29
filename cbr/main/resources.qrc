@@ -1,8 +1,0 @@
-<RCC>
-    <qresource prefix="/">
-        <file>resources/schema.png</file>
-        <file>resources/tumcs.png</file>
-        <file>resources/msa.png</file>
-        <file>resources/chimeras.jpg</file>
-    </qresource>
-</RCC>

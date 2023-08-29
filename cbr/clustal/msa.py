@@ -70,18 +70,18 @@ def get_relative_positions(msa : Dict[str, str], join_msa : Dict[str, str]) -> I
     it means the position in the MSA file doesn't exactly match any position of the target
     sequence.
     """
-    link = next((x for x in join_msa.keys() if x in msa.keys()))
-    target = next((x for x in join_msa.keys() if x != link))
+    link = next(x for x in join_msa.keys() if x in msa.keys())
+    target = next(x for x in join_msa.keys() if x != link)
     link_seq_all = msa[link]
     link_seq_join = join_msa[link]
     target_seq_join = join_msa[target]
 
-    for i in range(len(link_seq_all)):
+    for i in range(len(link_seq_all) + 1):
         link_fragment_gaps = link_seq_all[0:i]
         link_fragment = clean_msa_blanks(link_fragment_gaps)
         canary = True
 
-        for j in range(len(link_seq_join)):
+        for j in range(len(link_seq_join) + 1):
             join_fragment = link_seq_join[0:j]
             if link_fragment == clean_msa_blanks(join_fragment):
                 target_fragment = target_seq_join[0:j]
@@ -91,4 +91,7 @@ def get_relative_positions(msa : Dict[str, str], join_msa : Dict[str, str]) -> I
                 break
 
         if canary:
+            print("Link fragment %s" % link_fragment)
+            print("join fragment %s" % join_fragment)
+            print("link seq join %s" % link_seq_join)
             raise Exception("The position %i of the msa could not be matched" % i)
