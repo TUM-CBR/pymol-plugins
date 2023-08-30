@@ -21,7 +21,15 @@ class PrimerDesign(QWidget):
         self.__ui.designPrimersButton.clicked.connect(self.__on_design_primers)
         self.__ui.desiredTm.setValidator(QDoubleValidator(0, 100, 2))
 
-    @pyqtSlot
+    def __get_target_tm(self) -> Optional[float]:
+
+        try:
+            return float(self.__ui.desiredTm.text())
+        except ValueError:
+            show_error(self, "Enter a valid Tm")
+            return None
+
+    @pyqtSlot()
     def __on_design_primers(self):
 
         sequence = self.__ui.sequenceInputText.toPlainText()
@@ -31,10 +39,24 @@ class PrimerDesign(QWidget):
             show_error(self, "Invalid sequence", description=invalid_sequence_error)
             return
 
+        target_tm = self.__get_target_tm()
+        if target_tm is None:
+            return
+
         try:
-            target_tm = float(self.__ui.desiredTm.text())
-        except ValueError:
-            show_error(self, "Enter a valid Tm")
+            left = sections.group('left')
+            design = sections.group('design')
+            right = sections.group('right')
+            results = self.__operations.design_primers(
+                left + design + right,
+                target_tm,
+                len(left),
+                len(design)
+            )
+            print(list(results))
+            pass
+        except Exception as e:
+            show_error(self, "Error: %s" % str(e))
             return
 
 invalid_sequence_error =\

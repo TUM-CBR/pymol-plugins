@@ -9,6 +9,7 @@ from typing import Any, Callable, NamedTuple
 from ..core.Context import Context
 from ..chimeras import Applications as Chimeras
 from ..msa import Applications as Msa
+from ..primer import Applications as Primer
 from ..schema import Applications as Schema
 from .AppIcon import AppIcon
 
@@ -37,6 +38,11 @@ APP_DEFINITIONS = [
         icon = "chimeras.jpg",
         text = "Chimeras Generator",
         init = Chimeras.chimeras_generator
+    ),
+    AppDefinition(
+        icon = "primer.png",
+        text = "Primers Calculator",
+        init = Primer.primer_generator
     )
 ]
 

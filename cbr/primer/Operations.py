@@ -10,13 +10,14 @@ class PrimerResult(NamedTuple):
     right_primer : str
     tm_right : float
     inner_seq : str
-    tm_all : float
+    tm_all : Optional[float]
+    tm_error : Optional[str]
 
     def __get_error(self, target_tm : float) -> float:
         return sum([
             abs(self.tm_left - target_tm),
             abs(self.tm_right - target_tm),
-            abs(self.tm_all - target_tm)
+            abs(self.tm_all or 0 - target_tm)
         ])
 
     @staticmethod
@@ -37,9 +38,13 @@ class Operations:
         min_lenght : int
         max_length : int
 
+        @property
+        def __step(self):
+            return CODON_SIZE
+
         def design_primers(self) -> Iterable[Dict[str, PrimerResult]]:
 
-            for i in range(self.start, self.count):
+            for i in range(self.start, self.start + self.count, self.__step):
                 yield self.design_primer_at(i)
 
         def design_primer_at(self, position : int) -> Dict[str, PrimerResult]:
@@ -53,14 +58,21 @@ class Operations:
                 for aa,codons in CODONS.items():
                     codon = codons[0]
                     seq = p_left + o_codon + p_right
-                    tm_all = tm_calc.oligo_tm_mis(seq, {len(seq): codon})
+                    tm_error = None
+
+                    try:
+                        tm_all = tm_calc.oligo_tm_mis(seq, {len(p_left): codon})
+                    except Exception as e:
+                        tm_all = None
+                        tm_error = str(e)
                     result = PrimerResult(
                         left_primer=p_left,
                         tm_left=tm_left,
                         right_primer=p_right,
                         tm_right=tm_right,
                         inner_seq=codon,
-                        tm_all=tm_all
+                        tm_all=tm_all,
+                        tm_error=tm_error
                     )
 
                     best_result = results.get(aa) or result
@@ -72,21 +84,22 @@ class Operations:
             self,
             position : int,
         ) -> Iterable[Tuple[str, str, str]]:
-            count = CODON_SIZE
+            count = self.__step
 
             for i in range(self.min_lenght, self.max_length):
                 for j in range(self.min_lenght, self.max_length):
                     l_start = position - i
-                    r_start = position + count + j
+                    r_start = position + count
+                    r_end = position + count + j
 
                     if l_start > 0 and r_start < len(self.sequence):
                         yield (
                             self.sequence[l_start:position],
-                            self.sequence[position:count],
-                            self.sequence[count:r_start]
+                            self.sequence[position:r_start],
+                            self.sequence[r_start:r_end]
                         )
 
-    def __init__(self, tm_calc : Optional[MeltingTemp]):
+    def __init__(self, tm_calc : Optional[MeltingTemp] = None):
         self.__tm_calc = tm_calc or MeltingTemp()
 
     @property
@@ -107,7 +120,8 @@ class Operations:
             start=start,
             count=count,
             min_lenght=6,
-            max_length=36
+            max_length=36,
+            operations=self
         ).design_primers()
 
 
@@ -131,6 +145,5 @@ CODONS = {
   "Threonine": ["ACT", "ACC", "ACA", "ACG"],
   "Tryptophan": ["TGG"],
   "Tyrosine": ["TAT", "TAC"],
-  "Valine": ["GTT", "GTC", "GTA", "GTG"],
-  "Stop Codon": ["TAA", "TAG", "TGA"]
+  "Valine": ["GTT", "GTC", "GTA", "GTG"]
 }
