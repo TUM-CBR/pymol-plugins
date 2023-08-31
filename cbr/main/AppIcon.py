@@ -35,7 +35,7 @@ class AppIcon(QWidget):
         text_label.setAlignment(Qt.AlignCenter)
 
         font = QFont()
-        font.setPointSize(12)
+        font.setPointSize(10)
         font.setBold(True)
         text_label.setFont(font)
 

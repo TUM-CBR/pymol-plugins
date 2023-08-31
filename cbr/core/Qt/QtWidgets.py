@@ -1,7 +1,8 @@
+from concurrent.futures import Future
 from io import StringIO
-from typing import Callable, Set
-from PyQt5.QtCore import pyqtSlot
-from PyQt5.QtWidgets import QAction, QApplication, QMenu, QMessageBox, QTableWidget, QWidget
+from typing import Callable, Generic, Iterable, Set, TypeVar
+from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
+from PyQt5.QtWidgets import QAction, QApplication, QMenu, QMessageBox, QProgressBar, QTableWidget, QWidget
 
 def open_copy_context_menu(qtable : QTableWidget, pos):
 
@@ -76,3 +77,77 @@ def show_error(
     error_dialog.setInformativeText(description)
     error_dialog.setStandardButtons(QMessageBox.Ok)
     error_dialog.exec_()
+
+def show_exception(
+    parent : QWidget,
+    exn : Exception
+):
+    return show_error(
+        parent,
+        title=exn.__class__.__name__,
+        description=str(exn)
+    )
+
+TResult = TypeVar('TResult')
+
+class ProgressManager(QObject, Generic[TResult]):
+
+    on_result = pyqtSignal(object)
+    on_exception = pyqtSignal(Exception)
+
+    def __init__(
+        self,
+        progress : QProgressBar,
+        disable : Iterable[QWidget] = []
+    ):
+
+        super(ProgressManager, self).__init__()
+        self.__progress = progress
+        self.__disable = list(disable)
+        self.__set_ready()
+
+    def __set_ready(self):
+        self.__progress.setVisible(False)
+
+        for widget in self.__disable:
+            widget.setEnabled(True)
+
+    def __set_busy(self):
+        self.__progress.reset()
+        self.__progress.setMinimum(0)
+        self.__progress.setMaximum(0)
+        self.__progress.setVisible(True)
+
+        for widget in self.__disable:
+            widget.setEnabled(False)
+
+    def __notify_future(self, future : 'Future[TResult]') -> bool:
+
+        if not future.done():
+            return False
+
+        exception = future.exception()
+        if exception:
+            self.on_exception.emit(exception)
+        else:
+            self.on_result.emit(future.result())
+
+        return True
+
+    def watch_progress(self, result : 'Future[TResult]'):
+
+        if self.__notify_future(result):
+            return
+
+        def __done__(_):
+            self.__set_ready()
+            self.__notify_future(result)
+
+        result.add_done_callback(__done__)
+        self.__set_busy()
+
+def progress_manager(
+    progress : QProgressBar,
+    *disable : QWidget
+):
+    return ProgressManager(progress, disable)

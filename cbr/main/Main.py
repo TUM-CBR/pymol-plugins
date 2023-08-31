@@ -2,7 +2,7 @@ from . import resources # pyright: ignore
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QPixmap
-from PyQt5.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QLayout, QSizePolicy, QSpacerItem, QWidget, QVBoxLayout
+from PyQt5.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QSizePolicy, QSpacerItem, QWidget, QVBoxLayout
 from os import path
 from typing import Any, Callable, NamedTuple
 
@@ -41,7 +41,7 @@ APP_DEFINITIONS = [
     ),
     AppDefinition(
         icon = "primer.png",
-        text = "Primers Calculator",
+        text = "Primers Designer",
         init = Primer.primer_generator
     )
 ]
@@ -100,7 +100,7 @@ class Main(QWidget):
         self.setLayout(main_layout)
 
 
-    def __add_app(self, i: int, app_definition : AppDefinition, apps_layout : QLayout):
+    def __add_app(self, i: int, app_definition : AppDefinition, apps_layout : QGridLayout):
             columns = 4
             row = int(i / columns)
             col = i % columns

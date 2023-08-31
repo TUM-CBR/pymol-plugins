@@ -15,7 +15,7 @@ class MeltingTemp:
     def oligo_tm(self, seq : str) -> float:
         return self.__oligo_tm_nn(seq)
     
-    def oligo_tm_mis(self, seq : str, mismatches : Dict[int, str]) -> float:
+    def __oligo_tm_mis(self, seq : str, mismatches : Dict[int, str]) -> float:
 
         with StringIO(seq) as m_seq:
 
@@ -27,3 +27,19 @@ class MeltingTemp:
             c_seq = str(Seq(m_seq.read()).complement())
 
         return self.__oligo_tm_nn(seq, c_seq=c_seq)
+
+    def oligo_tm_mis(self, seq : str, mismatches : Dict[int, str]) -> float:
+        try:
+            return self.__oligo_tm_mis(seq, mismatches)
+        except ValueError:
+            # NO thermodynamic data, we will use an aproximation
+            pass
+
+        tm_base = self.__oligo_tm_mis(seq, {})
+        tm_losses = [
+            tm_base - self.__oligo_tm_mis(seq, {k + i: b})
+            for k,v in mismatches.items()
+            for i,b in enumerate(v)
+        ]
+
+        return tm_base - sum(tm_losses) / len(tm_losses)

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>600</height>
+    <width>801</width>
+    <height>608</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,8 +18,14 @@
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
       <widget class="QLabel" name="label">
+       <property name="styleSheet">
+        <string notr="true">font: bold</string>
+       </property>
        <property name="text">
         <string>DNA Sequence</string>
+       </property>
+       <property name="textFormat">
+        <enum>Qt::PlainText</enum>
        </property>
       </widget>
      </item>
@@ -42,6 +48,23 @@
         </size>
        </property>
       </spacer>
+     </item>
+     <item>
+      <widget class="QProgressBar" name="primerDesignProgress">
+       <property name="value">
+        <number>24</number>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_3">
+       <property name="text">
+        <string>Organism</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="organismCombo"/>
      </item>
      <item>
       <widget class="QLabel" name="label_2">

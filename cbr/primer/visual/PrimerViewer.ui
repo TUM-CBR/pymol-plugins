@@ -13,9 +13,9 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout" stretch="1,0">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="3,0">
    <item>
-    <widget class="QTableWidget" name="sequenceTable"/>
+    <widget class="QWidget" name="resultsWidget" native="true"/>
    </item>
    <item>
     <widget class="QTableWidget" name="primersTable"/>
