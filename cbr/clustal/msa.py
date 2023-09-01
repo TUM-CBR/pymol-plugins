@@ -91,7 +91,4 @@ def get_relative_positions(msa : Dict[str, str], join_msa : Dict[str, str]) -> I
                 break
 
         if canary:
-            print("Link fragment %s" % link_fragment)
-            print("join fragment %s" % join_fragment)
-            print("link seq join %s" % link_seq_join)
             raise Exception("The position %i of the msa could not be matched" % i)
