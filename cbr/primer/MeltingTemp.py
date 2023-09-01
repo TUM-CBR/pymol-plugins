@@ -42,4 +42,4 @@ class MeltingTemp:
             for i,b in enumerate(v)
         ]
 
-        return tm_base - sum(tm_losses) / len(tm_losses)
+        return tm_base - sum(tm_losses)

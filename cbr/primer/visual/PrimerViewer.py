@@ -1,16 +1,20 @@
 from PyQt5.QtCore import pyqtSlot
-from PyQt5.QtGui import QColor
+from PyQt5.QtGui import QColor, QDoubleValidator
 from PyQt5.QtWidgets import QTableWidgetItem, QVBoxLayout, QWidget
-from typing import List
+from typing import Dict, Iterable, List
 
+from ...core.Qt.QtCore import run_in_thread
+from ...core.Qt.QtWidgets import progress_manager
 from ...core.typing import from_just
 
-from ..Operations import DesignPrimersResult
+from ..Operations import DesignPrimersResult, PrimerResult
 
 from .PrimerResultViewer import PrimerResultContext, PrimerResultViewer
 from .Ui_PrimerViewer import Ui_PrimerViewer
 
 K_ITEM_DATA_ROLE = 1
+
+DesignPrimersFilteredResult = Dict[str, PrimerResult]
 
 class PrimerViewer(QWidget):
 
@@ -30,10 +34,77 @@ class PrimerViewer(QWidget):
         layout.addWidget(self.__primer_viewer)
         self.__ui.resultsWidget.setLayout(layout)
 
-        self.__results = results
-        self.__render_results()
+        self.__ui.tmEdit.setValidator(QDoubleValidator(0, 100, 2))
+        self.__ui.tmEdit.setText("65.00")
+        self.__ui.tmWeightEdit.setValidator(QDoubleValidator(0,100,2))
+        self.__ui.tmWeightEdit.setText("1.00")
+        self.__ui.tmPrimersEdit.setValidator(QDoubleValidator(0,100,2))
+        self.__ui.tmPrimersEdit.setText("45.00")
+        self.__ui.tmPrimersWeightEdit.setValidator(QDoubleValidator(0,100,2))
+        self.__ui.tmPrimersWeightEdit.setText("1.00")
+        self.__ui.tmDeltaWeightEdit.setValidator(QDoubleValidator(0,100,2))
+        self.__ui.tmDeltaWeightEdit.setText("1.00")
+        self.__ui.selectButton.clicked.connect(self.__on_select_primers)
 
+        self.__results = results
+
+        self.__progress = progress_manager(
+            self.__ui.filterProgress,
+            self.__ui.selectButton
+        )
+        self.__progress.with_default_error_handler(self)
+        self.__progress.on_result.connect(self.__render_results)
         self.__ui.primersTable.itemSelectionChanged.connect(self.__on_item_selection_changed)
+
+    @pyqtSlot()
+    def __on_select_primers(self):
+
+        self.__progress.watch_progress(
+            self.__select_primers(
+                float(self.__ui.tmEdit.text()),
+                float(self.__ui.tmWeightEdit.text()),
+                float(self.__ui.tmPrimersEdit.text()),
+                float(self.__ui.tmPrimersWeightEdit.text()),
+                float(self.__ui.tmDeltaWeightEdit.text())
+            )
+        )
+
+    @run_in_thread
+    def __select_primers(
+        self,
+        tm : float,
+        wTm : float,
+        pTm : float,
+        wPTm : float,
+        wTmDelta : float
+    ) -> List[DesignPrimersFilteredResult]:
+
+        def select_best(primers : List[PrimerResult]) -> PrimerResult:
+
+            primer = primers[0]
+
+            for candidate in primers[1:]:
+                primer = PrimerResult.choose_best(
+                    primer,
+                    candidate,
+                    tm,
+                    wTm,
+                    pTm,
+                    wPTm,
+                    wTmDelta
+                )
+            
+            return primer
+
+        def select_primers_iterator() -> Iterable[DesignPrimersFilteredResult]:
+
+            for result in self.__results:
+                yield dict(
+                    (resi, select_best(primers))
+                    for resi, primers in result.items()
+                )
+
+        return list(select_primers_iterator())
 
     @pyqtSlot()
     def __on_item_selection_changed(self):
@@ -51,9 +122,9 @@ class PrimerViewer(QWidget):
             )
         )
 
-    def __render_results(self):
+    @pyqtSlot(object)
+    def __render_results(self, results : List[DesignPrimersFilteredResult]):
         table = self.__ui.primersTable
-        results = self.__results
         total_rows = sum(
             len(result) for result in results
         )

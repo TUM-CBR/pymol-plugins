@@ -67,23 +67,6 @@
       <widget class="QComboBox" name="organismCombo"/>
      </item>
      <item>
-      <widget class="QLabel" name="label_2">
-       <property name="text">
-        <string>Desired Tm</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLineEdit" name="desiredTm">
-       <property name="maximumSize">
-        <size>
-         <width>50</width>
-         <height>16777215</height>
-        </size>
-       </property>
-      </widget>
-     </item>
-     <item>
       <widget class="QPushButton" name="designPrimersButton">
        <property name="text">
         <string>Design Primers</string>

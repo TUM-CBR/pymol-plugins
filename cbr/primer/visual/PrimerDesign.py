@@ -1,5 +1,4 @@
 from PyQt5.QtCore import pyqtSlot
-from PyQt5.QtGui import QDoubleValidator
 from PyQt5.QtWidgets import QWidget
 import re
 from typing import List, NamedTuple, Optional
@@ -31,7 +30,6 @@ class PrimerDesign(QWidget):
         self.__context = context
 
         self.__ui.designPrimersButton.clicked.connect(self.__on_design_primers)
-        self.__ui.desiredTm.setValidator(QDoubleValidator(0, 100, 2))
         self.__progress = progress_manager(
             self.__ui.primerDesignProgress,
             self.__ui.designPrimersButton
@@ -39,14 +37,6 @@ class PrimerDesign(QWidget):
         self.__progress.on_result.connect(self.__on_design_primers_result)
         self.__progress.on_exception.connect(self.__on_design_primers_error)
         self.__ui.organismCombo.addItems(CODONS_MAP.keys())
-
-    def __get_target_tm(self) -> Optional[float]:
-
-        try:
-            return float(self.__ui.desiredTm.text())
-        except ValueError:
-            show_error(self, "Enter a valid Tm")
-            return None
 
     def __get_organism(self) -> Optional[PrimerOrganism]:
         organism = self.__ui.organismCombo.currentText()
@@ -70,21 +60,17 @@ class PrimerDesign(QWidget):
     @pyqtSlot()
     def __on_design_primers(self):
         sequence = self.__ui.sequenceInputText.toPlainText()
-        target_tm = self.__get_target_tm()
-        if target_tm is None:
-            return
         organism = self.__get_organism()
         if organism is None:
             return
 
-        result = self.__design_primers(sequence, target_tm, organism)
+        result = self.__design_primers(sequence, organism)
         self.__progress.watch_progress(result)
         
     @run_in_thread
     def __design_primers(
         self,
         raw_sequence : str,
-        target_tm : float,
         organism : PrimerOrganism
     ) -> PrimersDesign:
 
@@ -99,7 +85,6 @@ class PrimerDesign(QWidget):
         sequence = left + design + right
         results = self.__operations.design_primers(
             sequence,
-            target_tm,
             len(left),
             len(design),
             organism

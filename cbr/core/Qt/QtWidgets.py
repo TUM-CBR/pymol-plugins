@@ -146,6 +146,14 @@ class ProgressManager(QObject, Generic[TResult]):
         result.add_done_callback(__done__)
         self.__set_busy()
 
+    def with_default_error_handler(self, widget : QWidget):
+
+        @pyqtSlot()
+        def __handle_error__(exn : Exception):
+            show_exception(widget, exn)
+
+        self.on_exception.connect(__handle_error__)
+
 def progress_manager(
     progress : QProgressBar,
     *disable : QWidget

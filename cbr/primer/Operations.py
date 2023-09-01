@@ -1,6 +1,6 @@
 from typing_extensions import Literal
 from Bio.Seq import Seq
-from typing import Dict, Iterable, NamedTuple, Optional, Tuple
+from typing import Dict, Iterable, List, NamedTuple, Optional, Tuple
 
 from .MeltingTemp import MeltingTemp
 
@@ -20,21 +20,50 @@ class PrimerResult(NamedTuple):
     def __get_penalty(self, target_tm : float, primer_tm : float):
         return abs(target_tm - primer_tm)
 
-    def __get_error(self, target_tm : float) -> float:
+    def __get_error(
+        self,
+        target_tm : float,
+        w_target_tm : float,
+        primers_tm : float,
+        w_primers_tm : float,
+        w_tm_delta : float
+    ) -> float:
 
         return sum([
-            3*self.__get_penalty(target_tm, self.tm_left),
-            3*self.__get_penalty(target_tm, self.tm_right),
-            5*abs(self.tm_left - self.tm_right),
-            17*(self.tm_all and abs(self.tm_all - target_tm) or 0)
+            w_primers_tm*self.__get_penalty(primers_tm, self.tm_left),
+            w_primers_tm*self.__get_penalty(primers_tm, self.tm_right),
+            w_tm_delta*abs(self.tm_left - self.tm_right),
+            w_target_tm*(self.tm_all and abs(self.tm_all - target_tm) or 0)
         ])
 
     @staticmethod
-    def choose_best(target_tm : float, opt1 : 'PrimerResult', opt2 : 'PrimerResult') -> 'PrimerResult':
-        if opt1.__get_error(target_tm) < opt2.__get_error(target_tm):
-            return opt1
-        else:
+    def choose_best(
+        opt1 : 'PrimerResult',
+        opt2 : 'PrimerResult',
+        target_tm : float,
+        w_target_tm : float,
+        primers_tm : float,
+        w_primers_tm : float,
+        w_tm_delta : float
+    ) -> 'PrimerResult':
+        score_opt1 = opt1.__get_error(
+            target_tm,
+            w_target_tm,
+            primers_tm,
+            w_primers_tm,
+            w_tm_delta
+        )
+        score_opt2 = opt2.__get_error(
+            target_tm,
+            w_target_tm,
+            primers_tm,
+            w_primers_tm,
+            w_tm_delta
+        )
+        if score_opt2 < score_opt1:
             return opt2
+        else:
+            return opt1
 
     @property
     def c_left_primer(self):
@@ -48,7 +77,7 @@ class PrimerResult(NamedTuple):
     def c_inner(self):
         return str(Seq(self.inner_seq).complement())
 
-DesignPrimersResult = Dict[str, PrimerResult]
+DesignPrimersResult = Dict[str, List[PrimerResult]]
 DesignPrimersResults = Iterable[DesignPrimersResult]
 
 class Operations:
@@ -56,7 +85,6 @@ class Operations:
     class DesignPrimers(NamedTuple):
         operations : 'Operations'
         sequence : str
-        tm : float
         start : int
         count : int
         min_lenght : int
@@ -67,41 +95,41 @@ class Operations:
         def __step(self):
             return CODON_SIZE
 
-        def design_primers(self) -> Iterable[Dict[str, PrimerResult]]:
+        def design_primers(self) -> DesignPrimersResults:
 
             for i in range(self.start, self.start + self.count, self.__step):
                 yield self.design_primer_at(i)
 
-        def design_primer_at(self, position : int) -> Dict[str, PrimerResult]:
+        def design_primer_at(self, position : int) -> DesignPrimersResult:
             tm_calc = self.operations.tm_calc
-            results = {}
+            results : DesignPrimersResult = {}
 
-            for (p_left, o_codon, p_right) in self.generate_primers_at(position):
-                tm_left = tm_calc.oligo_tm(p_left)
-                tm_right = tm_calc.oligo_tm(p_right)
+            for aa,codon in self.codons.items():
 
-                for aa,codons in self.codons.items():
-                    codon = codons
-                    seq = p_left + o_codon + p_right
-                    tm_error = None
+                def get_primers_for_codon() -> Iterable[PrimerResult]:
+                    for (p_left, o_codon, p_right) in self.generate_primers_at(position):
+                        tm_left = tm_calc.oligo_tm(p_left)
+                        tm_right = tm_calc.oligo_tm(p_right)
 
-                    try:
-                        tm_all = tm_calc.oligo_tm_mis(seq, {len(p_left): codon})
-                    except Exception as e:
-                        tm_all = None
-                        tm_error = str(e)
-                    result = PrimerResult(
-                        left_primer=p_left,
-                        tm_left=tm_left,
-                        right_primer=p_right,
-                        tm_right=tm_right,
-                        inner_seq=codon,
-                        tm_all=tm_all,
-                        tm_error=tm_error
-                    )
+                        seq = p_left + o_codon + p_right
+                        tm_error = None
 
-                    best_result = results.get(aa) or result
-                    results[aa] = PrimerResult.choose_best(self.tm, best_result, result)
+                        try:
+                            tm_all = tm_calc.oligo_tm_mis(seq, {len(p_left): codon})
+                        except Exception as e:
+                            tm_all = None
+                            tm_error = str(e)
+                        yield PrimerResult(
+                            left_primer=p_left,
+                            tm_left=tm_left,
+                            right_primer=p_right,
+                            tm_right=tm_right,
+                            inner_seq=codon,
+                            tm_all=tm_all,
+                            tm_error=tm_error
+                        )
+
+                results[aa] = list(get_primers_for_codon())
 
             return results
 
@@ -155,7 +183,6 @@ class Operations:
     def design_primers(
         self,
         sequence : str,
-        tm : float,
         start : int,
         count : int,
         organism : PrimerOrganism
@@ -163,7 +190,6 @@ class Operations:
 
         return Operations.DesignPrimers(
             sequence=sequence,
-            tm=tm,
             start=start,
             count=count,
             min_lenght=6,
