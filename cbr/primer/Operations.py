@@ -1,4 +1,3 @@
-from typing_extensions import Literal
 from Bio.Seq import Seq
 from typing import Dict, Iterable, List, NamedTuple, Optional, Tuple
 
@@ -6,7 +5,7 @@ from .MeltingTemp import MeltingTemp
 
 CODON_SIZE = 3
 
-PrimerOrganism = Literal['E_COLI', 'P_PASTORIS']
+PrimerOrganism = str #Literal['E_COLI', 'P_PASTORIS']
 
 class PrimerResult(NamedTuple):
     left_primer : str
