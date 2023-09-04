@@ -1,3 +1,8 @@
 {
-    "files": ["__init__.py","ChimerasGenerator.ui","ChimeraFragment.ui"]
+    "files": [
+        "__init__.py",
+        "ChimerasGenerator.ui",
+        "ChimeraFragment.ui",
+        "ChimerasResults.ui"
+    ]
 }

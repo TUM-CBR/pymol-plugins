@@ -21,8 +21,16 @@ class SchemaResultEntry(object):
     def mutations(self):
         return self.__mutations
 
-    def shuffling_points(self, offset : int):
-        return [self.__alignments.get_structure_position(i) + offset for i in self.__shuffling_points]
+    def shuffling_points(self, structure_sequence_mappings : Dict[int, str]):
+
+        keys = sorted(structure_sequence_mappings.keys())
+        def map_to_structure(pos : int) -> int:
+            return keys[pos]
+
+        return [
+            map_to_structure(self.__alignments.get_structure_position(i))
+            for i in self.__shuffling_points
+        ]
 
     @property
     def msa_shuffling_points(self):

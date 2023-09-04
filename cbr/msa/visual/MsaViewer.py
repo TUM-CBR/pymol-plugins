@@ -192,7 +192,7 @@ class MsaViewer(QWidget):
         structure_sequence = self.__get_structure_sequence()
         result = {}
         results_keys = set()
-        offset = structure.get_structure_offset(selection)
+        offset = list(sorted(structure.get_pdb_sequence_index(selection).keys()))
 
         for (i, ix) in filter(lambda x: x[1], enumerate(positions)):
 
@@ -211,7 +211,7 @@ class MsaViewer(QWidget):
                     conserved[aa] = 1
 
             assert ix, "Bug in filtering criteria!"
-            result[ix] = MsaConservationResult(ix + offset, i, structure_residue, conserved)
+            result[ix] = MsaConservationResult(offset[ix], i, structure_residue, conserved)
 
         return MsaConservationResults(results_keys, result)
     

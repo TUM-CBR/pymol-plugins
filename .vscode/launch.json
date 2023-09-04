@@ -34,7 +34,7 @@
             "module": "IPython",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "python": "C:\\Users\\ge27leq\\AppData\\Local\\miniconda3\\python",
+            "python": "${workspaceFolder}\\devops\\PyMol\\PyMOL\\python",
             "env": {
                 "QTHREAD_DEBUGGING": "True"
             }
