@@ -1,4 +1,3 @@
-import json
 from typing import Iterable, List, NamedTuple, Optional, TextIO
 
 def split_ixs(line : str, indexes : Iterable[int]):
@@ -43,17 +42,29 @@ def parse_energy_to_json(log : TextIO) -> List[dict]:
 class EnergyLogEntry(NamedTuple):
     step : Optional[int]
     potential : float
+    electrostatic_sr : float
+    electrostatic : float
+    lj_sr : float
+    lj : float
 
     @staticmethod
     def from_dict(entry_dict : dict) -> 'EnergyLogEntry':
 
         K_POTENTIAL = "Potential"
         K_STEP = "Step"
+        K_ELECTROSTATIC_SR = "Coulomb (SR)"
+        K_ELECTROSTATIC = "Coulomb-14"
+        K_LJ = "LJ-14"
+        K_LJ_SR = "LJ (SR)"
         step = entry_dict.get(K_STEP)
 
         return EnergyLogEntry(
             step = step and int(step),
-            potential = entry_dict[K_POTENTIAL]
+            potential = entry_dict[K_POTENTIAL],
+            electrostatic = entry_dict[K_ELECTROSTATIC],
+            electrostatic_sr = entry_dict[K_ELECTROSTATIC_SR],
+            lj = entry_dict[K_LJ],
+            lj_sr = entry_dict[K_LJ_SR]
         )
 
     @staticmethod

@@ -4,6 +4,7 @@ from os import path
 import pymol
 from pymol.wizard.mutagenesis import Mutagenesis, obj_name
 import random
+import re
 from typing import Iterable, List, NamedTuple, Optional, TextIO
 
 from ..core.pymol.structure import get_selection_sequece, StructureSelection
@@ -11,21 +12,35 @@ from ..core.sequence import ensure_abbreviation, ensure_oneletter
 
 from . import ProThermDB
 
+ROTAMER_RE = re.compile(r"rot(?P<rot>\d+)")
+
 class MutationResult(NamedTuple):
     structure_name : str
-    mutated_structure_name : str
     original_residue : str
     mutation_position : int
     new_reside : str
+    mutated_structure_name : str
 
     def to_json_dict(self):
         return {
             'structure_name': self.structure_name,
-            'mutated_structure_name': self.mutated_structure_name,
             'original_residue': self.original_residue,
             'mutation_position': self.mutation_position,
-            'new_reside': self.new_reside
+            'new_reside': self.new_reside,
+            'mutated_structure_name': self.mutated_structure_name
         }
+
+    @property
+    def mutation_str(self):
+        return "%s%i%s" % (self.original_residue, self.mutation_position, self.new_reside)
+
+    @property
+    def i_rotamer(self) -> int:
+        result = ROTAMER_RE.search(self.mutated_structure_name)
+        if result:
+            return int(result.group('rot'))
+        else:
+            return 1
 
     @staticmethod
     def from_json_dict(json_dict : dict) -> 'MutationResult':

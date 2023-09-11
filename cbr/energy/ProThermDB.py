@@ -8,6 +8,10 @@ class Mutation(NamedTuple):
     position : int
     new_residue : str
 
+    @property
+    def mutation_code(self):
+        return "%s%i%s" % (self.original_residue, self.position, self.new_residue)
+
 class ProThermEntry(NamedTuple):
     pdb_code : str
     mutation : Optional[Mutation]

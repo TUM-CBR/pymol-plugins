@@ -4,6 +4,7 @@ import os
 from os import path
 import pymol
 from pymol.wizard.mutagenesis import Mutagenesis, obj_name
+import random
 import tempfile
 from typing import Dict, List, NamedTuple, Optional, TextIO, Tuple
 
@@ -26,17 +27,42 @@ def hash_mutations(mutations : List[Tuple[str, str]]) -> int:
     return hash("".join([str(hash(m)) for m in mutations]))
 
 
-class MutationContext(MutationContextBase):
+class MutationContext(NamedTuple):
+    base_context : MutationContextBase
     runs : List['MutationContextRun']
     force_field : ForceField
+
+    @property
+    def name(self):
+        return self.base_context.name
+
+    def to_json_dict(self):
+        return self.base_context.to_json_dict()
+
+    @property
+    def mutations(self):
+        return self.base_context.mutations
+
+    @property
+    def directory(self):
+        return self.base_context.directory
 
     @property
     def structure_selection(self):
         return 'model %s' % self.name
 
 class MutationContextRun(NamedTuple):
-    name : str
+    run_suffix : str
     context : 'MutationContext'
+    metadata : dict
+
+    def get_metadata(self):
+        ctx_md = self.context.to_json_dict()
+        return {**ctx_md, **self.metadata}
+
+    @property
+    def name(self):
+        return self.context.name + "." + self.run_suffix
 
     @property
     def force_field(self):
@@ -113,16 +139,27 @@ class ScoreMutationSpace():
     def __init__(
         self,
         structure : str,
-        mutations : Dict[str, List[str]]
+        mutations : Dict[str, List[str]],
+        max_rotamers_per_mutation : int = 20
     ):
 
-        self.__structure = structure
+        self.__structure__ = structure
         self.__mutations = mutations
         self.__working_directory = tempfile.TemporaryDirectory()
         self.__wizzard = Mutagenesis()
+        self.__max_rotamers_per_mutation = max_rotamers_per_mutation
+
+    @property
+    def __structure(self):
+        return self.__structure__
 
     def __del__(self):
         self.__working_directory.cleanup()
+
+    def __make_rotamers(self, n_rotamers : int):
+        rotamers = list(range(2, n_rotamers + 1))
+        random.shuffle(rotamers)
+        return rotamers[:self.__max_rotamers_per_mutation]
 
     def __apply_muation(self, ctx : MutationContext, reps = 5) -> MutationContext:
         try:
@@ -133,16 +170,21 @@ class ScoreMutationSpace():
             #for mutation in ctx.mutations:
             mutation = next(ctx.mutations.__iter__(), None)
             runs = []
+            rotamers = None
 
             if mutation:
 
                 rot_state = 1
                 done = False
+
                 while(not done):
                     run = MutationContextRun(
-                        name="rot_%i" % rot_state,
-                        context = ctx
+                        run_suffix="rot_%i" % rot_state,
+                        context = ctx,
+                        metadata={'rotamer': rot_state}
                     )
+
+                    os.mkdir(run.directory)
                     self.__wizzard.cleanup()
                     pymol.cmd.select(
                         sele_name,
@@ -152,17 +194,24 @@ class ScoreMutationSpace():
                     self.__wizzard.set_mode(mutation.mutation)
                     self.__wizzard.set_hyd("none")
                     total_states = pymol.cmd.count_states(obj_name)
-                    self.__wizzard.do_state(rot_state)
+
+                    if rotamers is None:
+                        rotamers = self.__make_rotamers(total_states)
+
+                    pymol.cmd.frame(rot_state)
                     self.__wizzard.apply()
                     pymol.cmd.save(
                         run.structure_file,
                         ctx.structure_selection
                     )
                     runs.append(run)
-                    rot_state = rot_state + 1
-                    done = rot_state <= total_states
+
+                    assert rotamers is not None, "Rotamers should not be empty by now"
+                    if len(rotamers) > 0:
+                        rot_state = rotamers.pop()
+                    done = len(rotamers) == 0
             else:
-                runs.append(MutationContextRun(name="run_1", context = ctx))
+                runs.append(MutationContextRun(run_suffix="run_1", context = ctx, metadata={}))
 
             return ctx._replace(runs = ctx.runs + runs)
 
@@ -193,32 +242,39 @@ class ScoreMutationSpace():
             )
         )
 
-    def __score_mutation(self, mutations : List[Tuple[str, str]], force_field : ForceField) -> MutationContext:
-
+    def __get_mutations_name__(self, mutations : List[Tuple[str, str]]):
         suffix = str(hash_mutations(mutations))[-8:]
         name = "%s_%s" % (self.__structure, suffix)
-        directory = path.join(self.__working_directory.name, name)
+        return name
 
-        if not path.exists(directory):
-            os.mkdir(directory)
+    def __score_mutation(self, mutations : List[Tuple[str, str]], force_field : ForceField) -> MutationContext:
+
+        name = self.__get_mutations_name__(mutations)
 
         context = MutationContext(
-            name = name,
-            directory = directory,
-            mutations = [Mutation(*m) for m in mutations]
+            base_context=MutationContextBase(
+                name = name,
+                directory = self.__working_directory.name,
+                mutations = [Mutation(*m) for m in mutations]
+            ),
+            runs = [],
+            force_field=force_field
         )
 
         context = self.__apply_muation(context)
         # self.__repackage_structure(context)
 
-        with open(path.join(directory, F_METADATA), 'w') as metadata:
-            json.dump(context.to_json_dict(), metadata)
+        for run in context.runs:
+            with open(path.join(run.directory, F_METADATA), 'w') as metadata:
+                json.dump(run.get_metadata(), metadata)
 
         return context
 
+    """
     def scoring_test(self, mutations : List[Tuple[str, str]], force_field : ForceField):
         self.__score_mutation(mutations, force_field)
         return self.__working_directory
+    """
 
     def score_all(self, force_field : ForceField, m_candidates : Optional[dict] = None):
 
@@ -231,12 +287,12 @@ class ScoreMutationSpace():
             nonlocal run_all
             context = self.__score_mutation(run_args, force_field)
 
-            for run in context.runs:
-                self.__create_run(run, run_all)
+            #for run in context.runs:
+            #    self.__create_run(run, run_all)
 
 
         for (src, mutations) in candidates.items():
-            for mutation in mutations:
+            for mutation in set(mutations):
                 space = [(src, mutation)]
                 id = hash_mutations(space)
 
@@ -252,12 +308,23 @@ class ScoreMutationSpace():
 
         return self.__working_directory
 
+
+class ScoreProLabTherm(ScoreMutationSpace):
+
+    def __get_mutations_name__(self, mutations : List[Tuple[str, str]]):
+
+        if len(mutations) == 0:
+            return self.__structure__
+
+        return "%s.%s" %(self.__structure__, self.__name_keys[mutations[0]])
+
     def score_pro_therm_db(self, db: str, force_field : ForceField):
         entries = ProThermDB.parse(db)
         candidates = {}
+        self.__name_keys : Dict[Tuple[str, str], str] = {}
         for entry in entries:
             mutation = entry.mutation
-            if entry.pdb_code.lower() != self.__structure.lower() \
+            if entry.pdb_code.lower() != self.__structure__.lower() \
                 or not mutation:
                 continue
 
@@ -266,7 +333,9 @@ class ScoreMutationSpace():
             if key not in candidates:
                 candidates[key] = []
             mutations = candidates[key]
-            mutations.append(sequence.aa_from_letter(mutation.new_residue))
+            new_residue = sequence.aa_from_letter(mutation.new_residue)
+            mutations.append(new_residue)
+            self.__name_keys[(key, new_residue)] = mutation.mutation_code
 
         self.score_all(force_field, m_candidates = candidates)
 
