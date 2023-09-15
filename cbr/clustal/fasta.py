@@ -6,7 +6,7 @@ from ..core.WrapIO import WrapIO
 
 FastaInput = TypeVar('FastaInput', str, Iterable[str], TextIOBase)
 
-allowed_characters = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y', 'X', 'B']
+allowed_characters = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y', 'X', 'B', "-"]
 
 def get_fasta_input_arg(in_fasta : FastaInput) -> WrapIO:
 

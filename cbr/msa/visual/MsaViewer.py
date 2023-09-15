@@ -151,7 +151,7 @@ class MsaViewer(QWidget):
         options |= QFileDialog.ReadOnly  # Optionally set file dialog options
 
         # Show the file dialog and get the selected file
-        file_path, _ = QFileDialog.getOpenFileName(self, "Open File", "", "FASTA alignment Files (*.*)", options=options)
+        file_path, _ = QFileDialog.getOpenFileName(self, "Open File", "", "Clustal alignment Files (*.*)", options=options)
 
         if not file_path:
             return
