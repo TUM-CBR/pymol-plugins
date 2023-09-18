@@ -1,6 +1,6 @@
 from typing import Optional
 from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import QObject, pyqtSlot
+from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QComboBox, QPushButton
 from pymol import cmd as pymol
 
@@ -8,6 +8,8 @@ from ..core.pymol import structure
 from ..core.pymol.structure import StructureSelection
 
 class StructureSelector(QObject):
+
+    structure_changed = pyqtSignal(object)
 
     def __init__(
         self,
@@ -24,6 +26,12 @@ class StructureSelector(QObject):
 
         if copy_button:
             copy_button.clicked.connect(self.__on_copy_clicked)
+
+        self.__structures_combo.currentIndexChanged.connect(self.__on_item_selected)
+
+    @pyqtSlot()
+    def __on_item_selected(self, index : int):
+        self.structure_changed.emit(self.currentSelection)
 
     @pyqtSlot()
     def __on_copy_clicked(self):
@@ -58,7 +66,6 @@ class StructureSelector(QObject):
     @property
     def currentSelection(self) -> Optional[StructureSelection]:
         return self.__structures_combo.currentData()
-
 
 def as_structure_selector(
     structures_combo : QComboBox,

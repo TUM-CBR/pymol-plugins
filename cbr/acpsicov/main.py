@@ -3,7 +3,7 @@ from os import path
 import os
 import subprocess
 import tempfile
-from typing import Any
+from typing import List, NamedTuple, TextIO
 
 from ..support.msa import Msa
 
@@ -28,7 +28,23 @@ def acpsicov_bin():
         else:
             raise Exception(ACPSICOV_NOT_FOUND)
 
-AcpsicovResult = Any
+class AcpsicovEntry(NamedTuple):
+    position1 : int
+    position2 : int
+    confidence : float
+
+class AcpsicovResult(NamedTuple):
+    entries : List[AcpsicovEntry]
+
+def acpsicov_load(stream : TextIO) -> AcpsicovResult:
+
+    return AcpsicovResult(
+        entries = [
+            AcpsicovEntry(int(items[0]), int(items[1]), float(items[2]))
+            for line in stream.readlines()[1:]
+            for items in [line.split()]
+        ]
+    )
 
 def acpsicov(msa : Msa) -> AcpsicovResult:
 
@@ -69,13 +85,11 @@ def acpsicov(msa : Msa) -> AcpsicovResult:
             for text in process.stderr:
                 out_err.write(text)
 
-            out_string.seek(0)
-            result_str = out_string.read()
-
             out_err.seek(0)
             error_str = out_err.read()
 
             if process.wait() != 0:
                 raise Exception(error_str)
 
-    return None
+            out_string.seek(0)
+            return acpsicov_load(out_string)
