@@ -1,0 +1,7 @@
+{
+    "files": [
+        "CoevolutionByPairs.ui",
+        "CoevolutionRunner.ui",
+        "CoevolutionViewer.ui"
+    ]
+}

@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import QListWidgetItem, QTableWidgetItem, QWidget
 import pymol
 from typing import Dict, List
 
+from ...core import color
 from ...core.Qt.QtWidgets import get_qtable_content, open_copy_context_menu
 from ...core.pymol import structure
 from ...core.pymol.structure import StructureSelection
@@ -147,7 +148,7 @@ class SchemaSelectorWidget(QWidget):
                 for row in range(0, table.rowCount()):
                     target = table.item(row, rx)
                     assert target, "Bug in the code. We should always get a valid cell"
-                    target.setBackground(QColor(*get_qt_color(i)))
+                    target.setBackground(QColor(*color.get_qt_color(i)))
             previous_position = position + 1
 
     def __select_item(self, row):
@@ -158,7 +159,7 @@ class SchemaSelectorWidget(QWidget):
         # Ensure that we color the whole structure so the last fragment
         # will remain with this color
         pymol.cmd.color(
-            get_color(len(shuffling_points)),
+            color.get_color(len(shuffling_points)),
             "model %s" % self.__result.structure_name
         )
 
@@ -175,40 +176,6 @@ class SchemaSelectorWidget(QWidget):
             s = e + 1
             e = loc
             sele = "(model %s) and (resi %i-%i)" % (self.__result.structure_name, s, e)
-            pymol.cmd.color(get_color(i), sele)
+            pymol.cmd.color(color.get_color(i), sele)
 
         self.__color_table_sequences(item.msa_shuffling_points)
-
-distinct_colors = [
-    (255, 0, 0),
-    (0, 255, 0),
-    (0, 0, 255),
-    (255, 255, 0),
-    (0, 255, 255),
-    (255, 0, 255),
-    (128, 128, 0),
-    (0, 128, 128),
-    (128, 0, 128),
-    (128, 0, 0),
-    (0, 128, 0),
-    (0, 0, 128),
-    (192, 192, 192),
-    (128, 128, 128),
-    (255, 255, 255)
-]
-
-def to_hex(i : int, desired_length = 2) -> str:
-    value = hex(i).replace("0x", "")
-    padding = desired_length - len(value)
-    return "0"*padding + value
-
-colors = [
-    "0x" + "".join(map(to_hex, [r,g,b]))
-    for r,g,b in distinct_colors
-]
-
-def get_qt_color(item : int, options = distinct_colors) -> List[int]:
-    return list(options[item % len(colors)]) + [100]
-
-def get_color(item, options = colors):
-    return options[item % len(colors)]

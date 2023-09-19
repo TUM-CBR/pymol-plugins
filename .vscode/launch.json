@@ -23,7 +23,8 @@
             "justMyCode": true,
             "python": "/home/ernesto/code/pymol-plugins/.virtualenv/bin/python",
             "env": {
-                "QTHREAD_DEBUGGING": "True"
+                "QTHREAD_DEBUGGING": "True",
+                "PATH": "/home/ernesto/code/ACPSICOV/src/:$PATH"
             }
         },
         {

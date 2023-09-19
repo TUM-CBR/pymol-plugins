@@ -8,6 +8,7 @@ from typing import Any, Callable, NamedTuple
 
 from ..core.Context import Context
 from ..chimeras import Applications as Chimeras
+from ..coevolution import main as Coevolution
 from ..msa import Applications as Msa
 from ..primer import Applications as Primer
 from ..schema import Applications as Schema
@@ -43,6 +44,11 @@ APP_DEFINITIONS = [
         icon = "primer.png",
         text = "Primers Designer",
         init = Primer.primer_generator
+    ),
+    AppDefinition(
+        icon = "coevolution.png",
+        text = "Coevolution Analysis",
+        init = Coevolution.coevolution_runner
     )
 ]
 
