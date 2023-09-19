@@ -30,7 +30,7 @@ class StructureSelector(QObject):
         self.__structures_combo.currentIndexChanged.connect(self.__on_item_selected)
 
     @pyqtSlot()
-    def __on_item_selected(self, index : int):
+    def __on_item_selected(self):
         self.structure_changed.emit(self.currentSelection)
 
     @pyqtSlot()

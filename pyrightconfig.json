@@ -9,5 +9,6 @@
     ],
 
     "reportFunctionMemberAccess" : "error",
-    "reportUnusedImport": "error"
+    "reportUnusedImport": "error",
+    "reportIncompatibleMethodOverride": "error"
 }  

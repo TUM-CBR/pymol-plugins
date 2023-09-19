@@ -1,5 +1,5 @@
-from PyQt5.QtCore import QObject, pyqtSlot
-from PyQt5.QtWidgets import QComboBox, QPushButton
+from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
+from PyQt5.QtWidgets import QComboBox, QLabel, QPushButton
 from typing import Optional, List, Tuple
 
 from ...clustal.Clustal import Clustal
@@ -12,12 +12,15 @@ from .MsaSelector import Msa
 
 class AlignmentIndexSelector(QObject):
 
+    struture_selected = pyqtSignal()
+
     def __init__(
         self,
         structure_selector : StructureSelector,
         sequence_combo : QComboBox,
         msa : Msa,
-        clustal : Clustal
+        clustal : Clustal,
+        error_label : Optional[QLabel]
     ):
         super(AlignmentIndexSelector, self).__init__()
 
@@ -32,9 +35,10 @@ class AlignmentIndexSelector(QObject):
         self.__msa_relative_positions : Optional[List[int]] = None
         
         self.__update_msa_combo(msa)
+        self.__error_label = error_label
 
     @pyqtSlot()
-    def __on_structure_changed(self, structure : StructureSelection):
+    def __on_structure_changed(self):
         self.__on_any_change()
 
     @pyqtSlot(int)
@@ -48,6 +52,10 @@ class AlignmentIndexSelector(QObject):
     @property
     def relative_positions(self) -> Optional[List[int]]:
         return self.__msa_relative_positions
+
+    @property
+    def structure(self) -> Optional[StructureSelection]:
+        return self.__structures_selector.currentSelection
 
     def __on_any_change(self):
 
@@ -65,13 +73,24 @@ class AlignmentIndexSelector(QObject):
 
         msa_sequence_name, msa_sequence = msa_item
 
-        join_msa = self.__clustal.run_msa_items(
-            [ ("structure", structure_sequence)
-            , (msa_sequence_name, msa.clean_msa_blanks(msa_sequence))
-            ]
-        )
+        try:
+            join_msa = self.__clustal.run_msa_items(
+                [ ("structure", structure_sequence)
+                , (msa_sequence_name, msa.clean_msa_blanks(msa_sequence))
+                ]
+            )
+        except ValueError as e:
+            self.__set_message("Cannot align, select a different option.")
+            return
 
         self.__msa_relative_positions = list(msa.get_relative_positions(self.__msa, join_msa))
+
+        self.struture_selected.emit()
+        self.__set_message("")
+
+    def __set_message(self, msg : str):
+        if self.__error_label:
+            self.__error_label.setText(msg)
 
     def __update_msa_combo(self, msa : Msa):
 
@@ -88,11 +107,13 @@ def as_alignment_link_selector(
     refresh_button : QPushButton,
     sequence_combo : QComboBox,
     msa : Msa,
-    clustal : Clustal
+    clustal : Clustal,
+    error_label: Optional[QLabel]
 ):
     return AlignmentIndexSelector(
         as_structure_selector(structures_combo, refresh_button),
         sequence_combo,
         msa,
-        clustal
+        clustal,
+        error_label
     )
