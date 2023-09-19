@@ -2,14 +2,13 @@ from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QFileDialog, QWidget
 from typing import Optional
 
-from cbr.coevolution.visual.CoevolutionViewer import CoevolultionViewer
-
 from ...acpsicov import main as acpsicov
 from ...core.Context import Context
 from ...core.Qt.QtCore import run_in_thread
 from ...core.Qt.QtWidgets import progress_manager, show_error, show_exception
 from ...support import msa
 
+from .CoevolutionViewer import CoevolutionResult, CoevolultionViewer
 from .Ui_CoevolutionRunner import Ui_CoevolutionRunner
 
 ACPSICOV_EXTENSIONS = "*.acpsicov"
@@ -32,6 +31,7 @@ class CoevolutionRunner(QWidget):
             self.__ui.runCoevolutionButton
         )
         self.__progress_manager.on_exception.connect(self.__on_exception)
+        self.__progress_manager.on_result.connect(self.__start_coevolution_viewer)
         self.__context = context
         self.__ui.openButton.clicked.connect(self.__on_open_result)
 
@@ -53,16 +53,23 @@ class CoevolutionRunner(QWidget):
         try:
             with open(result_file, "r") as acpsicov_file:
                 result = acpsicov.acpsicov_load(acpsicov_file)
-                self.__context.run_widget(
-                    lambda ctx: CoevolultionViewer(
-                        result,
-                        msa,
-                        ctx
+                self.__start_coevolution_viewer(
+                    CoevolutionResult(
+                        msa=msa,
+                        acpsicov_result=result
                     )
-                ).show()
+                )
 
         except Exception as e:
             show_exception(self, e)
+
+    def __start_coevolution_viewer(self, result: CoevolutionResult):
+        self.__context.run_widget(
+            lambda ctx: CoevolultionViewer(
+                result,
+                ctx
+            )
+        ).show()
 
     @pyqtSlot()
     def __on_exception(self, exn : Exception):
@@ -70,14 +77,15 @@ class CoevolutionRunner(QWidget):
 
     @pyqtSlot()
     def __on_run_coevolution(self):
-
         self.__progress_manager.watch_progress(self.__run_coevolution(self.__msa_selector.msa))
-        pass
 
     @run_in_thread
-    def __run_coevolution(self, msa : Optional[msa.Msa]):
+    def __run_coevolution(self, msa : Optional[msa.Msa]) -> CoevolutionResult:
 
         if msa is None:
             raise Exception("Please select an MSA file!")
 
-        acpsicov.acpsicov(msa)
+        return CoevolutionResult(
+            msa = msa,
+            acpsicov_result = acpsicov.acpsicov(msa)
+        )

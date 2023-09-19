@@ -33,8 +33,18 @@ class AcpsicovEntry(NamedTuple):
     position2 : int
     confidence : float
 
+    def write(self, stream : TextIO):
+        stream.write(f"{self.position1} {self.position2} {self.confidence}\n")
+
 class AcpsicovResult(NamedTuple):
     entries : List[AcpsicovEntry]
+
+    def write(self, stream: TextIO):
+
+        stream.write("i j psicov.aa\n")
+
+        for entry in self.entries:
+            entry.write(stream)
 
 def acpsicov_load(stream : TextIO) -> AcpsicovResult:
 
