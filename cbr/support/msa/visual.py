@@ -64,7 +64,7 @@ class AlignmentIndexSelector(QObject):
         if structure_selection is None:
             return
 
-        structure_sequence = structure.get_pdb_sequence(structure_selection)
+        structure_sequence = structure.get_selection_sequece(structure_selection)
 
         msa_item = self.__msa_item
 

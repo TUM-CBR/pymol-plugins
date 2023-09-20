@@ -13,9 +13,12 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="3,1">
    <item>
     <widget class="QTableWidget" name="resultsTable"/>
+   </item>
+   <item>
+    <widget class="QTableWidget" name="detailsTable"/>
    </item>
   </layout>
  </widget>

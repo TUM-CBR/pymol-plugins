@@ -1,7 +1,7 @@
 import math
 import pymol
 
-from typing import Dict, List, NamedTuple, Optional, Tuple
+from typing import Dict, List, NamedTuple, Optional, Tuple, TypeVar
 
 class StructureSelection(NamedTuple):
     structure_name : str
@@ -24,7 +24,15 @@ def get_structure_query(structure_name : str, chain : 'str | None' = None) -> st
     else:
         return "model %s" % structure_name
 
-def get_selection_sequence_index(selection : str) -> Dict[int, str]:
+AnySelection = TypeVar('AnySelection', str, StructureSelection)
+
+def get_selection_sequence_index(selection_obj : AnySelection) -> Dict[int, str]:
+
+    selection = \
+        selection_obj \
+        if isinstance(selection_obj, str) \
+        else selection_obj.selection
+
     result = []
 
     pymol.cmd.iterate(
@@ -34,12 +42,12 @@ def get_selection_sequence_index(selection : str) -> Dict[int, str]:
     )
     return dict(result)
 
-def get_pdb_sequence_index(selection : StructureSelection) -> Dict[int, str]:
+def get_pdb_sequence_index(selection : AnySelection) -> Dict[int, str]:
     return get_selection_sequence_index(
-        selection.selection
+        selection
     )
 
-def get_selection_sequece(selection : str) -> str:
+def get_selection_sequece(selection : AnySelection) -> str:
     sequence = get_selection_sequence_index(selection)
     return "".join(
         sequence[k]

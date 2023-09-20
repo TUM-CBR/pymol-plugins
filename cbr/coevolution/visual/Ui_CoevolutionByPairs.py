@@ -22,6 +22,13 @@ class Ui_CoevolutionByPairs(object):
         self.resultsTable.setColumnCount(0)
         self.resultsTable.setRowCount(0)
         self.verticalLayout.addWidget(self.resultsTable)
+        self.detailsTable = QtWidgets.QTableWidget(CoevolutionByPairs)
+        self.detailsTable.setObjectName("detailsTable")
+        self.detailsTable.setColumnCount(0)
+        self.detailsTable.setRowCount(0)
+        self.verticalLayout.addWidget(self.detailsTable)
+        self.verticalLayout.setStretch(0, 3)
+        self.verticalLayout.setStretch(1, 1)
 
         self.retranslateUi(CoevolutionByPairs)
         QtCore.QMetaObject.connectSlotsByName(CoevolutionByPairs)
