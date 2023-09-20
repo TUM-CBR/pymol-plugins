@@ -1,5 +1,6 @@
 from PyQt5.QtCore import QModelIndex, pyqtSlot
-from typing import Dict, List, NamedTuple, Optional, Tuple
+from PyQt5.QtGui import QDoubleValidator
+from typing import Dict, Iterable, List, NamedTuple, Optional, Tuple
 
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem
 
@@ -34,6 +35,7 @@ class ResultItemModel(NamedTuple):
     pymol_position_1 : Optional[int]
     pymol_position_2 : Optional[int]
     entry : AcpsicovEntry
+    distance : Optional[float]
 
     @property
     def pos_1_fallback(self) -> int:
@@ -42,6 +44,10 @@ class ResultItemModel(NamedTuple):
     @property
     def pos_2_fallback(self) -> int:
         return self.pymol_position_2 if self.pymol_position_2 is not None else self.entry.position2
+
+    @property
+    def distance_str(self) -> str:
+        return str(self.distance) if self.distance is not None else NA_VALUE
 
 RESULT_ROLE = 1
 ResultRoleType = ResultItemModel
@@ -67,6 +73,22 @@ class CoevolutionByPairs(CoevolutionResultViewerBase):
         )
         self.__distance_calculator = None
         self.__ui.resultsTable.itemSelectionChanged.connect(self.__update_details_table)
+
+        # Add validators to the filter boxes, set them to inital values and
+        # add the event handler for the filter button
+        conf_validator = QDoubleValidator(0,1,2)
+        self.__ui.confidenceMin.setValidator(conf_validator)
+        self.__ui.confidenceMin.setText("0.5")
+        self.__ui.confidenceMax.setValidator(conf_validator)
+        self.__ui.confidenceMax.setText("1.0")
+
+        dist_validator = QDoubleValidator(0, 1000, 2)
+        self.__ui.distanceMin.setValidator(dist_validator)
+        self.__ui.distanceMin.setText("0.0")
+        self.__ui.confidenceMax.setValidator(dist_validator)
+        self.__ui.distanceMax.setText("8.0")
+
+        self.__ui.filterButton.clicked.connect(self.__render_results_table)
 
         # Call this after everything. Python is a dangerous language that
         # defines fields the moment they are assigned. Static type-checkers
@@ -103,9 +125,13 @@ class CoevolutionByPairs(CoevolutionResultViewerBase):
         
         # This should be called last. That's what one gets when using imperative dynamic
         # languages like python.
+        self.__render_results_table()
+
+    @pyqtSlot()
+    def __render_results_table(self):
         self.__update_results_table(self.__result, self.__msa)
 
-    def __distance_in_visualization_structure(self, result: AcpsicovEntry):
+    def __distance_in_visualization_structure(self, result: AcpsicovEntry) -> Optional[float]:
 
         if self.__distance_calculator is not None and self.__visualization_structure is not None:
             link = self.__visualization_structure.link
@@ -114,35 +140,54 @@ class CoevolutionByPairs(CoevolutionResultViewerBase):
                     link[result.position1],
                     link[result.position2]
                 )
-            return str(round(distance, 2)) if distance is not None else NA_VALUE
+            return round(distance, 2) if distance is not None else None
         else:
-            return NA_VALUE
+            return None
 
-    def __set_result_data(self, item : QTableWidgetItem, entry : AcpsicovEntry):
+    def __set_result_data(self, item : QTableWidgetItem, entry : ResultRoleType):
+        item.setData(RESULT_ROLE, entry)
 
-        if self.__visualization_structure is not None:
-            visualization_structure = self.__visualization_structure
+    def __get_filtered_results(self, results: AcpsicovResult) -> Iterable[ResultItemModel]:
 
-            data : ResultRoleType = ResultItemModel(
-                pymol_position_1 = visualization_structure.msa_to_structure_pymol_posiiton(entry.position1),
-                pymol_position_2 = visualization_structure.msa_to_structure_pymol_posiiton(entry.position2),
-                entry = entry
-            )
-        else:
-            data : ResultRoleType = ResultItemModel(
-                pymol_position_1=None,
-                pymol_position_2=None,
-                entry = entry
-            )
+        min_conf = float(self.__ui.confidenceMin.text())
+        max_conf = float(self.__ui.confidenceMax.text())
+        min_dist = float(self.__ui.distanceMin.text())
+        max_dist = float(self.__ui.distanceMax.text())
 
-        item.setData(RESULT_ROLE, data)
+        for result in results.entries:
+
+            if result.confidence < min_conf or result.confidence > max_conf:
+                continue
+
+            distance = self.__distance_in_visualization_structure(result)
+
+            if distance is not None and (distance < min_dist or distance > max_dist):
+                continue
+
+            if self.__visualization_structure is not None:
+                visualization_structure = self.__visualization_structure
+
+                yield ResultItemModel(
+                    pymol_position_1 = visualization_structure.msa_to_structure_pymol_posiiton(result.position1),
+                    pymol_position_2 = visualization_structure.msa_to_structure_pymol_posiiton(result.position2),
+                    entry = result,
+                    distance=distance
+                )
+            else:
+                yield ResultItemModel(
+                    pymol_position_1=None,
+                    pymol_position_2=None,
+                    entry = result,
+                    distance=distance
+                )
 
     def __update_results_table(self, results : AcpsicovResult, msa : Msa):
 
         table = self.__ui.resultsTable
         table.clear()
 
-        table.setRowCount(len(results.entries))
+        entries = list(self.__get_filtered_results(results))
+        table.setRowCount(len(entries))
         
         visualization_structure = self.__visualization_structure
 
@@ -173,7 +218,7 @@ class CoevolutionByPairs(CoevolutionResultViewerBase):
             else:
                 return (NA_VALUE, NA_VALUE)
 
-        for i,result in enumerate(results.entries):
+        for i,result in enumerate(entries):
 
             def __with_data__(text : str):
 
@@ -181,17 +226,17 @@ class CoevolutionByPairs(CoevolutionResultViewerBase):
                 self.__set_result_data(item, result)
                 return item
 
-            (pos1_structure, res1_structure) = get_at_position(result.position1)
-            (pos2_structure, res2_structure) = get_at_position(result.position2)
+            (pos1_structure, res1_structure) = get_at_position(result.entry.position1)
+            (pos2_structure, res2_structure) = get_at_position(result.entry.position2)
 
-            table.setItem(i, 0, __with_data__(str(result.position1)))
+            table.setItem(i, 0, __with_data__(str(result.entry.position1)))
             table.setItem(i, 1, __with_data__(pos1_structure))
             table.setItem(i, 2, __with_data__(res1_structure))
-            table.setItem(i, 3, __with_data__(str(result.position2)))
+            table.setItem(i, 3, __with_data__(str(result.entry.position2)))
             table.setItem(i, 4, __with_data__(pos2_structure))
             table.setItem(i, 5, __with_data__(res2_structure))
-            table.setItem(i, 6, __with_data__(str(result.confidence)))
-            table.setItem(i, 7, __with_data__(self.__distance_in_visualization_structure(result)))
+            table.setItem(i, 6, __with_data__(str(result.entry.confidence)))
+            table.setItem(i, 7, __with_data__(result.distance_str))
 
     @pyqtSlot()
     def __update_details_table(self):
@@ -206,8 +251,8 @@ class CoevolutionByPairs(CoevolutionResultViewerBase):
         selected_result = selection[0]
         entry = self.__get_result_data(selected_result).entry
         pairs = enumerate_pairs(self.__msa, entry.position1, entry.position2)
+        headers = list(sorted(pairs.keys(), key = lambda k: pairs[k], reverse=True))
 
-        headers = list(pairs.keys())
         table.setColumnCount(len(headers))
         table.setRowCount(1)
         table.setHorizontalHeaderLabels(f"({p1}, {p2})" for p1, p2 in headers)
