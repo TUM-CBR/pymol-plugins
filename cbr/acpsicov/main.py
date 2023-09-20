@@ -50,7 +50,7 @@ def acpsicov_load(stream : TextIO) -> AcpsicovResult:
 
     return AcpsicovResult(
         entries = [
-            AcpsicovEntry(int(items[0]), int(items[1]), float(items[2]))
+            AcpsicovEntry(position1=int(items[0]), position2=int(items[1]), confidence=float(items[2]))
             for line in stream.readlines()[1:]
             for items in [line.split()]
         ]

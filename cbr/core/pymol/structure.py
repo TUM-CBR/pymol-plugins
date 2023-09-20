@@ -1,6 +1,7 @@
+import math
 import pymol
 
-from typing import Dict, NamedTuple, Optional
+from typing import Dict, List, NamedTuple, Optional, Tuple
 
 class StructureSelection(NamedTuple):
     structure_name : str
@@ -55,3 +56,47 @@ def get_pdb_sequence(selection : StructureSelection) -> str:
         ) >= 0
         for name in buffer
     )
+
+AtomPosition = Tuple[float, float, float]
+
+class ResidueDistanceCalculator:
+
+    def __init__(self, selection : str):
+
+        self.__positions : Dict[int, List[AtomPosition]] = dict(
+            (k,[])
+            for k,_ in get_selection_sequence_index(selection).items()
+        )
+        def add_atom(resi: int, px: float, py: float, pz: float):
+            self.__positions[resi].append((px, py, pz))
+
+        pymol.cmd.iterate_state(
+            1,
+            selection,
+            'add_atom(resv,x,y,z)',
+            space={'add_atom': add_atom}
+        )
+
+        self.__zero_offset = min(self.__positions.keys())
+
+    def distance(self, resi_a: int, resi_b : int) -> Optional[float]:
+
+        distances = [
+            math.sqrt((xa-xb)**2 + (ya-yb)**2 + (za - zb)**2)
+            for (xa, ya, za) in self.__positions[resi_a]
+            for (xb, yb, zb) in self.__positions[resi_b]
+        ]
+
+        # If the resiude is unresolved in the PDB structure, then
+        # its position will be unkonwn and the distance cannot be
+        # calculated
+        if len(distances) > 0:
+            return min(distances)
+        else:
+            return None
+
+    def distance_zero_index(self, resi_a: int, resi_b: int) -> Optional[float]:
+        return self.distance(
+            resi_a + self.__zero_offset,
+            resi_b + self.__zero_offset
+        )
