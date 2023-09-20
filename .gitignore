@@ -1,3 +1,5 @@
 __pycache__
 *.cif
 .virtualenv
+demo
+scratch

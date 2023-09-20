@@ -76,7 +76,7 @@ def get_relative_positions(msa : Dict[str, str], join_msa : Dict[str, str]) -> I
     link_seq_join = join_msa[link]
     target_seq_join = join_msa[target]
 
-    for i in range(len(link_seq_all) + 1):
+    for i in range(1, len(link_seq_all) + 1):
         link_fragment_gaps = link_seq_all[0:i]
         link_fragment = clean_msa_blanks(link_fragment_gaps)
         canary = True
@@ -85,7 +85,7 @@ def get_relative_positions(msa : Dict[str, str], join_msa : Dict[str, str]) -> I
             join_fragment = link_seq_join[0:j]
             if link_fragment == clean_msa_blanks(join_fragment):
                 target_fragment = target_seq_join[0:j]
-                ix = max(len(clean_msa_blanks(target_fragment)) - 1,0)
+                ix = max(len(clean_msa_blanks(target_fragment))-1,0)
                 yield ix
                 canary = False
                 break

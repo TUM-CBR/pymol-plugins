@@ -9,7 +9,7 @@ class CoevolutionResultViewerBase(QWidget):
     @abstractmethod
     def set_visualization_structure(
         self,
-        structure : StructureSelection,
+        structure_sele : StructureSelection,
         link : List[int]
     ):
         pass

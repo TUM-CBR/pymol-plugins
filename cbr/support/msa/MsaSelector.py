@@ -8,7 +8,7 @@ from ...core.stdlib import get_or_raise
 from ...clustal import fasta
 from ...clustal import msa
 
-Msa = Dict[str, str]
+from .core import Msa
 
 def fasta_parser(in_file : str) -> Msa:
 

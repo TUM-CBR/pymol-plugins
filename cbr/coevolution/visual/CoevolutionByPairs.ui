@@ -6,16 +6,102 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>549</width>
-    <height>395</height>
+    <width>731</width>
+    <height>665</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,5,2">
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QWidget" name="widget" native="true">
+       <layout class="QGridLayout" name="gridLayout">
+        <item row="0" column="5">
+         <widget class="QLineEdit" name="distanceMin"/>
+        </item>
+        <item row="0" column="7">
+         <widget class="QLineEdit" name="distanceMax"/>
+        </item>
+        <item row="0" column="4">
+         <widget class="QLabel" name="label_3">
+          <property name="styleSheet">
+           <string notr="true">font-weight: bold;</string>
+          </property>
+          <property name="text">
+           <string>Distance:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="10">
+         <widget class="QPushButton" name="filterButton">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>Filter</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QLineEdit" name="confidenceMin"/>
+        </item>
+        <item row="0" column="3">
+         <widget class="QLineEdit" name="confidenceMax"/>
+        </item>
+        <item row="0" column="2">
+         <widget class="QLabel" name="label_2">
+          <property name="text">
+           <string>to</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0">
+         <widget class="QLabel" name="label">
+          <property name="styleSheet">
+           <string notr="true">font-weight: bold;
+</string>
+          </property>
+          <property name="text">
+           <string>Confidence:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="6">
+         <widget class="QLabel" name="label_4">
+          <property name="text">
+           <string>to</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
    <item>
     <widget class="QTableWidget" name="resultsTable"/>
+   </item>
+   <item>
+    <widget class="QTableWidget" name="detailsTable"/>
    </item>
   </layout>
  </widget>
