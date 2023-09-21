@@ -23,7 +23,7 @@ class VisualizationStructure(NamedTuple):
         return min(self.sequence_index.keys())
 
     def msa_to_structure_position(self, msa_pos: int) -> int:
-        return self.link[msa_pos]
+        return self.link[msa_pos - 1]
 
     def msa_to_structure_pymol_posiiton(self, msa_pos: int) -> int:
         return self.msa_to_structure_position(msa_pos) + self.sequence_offset
@@ -102,7 +102,6 @@ class CoevolutionByPairs(CoevolutionResultViewerBase):
 
         if self.__visualization_structure is None:
             return None
-
 
         result_data = self.__get_result_data(index)
 
@@ -250,7 +249,7 @@ class CoevolutionByPairs(CoevolutionResultViewerBase):
 
         selected_result = selection[0]
         entry = self.__get_result_data(selected_result).entry
-        pairs = enumerate_pairs(self.__msa, entry.position1, entry.position2)
+        pairs = enumerate_pairs(self.__msa, entry.position1 - 1, entry.position2 - 1)
         headers = list(sorted(pairs.keys(), key = lambda k: pairs[k], reverse=True))
 
         table.setColumnCount(len(headers))

@@ -179,6 +179,13 @@ class PymolResidueColorSelector(PymolResidueSelectorBase):
                 )
                 pymol.cmd.label(f"{region_selection} and name CA", str(selection.context))
 
+        all_residues_selector = " or ".join(
+            f"resi {residue}"
+            for selection in cell_selection
+            for residue in selection.residues
+        )
+        pymol.cmd.select("sele", f"{selection_scope} and ({all_residues_selector})")
+
 def pymol_residues_color_selector(
     qtable : QTableWidget,
     residue_mapping : SelectionToResideAndIntensity,
