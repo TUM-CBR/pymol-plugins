@@ -10,11 +10,14 @@ import importlib
 
 from pymol.Qt import QtCore, QtWidgets
 from pymol.Qt.utils import loadUi, AsyncFunc, MainThreadCaller
+from PyQt5.QtWidgets import QWidget
 
 getOpenFileNames = QtWidgets.QFileDialog.getOpenFileNames
 
+from . import bin
 from . import electrostatics
 from .qtwidgets import ResizableMessageBox as QMessageBox
+from ..core.Context import Context
 
 
 class SilentAbort(Exception):
@@ -350,11 +353,15 @@ def dialog(_self=None):
         if fnames:
             form.apbs_exe.setText(fnames[0])
 
+    form.apbs_exe.setText(bin.apbs_bin())
+
     @form.pdb2pqr_exe_browse.clicked.connect
     def _():
         fnames = getOpenFileNames(None, filter='pdb2pqr (pdb2pqr*);;All Files (*)')[0]
         if fnames:
             form.pdb2pqr_exe.setText(fnames[0])
+
+    form.pdb2pqr_exe.setText(bin.pdb2pqr_bin())
 
     # hook up events
     form.input_sele.currentIndexChanged.connect(
@@ -447,5 +454,5 @@ def load_apbs_in(form, filename, contents=''):
     return '\n'.join(lines)
 
 
-def run_apbs_electrostatics(context):
-    return dialog()
+def run_apbs_electrostatics(context : Context) -> None:
+    context.run_widget(lambda _: dialog()).show()

@@ -39,6 +39,12 @@ jobs:
       - run: unzip -d cbr/clustal/resources/ devops/tmp/clustalo-win64.zip
       - run: mv cbr/clustal/resources/clustal-*/* cbr/clustal/resources/
 
+      # Add the APBS executabels
+      - run: wget -O devops/tmp/resources.tar.gz https://github.com/TUM-CBR/resources/releases/download/20230922/resources.tar.gz
+      - run: tar -xvf devops/tmp/resources.tar.gz -C devops/tmp/
+      - run: mv devops/tmp/APBS.windows cbr/apbs/resources/
+      - run: mv devops/tmp/pdb2pqr.windows cbr/apbs/resources/
+
       - name: Archive Release
         uses: thedoctor0/zip-release@0.7.1
         with:
