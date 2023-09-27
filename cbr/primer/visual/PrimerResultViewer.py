@@ -3,12 +3,16 @@ from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QTableWidgetItem, QWidget
 from typing import NamedTuple
 
-from ..Operations import PrimerResult
+from ..data import DesignPrimersResults, PrimerResult
 from .Ui_PrimerResultViewer import Ui_PrimerResultViewer
 
 class PrimerResultContext(NamedTuple):
     result : PrimerResult
-    original_sequence : str
+    source : DesignPrimersResults
+
+    @property
+    def original_sequence(self) -> str:
+        return self.source.plasmid
 
 PRIMER_COLOR = QColor(0,0,100,100)
 LEFT_PRIMER_COLOR = PRIMER_COLOR

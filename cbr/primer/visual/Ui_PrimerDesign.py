@@ -45,6 +45,9 @@ class Ui_PrimerDesign(object):
         self.designPrimersButton = QtWidgets.QPushButton(PrimerDesign)
         self.designPrimersButton.setObjectName("designPrimersButton")
         self.horizontalLayout.addWidget(self.designPrimersButton)
+        self.openPrimersButton = QtWidgets.QPushButton(PrimerDesign)
+        self.openPrimersButton.setObjectName("openPrimersButton")
+        self.horizontalLayout.addWidget(self.openPrimersButton)
         self.verticalLayout_2.addLayout(self.horizontalLayout)
 
         self.retranslateUi(PrimerDesign)
@@ -53,6 +56,7 @@ class Ui_PrimerDesign(object):
     def retranslateUi(self, PrimerDesign):
         _translate = QtCore.QCoreApplication.translate
         PrimerDesign.setWindowTitle(_translate("PrimerDesign", "PrimerDesigner"))
-        self.label.setText(_translate("PrimerDesign", "DNA Sequence"))
+        self.label.setText(_translate("PrimerDesign", "Plasmid Sequence"))
         self.label_3.setText(_translate("PrimerDesign", "Organism"))
         self.designPrimersButton.setText(_translate("PrimerDesign", "Design Primers"))
+        self.openPrimersButton.setText(_translate("PrimerDesign", "Open Primers"))

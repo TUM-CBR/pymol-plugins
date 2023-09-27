@@ -95,10 +95,9 @@ def acpsicov(msa : Msa) -> AcpsicovResult:
             for text in process.stderr:
                 out_err.write(text)
 
-            out_err.seek(0)
-            error_str = out_err.read()
-
             if process.wait() != 0:
+                out_err.seek(0)
+                error_str = out_err.read()
                 raise Exception(error_str)
 
             out_string.seek(0)

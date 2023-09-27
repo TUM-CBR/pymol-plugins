@@ -22,7 +22,7 @@
         <string notr="true">font: bold</string>
        </property>
        <property name="text">
-        <string>DNA Sequence</string>
+        <string>Plasmid Sequence</string>
        </property>
        <property name="textFormat">
         <enum>Qt::PlainText</enum>
@@ -70,6 +70,13 @@
       <widget class="QPushButton" name="designPrimersButton">
        <property name="text">
         <string>Design Primers</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="openPrimersButton">
+       <property name="text">
+        <string>Open Primers</string>
        </property>
       </widget>
      </item>

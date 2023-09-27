@@ -6,7 +6,8 @@
     "ignore": [
       "cbr/schema/raspp",
       "cbr/**/Ui_*.py",
-      "cbr/main/resources.py"
+      "cbr/main/resources.py",
+      "cbr/apbs"
     ],
 
     "reportFunctionMemberAccess" : "error",

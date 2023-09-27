@@ -1,13 +1,14 @@
-from PyQt5.QtCore import pyqtSlot
-from PyQt5.QtGui import QColor, QDoubleValidator
+import os
+from PyQt5.QtCore import QModelIndex, pyqtSlot
+from PyQt5.QtGui import QDoubleValidator
 from PyQt5.QtWidgets import QTableWidgetItem, QVBoxLayout, QWidget
-from typing import Dict, Iterable, List
+from typing import Dict, Optional
 
 from ...core.Qt.QtCore import run_in_thread
 from ...core.Qt.QtWidgets import progress_manager
-from ...core.typing import from_just
 
-from ..Operations import DesignPrimersResult, PrimerResult
+from ..data import DesignPrimersResults, PrimerResult
+from .. import operations
 
 from .PrimerResultViewer import PrimerResultContext, PrimerResultViewer
 from .Ui_PrimerViewer import Ui_PrimerViewer
@@ -20,14 +21,16 @@ class PrimerViewer(QWidget):
 
     def __init__(
         self,
-        results : List[DesignPrimersResult],
-        sequence : str
+        database : str,
+        delete_when_closed = False
     ) -> None:
         super().__init__()
 
         self.__ui = Ui_PrimerViewer()
         self.__ui.setupUi(self)
-        self.__sequence = sequence
+        self.__database = database
+        self.__scoped_results : Optional[DesignPrimersResults] = None
+        self.__delete_when_closed = delete_when_closed
 
         layout = QVBoxLayout()
         self.__primer_viewer = PrimerResultViewer(self.__ui.resultsWidget)
@@ -46,8 +49,6 @@ class PrimerViewer(QWidget):
         self.__ui.tmDeltaWeightEdit.setText("1.00")
         self.__ui.selectButton.clicked.connect(self.__on_select_primers)
 
-        self.__results = results
-
         self.__progress = progress_manager(
             self.__ui.filterProgress,
             self.__ui.selectButton
@@ -55,6 +56,17 @@ class PrimerViewer(QWidget):
         self.__progress.with_default_error_handler(self)
         self.__progress.on_result.connect(self.__render_results)
         self.__ui.primersTable.itemSelectionChanged.connect(self.__on_item_selection_changed)
+
+    def __del__(self):
+
+        if not self.__delete_when_closed:
+            return
+
+        try:
+            os.remove(self.__database)
+        except Exception:
+            # Ignore if file could not be deleted
+            pass
 
     @pyqtSlot()
     def __on_select_primers(self):
@@ -77,34 +89,18 @@ class PrimerViewer(QWidget):
         pTm : float,
         wPTm : float,
         wTmDelta : float
-    ) -> List[DesignPrimersFilteredResult]:
+    ) -> DesignPrimersResults:
+        return operations.query_best_primers(
+            self.__database,
+            tm,
+            wTm,
+            pTm,
+            wPTm,
+            wTmDelta
+        )
 
-        def select_best(primers : List[PrimerResult]) -> PrimerResult:
-
-            primer = primers[0]
-
-            for candidate in primers[1:]:
-                primer = PrimerResult.choose_best(
-                    primer,
-                    candidate,
-                    tm,
-                    wTm,
-                    pTm,
-                    wPTm,
-                    wTmDelta
-                )
-            
-            return primer
-
-        def select_primers_iterator() -> Iterable[DesignPrimersFilteredResult]:
-
-            for result in self.__results:
-                yield dict(
-                    (resi, select_best(primers))
-                    for resi, primers in result.items()
-                )
-
-        return list(select_primers_iterator())
+    def __get_primer_from_index(self, index : QModelIndex) -> PrimerResult:
+        return index.data(K_ITEM_DATA_ROLE)
 
     @pyqtSlot()
     def __on_item_selection_changed(self):
@@ -114,51 +110,59 @@ class PrimerViewer(QWidget):
         if len(indexes) <= 0:
             return
         ix = min(indexes, key = lambda item: item.row())
-        item = from_just(table.item(ix.row(), 0)).data(K_ITEM_DATA_ROLE)
+        item = self.__get_primer_from_index(ix)
+
+        scoped_results = self.__scoped_results
+        assert scoped_results, "Primer selected withoth a plasmid in socpe! This is a bug."
+
         self.__primer_viewer.set_result(
             PrimerResultContext(
                 result = item,
-                original_sequence = self.__sequence
+                source=scoped_results
             )
         )
 
     @pyqtSlot(object)
-    def __render_results(self, results : List[DesignPrimersFilteredResult]):
+    def __render_results(self, results : DesignPrimersResults):
+
+        self.__scoped_results = results
+
         table = self.__ui.primersTable
-        total_rows = sum(
-            len(result) for result in results
-        )
+        total_rows = len(results.primers)
         table.clearContents()
         table.setRowCount(total_rows)
         table.setColumnCount(7)
-        columns = ["New Residue", "Tm (Sequence)", "Tm (Left Primer)", "Tm (Right Primer)", "Codon", "Left Primer", "Right Primer"]
+        columns = [
+            "Position",
+            "New Residue",
+            "Tm (Sequence)",
+            "Tm (Left Primer)",
+            "Tm (Right Primer)",
+            "Codon",
+            "Left Primer",
+            "Right Primer"
+        ]
         table.setHorizontalHeaderLabels(columns)
 
-        i=0
-        for result in results:
-            for aa, primer in result.items():
+        for i,primer in enumerate(results.primers):
 
-                def new_cell(args):
-                    item = QTableWidgetItem(args)
-                    item.setData(K_ITEM_DATA_ROLE, primer)
-                    return item
+            def new_cell(args):
+                item = QTableWidgetItem(args)
+                item.setData(K_ITEM_DATA_ROLE, primer)
+                return item
 
-                table.setItem(i, 0, new_cell(aa))
+            cells = [
+                new_cell(str(primer.position)),
+                new_cell(str(primer.amino_acid)),
+                new_cell(str(primer.tm_all)),
+                new_cell(str(primer.tm_left)),
+                new_cell(str(primer.tm_right)),
+                new_cell(str(primer.inner_seq)),
+                new_cell(str(primer.left_primer)),
+                new_cell(str(primer.right_primer))
+            ]
 
-                tm_all = primer.tm_all
-
-                if tm_all:
-                    tm_item = new_cell(str(primer.tm_all))
-                else:
-                    tm_item = new_cell(primer.tm_error or "")
-                    tm_item.setBackground(QColor(100, 0, 0, 100))
-
-                table.setItem(i, 1, tm_item)
-                table.setItem(i, 2, new_cell(str(primer.tm_left)))
-                table.setItem(i, 3, new_cell(str(primer.tm_right)))
-                table.setItem(i, 4, new_cell(str(primer.inner_seq)))
-                table.setItem(i, 5, new_cell(str(primer.left_primer)))
-                table.setItem(i, 6, new_cell(str(primer.right_primer)))
-                i+=1
+            for j,cell in enumerate(cells):
+                table.setItem(i, j, cell)
 
         table.resizeColumnsToContents()
