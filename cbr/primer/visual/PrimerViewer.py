@@ -1,8 +1,8 @@
 import os
-from PyQt5.QtCore import QModelIndex, pyqtSlot
+from PyQt5.QtCore import QAbstractTableModel, QModelIndex, Qt, pyqtSlot
 from PyQt5.QtGui import QDoubleValidator
-from PyQt5.QtWidgets import QTableWidgetItem, QVBoxLayout, QWidget
-from typing import Dict, Optional
+from PyQt5.QtWidgets import QVBoxLayout, QWidget
+from typing import Optional
 
 from ...core.Qt.QtCore import run_in_thread
 from ...core.Qt.QtWidgets import progress_manager
@@ -15,7 +15,63 @@ from .Ui_PrimerViewer import Ui_PrimerViewer
 
 K_ITEM_DATA_ROLE = 1
 
-DesignPrimersFilteredResult = Dict[str, PrimerResult]
+def render_tm(tm : float):
+    return f"{round(tm, ndigits=1)}° C"
+
+class PrimersDataModel(QAbstractTableModel):
+
+    def __init__(self, primers : DesignPrimersResults):
+        super().__init__()
+        self.__primers = primers
+        self.__columns = [
+            "Position",
+            "New Residue",
+            "Tm (Sequence)",
+            "Tm (Left Primer)",
+            "Tm (Right Primer)",
+            "Codon",
+            "Left Primer",
+            "Right Primer"
+        ]
+
+    def headerData(self, section, orientation, role=Qt.DisplayRole):
+        if role == Qt.DisplayRole and orientation == Qt.Horizontal:
+            headers = self.__columns
+            if 0 <= section < len(headers):
+                return headers[section]
+        return super().headerData(section, orientation, role)
+
+    def rowCount(self, parent=None):
+        return len(self.__primers.primers)
+
+    def columnCount(self, parent=None):
+        return len(self.__columns)
+    
+    def data(self, index: QModelIndex, role=Qt.DisplayRole):
+
+        if not index.isValid():
+            return None
+
+        primer = self.__primers.primers[index.row()]
+
+        if role == Qt.DisplayRole:
+            cols = [
+                str(primer.position),
+                str(primer.amino_acid),
+                render_tm(primer.tm_all),
+                render_tm(primer.tm_left),
+                render_tm(primer.tm_right),
+                str(primer.inner_seq),
+                str(primer.left_primer),
+                str(primer.right_primer)
+            ]
+            self.setItemData(index, {K_ITEM_DATA_ROLE: primer})
+            return cols[index.column()]
+        elif role == K_ITEM_DATA_ROLE:
+            return primer
+        else:
+            return None
+
 
 class PrimerViewer(QWidget):
 
@@ -55,7 +111,9 @@ class PrimerViewer(QWidget):
         )
         self.__progress.with_default_error_handler(self)
         self.__progress.on_result.connect(self.__render_results)
-        self.__ui.primersTable.itemSelectionChanged.connect(self.__on_item_selection_changed)
+
+        # Populate the tables with some initial values
+        self.__on_select_primers()
 
     def __del__(self):
 
@@ -100,7 +158,7 @@ class PrimerViewer(QWidget):
         )
 
     def __get_primer_from_index(self, index : QModelIndex) -> PrimerResult:
-        return index.data(K_ITEM_DATA_ROLE)
+        return self.__ui.primersTable.model().data(index, K_ITEM_DATA_ROLE)
 
     @pyqtSlot()
     def __on_item_selection_changed(self):
@@ -118,51 +176,25 @@ class PrimerViewer(QWidget):
         self.__primer_viewer.set_result(
             PrimerResultContext(
                 result = item,
-                source=scoped_results
+                source = scoped_results
             )
         )
 
     @pyqtSlot(object)
     def __render_results(self, results : DesignPrimersResults):
+        self.__render_primers_table(results)
+        self.__primer_viewer.set_result(
+            PrimerResultContext(
+                result = None,
+                source = results
+            )
+        )
+
+    def __render_primers_table(self, results : DesignPrimersResults):
 
         self.__scoped_results = results
-
         table = self.__ui.primersTable
-        total_rows = len(results.primers)
-        table.clearContents()
-        table.setRowCount(total_rows)
-        table.setColumnCount(7)
-        columns = [
-            "Position",
-            "New Residue",
-            "Tm (Sequence)",
-            "Tm (Left Primer)",
-            "Tm (Right Primer)",
-            "Codon",
-            "Left Primer",
-            "Right Primer"
-        ]
-        table.setHorizontalHeaderLabels(columns)
-
-        for i,primer in enumerate(results.primers):
-
-            def new_cell(args):
-                item = QTableWidgetItem(args)
-                item.setData(K_ITEM_DATA_ROLE, primer)
-                return item
-
-            cells = [
-                new_cell(str(primer.position)),
-                new_cell(str(primer.amino_acid)),
-                new_cell(str(primer.tm_all)),
-                new_cell(str(primer.tm_left)),
-                new_cell(str(primer.tm_right)),
-                new_cell(str(primer.inner_seq)),
-                new_cell(str(primer.left_primer)),
-                new_cell(str(primer.right_primer))
-            ]
-
-            for j,cell in enumerate(cells):
-                table.setItem(i, j, cell)
-
+        model = PrimersDataModel(results)
+        table.setModel(model)
+        table.selectionModel().selectionChanged.connect(self.__on_item_selection_changed)
         table.resizeColumnsToContents()

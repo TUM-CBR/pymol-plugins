@@ -20,7 +20,7 @@
             "args": ["-i", "test_pymol.py"],
             "module": "IPython",
             "console": "integratedTerminal",
-            "justMyCode": true,
+            "justMyCode": false,
             "python": "/home/ernesto/code/pymol-plugins/.virtualenv/bin/python",
             "env": {
                 "QTHREAD_DEBUGGING": "True",
@@ -34,7 +34,7 @@
             "args": ["-i", "test_pymol.py"],
             "module": "IPython",
             "console": "integratedTerminal",
-            "justMyCode": true,
+            "justMyCode": false,
             "python": "${workspaceFolder}\\devops\\PyMol\\PyMOL\\python",
             "env": {
                 "QTHREAD_DEBUGGING": "True"

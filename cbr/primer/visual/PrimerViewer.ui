@@ -13,12 +13,12 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout" stretch="5,3,0">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="5,0,0">
    <item>
     <widget class="QWidget" name="resultsWidget" native="true"/>
    </item>
    <item>
-    <widget class="QTableWidget" name="primersTable"/>
+    <widget class="QTableView" name="primersTable"/>
    </item>
    <item>
     <layout class="QGridLayout" name="gridLayout" rowstretch="0,0,0,0,0">
