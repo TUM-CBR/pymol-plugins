@@ -1,7 +1,8 @@
 import os
 from PyQt5.QtCore import QAbstractTableModel, QModelIndex, Qt, pyqtSlot
 from PyQt5.QtGui import QDoubleValidator
-from PyQt5.QtWidgets import QVBoxLayout, QWidget
+from PyQt5.QtWidgets import QFileDialog, QMessageBox, QVBoxLayout, QWidget
+import shutil
 from typing import Optional
 
 from ...core.Qt.QtCore import run_in_thread
@@ -33,6 +34,10 @@ class PrimersDataModel(QAbstractTableModel):
             "Left Primer",
             "Right Primer"
         ]
+
+    @property
+    def primers(self) -> DesignPrimersResults:
+        return self.__primers
 
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if role == Qt.DisplayRole and orientation == Qt.Horizontal:
@@ -88,6 +93,11 @@ class PrimerViewer(QWidget):
         self.__scoped_results : Optional[DesignPrimersResults] = None
         self.__delete_when_closed = delete_when_closed
 
+        self.__save_file_result_dialog = msg = QMessageBox()
+        msg.setIcon(QMessageBox.Information)
+        msg.setWindowTitle("Saving Success")
+        msg.setStandardButtons(QMessageBox.Ok)
+
         layout = QVBoxLayout()
         self.__primer_viewer = PrimerResultViewer(self.__ui.resultsWidget)
         layout.addWidget(self.__primer_viewer)
@@ -105,6 +115,10 @@ class PrimerViewer(QWidget):
         self.__ui.tmDeltaWeightEdit.setText("1.00")
         self.__ui.selectButton.clicked.connect(self.__on_select_primers)
 
+        #Saving results
+        self.__ui.saveAllButton.clicked.connect(self.__save_all)
+        self.__ui.exportTableButton.clicked.connect(self.__export_results)
+
         self.__progress = progress_manager(
             self.__ui.filterProgress,
             self.__ui.selectButton
@@ -114,6 +128,43 @@ class PrimerViewer(QWidget):
 
         # Populate the tables with some initial values
         self.__on_select_primers()
+
+    @pyqtSlot()
+    def __save_all(self):
+        file_name, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Primers Database",
+            "",
+            "Primers Database Files (*.sqlite)"
+        )
+
+        shutil.copy2(self.__database, file_name)
+        self.__show_save_result(f"Primers database saved at '{file_name}'")
+
+    def __show_save_result(self, message : str):
+        self.__save_file_result_dialog.setText(message)
+        self.__save_file_result_dialog.exec_()
+
+    def __export_results(self):
+
+        model = self.__ui.primersTable.model()
+
+        if not isinstance(model, PrimersDataModel):
+            return
+
+        primers = model.primers
+
+        file_name, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Results",
+            "",
+            "Primers Database Files (*.csv)"
+        )
+
+        with open(file_name, 'w') as export_file:
+            primers.save_to_csv(export_file)
+
+        self.__show_save_result(f"Table saved at '{file_name}'")
 
     def __del__(self):
 

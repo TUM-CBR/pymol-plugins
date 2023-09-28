@@ -1,5 +1,6 @@
 import os
 from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtGui import QDoubleValidator, QIntValidator
 from PyQt5.QtWidgets import QFileDialog, QWidget
 import random
 import re
@@ -19,6 +20,10 @@ KNOWN_ORGANISMS = ['E_COLI', 'P_PASTORIS']
 
 PrimerOrganism = str
 
+DEFAULT_PRIMER_ARGS = {
+
+}
+
 class PrimerDesign(QWidget):
 
     def __init__(
@@ -31,6 +36,16 @@ class PrimerDesign(QWidget):
         self.__context = context
 
         self.__ui.designPrimersButton.clicked.connect(self.__on_design_primers)
+
+        # Primer size validators
+        validator = QIntValidator(1,50)
+        self.__ui.minSizeInput.setValidator(validator)
+        self.__ui.maxSizeInput.setValidator(validator)
+
+        # DNA concentration validator
+        validator = QDoubleValidator(0.01, 10000, 2)
+        self.__ui.concInput.setValidator(validator)
+
         self.__progress = progress_manager(
             self.__ui.primerDesignProgress,
             self.__ui.designPrimersButton
@@ -83,7 +98,13 @@ class PrimerDesign(QWidget):
         if organism is None:
             return
 
-        result = self.__design_primers(sequence, organism)
+        min_size = int(self.__ui.minSizeInput.text())
+        max_size = int(self.__ui.maxSizeInput.text())
+
+        if min_size >= max_size:
+            show_error(self, "Input Error", "Minimum primer size must be smaller than maximum primer size.")
+
+        result = self.__design_primers(sequence, organism, min_size, max_size)
         self.__progress.watch_progress(result)
 
     def __new_file_name(self):
@@ -98,8 +119,8 @@ class PrimerDesign(QWidget):
         self,
         raw_sequence : str,
         organism : PrimerOrganism,
-        min_primer_size = 5,
-        max_primer_size = 35
+        min_primer_size,
+        max_primer_size
     ) -> str:
 
         sections = dna_re.match(raw_sequence)

@@ -1,6 +1,7 @@
 from Bio.Seq import Seq
+import csv
 import json
-from typing import Any, Dict, List, NamedTuple
+from typing import Any, Dict, List, NamedTuple, TextIO
 
 CODON_SIZE = 3
 
@@ -50,6 +51,57 @@ class DesignPrimersResults(NamedTuple):
     def from_json(cls, data: Dict[str, Any]):
         primers = [PrimerResult(**primer_data) for primer_data in data['primers']]
         return cls(primers=primers, plasmid=data['plasmid'], codon_mappings=data['codon_mappings'])
+
+    def save_to_csv(self, out_stream : TextIO):
+
+        csvwriter = csv.writer(out_stream)
+
+        headers = [
+            "Primer Position",
+            "Codon",
+            "Codon Residue",
+            "Left Primer",
+            "Tm Left Primer",
+            "Right Primer",
+            "Tm Right Primer",
+            "Tm Amplicon"
+        ]
+
+        csvwriter.writerow(headers)
+        csvwriter.writerows(
+            [
+                primer.position,
+                primer.inner_seq,
+                primer.amino_acid,
+                primer.left_primer,
+                primer.tm_left,
+                primer.right_primer,
+                primer.tm_right,
+                primer.tm_all
+            ]
+            for primer in self.primers
+        )
+
+def info_text(info):
+    def decorator(x):
+        return x
+
+class Primer3Args(NamedTuple):
+
+    mv_conc: float
+
+    __args__info__ = {
+        'mv_conc': 'Monovalent cation conc. (mM)'
+    }
+
+"""
+    dv_conc: Divalent cation conc. (mM)
+    dntp_conc: dNTP conc. (mM)
+    dna_conc: DNA conc. (nM)
+    temp_c: Simulation temperature for dG (Celsius)
+    max_loop: Maximum size of loops in the structure
+"""
+
 
 class DesignPrimersArgs(NamedTuple):
     sequence: str

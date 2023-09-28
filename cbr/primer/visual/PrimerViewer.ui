@@ -21,30 +21,24 @@
     <widget class="QTableView" name="primersTable"/>
    </item>
    <item>
-    <layout class="QGridLayout" name="gridLayout" rowstretch="0,0,0,0,0">
-     <item row="3" column="8">
-      <widget class="QLineEdit" name="tmDeltaWeightEdit"/>
+    <layout class="QGridLayout" name="gridLayout" rowstretch="0,0,0,0,0,0,0">
+     <item row="5" column="1">
+      <widget class="QLineEdit" name="tmWeightEdit"/>
      </item>
-     <item row="3" column="4">
-      <widget class="QLabel" name="label_5">
+     <item row="5" column="5">
+      <widget class="QLineEdit" name="tmPrimersWeightEdit"/>
+     </item>
+     <item row="5" column="4">
+      <widget class="QLabel" name="label_6">
        <property name="text">
-        <string>Value</string>
+        <string>Weight</string>
        </property>
       </widget>
      </item>
-     <item row="3" column="1" colspan="2">
-      <widget class="QLineEdit" name="tmEdit"/>
-     </item>
-     <item row="4" column="1">
-      <widget class="QLineEdit" name="tmWeightEdit"/>
-     </item>
-     <item row="2" column="4">
-      <widget class="QLabel" name="label_2">
-       <property name="styleSheet">
-        <string notr="true">font-weight: bold;</string>
-       </property>
+     <item row="4" column="4">
+      <widget class="QLabel" name="label_5">
        <property name="text">
-        <string>Tm (primers)</string>
+        <string>Value</string>
        </property>
       </widget>
      </item>
@@ -58,17 +52,33 @@
        </property>
       </widget>
      </item>
-     <item row="4" column="4">
-      <widget class="QLabel" name="label_6">
+     <item row="4" column="8">
+      <widget class="QLineEdit" name="tmDeltaWeightEdit"/>
+     </item>
+     <item row="2" column="4">
+      <widget class="QLabel" name="label_2">
+       <property name="styleSheet">
+        <string notr="true">font-weight: bold;</string>
+       </property>
+       <property name="text">
+        <string>Tm (primers)</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="1" colspan="2">
+      <widget class="QLineEdit" name="tmEdit"/>
+     </item>
+     <item row="5" column="0">
+      <widget class="QLabel" name="label_3">
        <property name="text">
         <string>Weight</string>
        </property>
       </widget>
      </item>
-     <item row="3" column="0">
-      <widget class="QLabel" name="label_4">
+     <item row="5" column="9">
+      <widget class="QPushButton" name="selectButton">
        <property name="text">
-        <string>Value</string>
+        <string>Select</string>
        </property>
       </widget>
      </item>
@@ -82,37 +92,60 @@
        </property>
       </widget>
      </item>
-     <item row="4" column="0">
-      <widget class="QLabel" name="label_3">
+     <item row="4" column="5">
+      <widget class="QLineEdit" name="tmPrimersEdit"/>
+     </item>
+     <item row="4" column="9">
+      <widget class="QPushButton" name="exportTableButton">
        <property name="text">
-        <string>Weight</string>
+        <string>Export Current Results</string>
        </property>
       </widget>
      </item>
-     <item row="3" column="7">
+     <item row="4" column="7">
       <widget class="QLabel" name="label_8">
        <property name="text">
         <string>Weight</string>
        </property>
       </widget>
      </item>
-     <item row="4" column="9">
-      <widget class="QPushButton" name="selectButton">
+     <item row="4" column="0">
+      <widget class="QLabel" name="label_4">
        <property name="text">
-        <string>Select</string>
+        <string>Value</string>
        </property>
       </widget>
      </item>
-     <item row="4" column="5">
-      <widget class="QLineEdit" name="tmPrimersWeightEdit"/>
+     <item row="2" column="9">
+      <widget class="QPushButton" name="saveAllButton">
+       <property name="text">
+        <string>Save All Primers</string>
+       </property>
+      </widget>
      </item>
-     <item row="3" column="5">
-      <widget class="QLineEdit" name="tmPrimersEdit"/>
-     </item>
-     <item row="3" column="9">
+     <item row="6" column="1" colspan="9">
       <widget class="QProgressBar" name="filterProgress">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>25</height>
+        </size>
+       </property>
+       <property name="styleSheet">
+        <string notr="true"/>
+       </property>
        <property name="value">
         <number>24</number>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="0">
+      <widget class="QWidget" name="widget" native="true">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>25</height>
+        </size>
        </property>
       </widget>
      </item>

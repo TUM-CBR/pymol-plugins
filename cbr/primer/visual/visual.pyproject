@@ -1,5 +1,6 @@
 {
     "files": [
+        "AdvancedConfig.ui",
         "PrimerDesign.ui",
         "PrimerResultViewer.ui",
         "PrimerViewer.ui"
