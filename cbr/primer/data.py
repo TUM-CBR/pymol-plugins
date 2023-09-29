@@ -3,6 +3,8 @@ import csv
 import json
 from typing import Any, Dict, List, NamedTuple, TextIO
 
+from ..core.Qt.visual.EditRecordsDialog import argsinfo
+
 CODON_SIZE = 3
 
 class PrimerResult(NamedTuple):
@@ -82,26 +84,31 @@ class DesignPrimersResults(NamedTuple):
             for primer in self.primers
         )
 
-def info_text(info):
-    def decorator(x):
-        return x
-
+@argsinfo(
+    mv_conc = 'Monovalent cation conc. (mM)',
+    dv_conc = 'Divalent cation conc. (mM)',
+    dntp_conc = 'dNTP conc. (mM)',
+    dna_conc = 'DNA conc. (nM)',
+    temp_c = 'Simulation temperature for dG (Celsius)',
+    max_loop = 'Maximum size of loops in the structure'
+)
 class Primer3Args(NamedTuple):
 
     mv_conc: float
+    dv_conc: float
+    dntp_conc : float
+    dna_conc : float
+    temp_c : float
+    max_loop : float
 
-    __args__info__ = {
-        'mv_conc': 'Monovalent cation conc. (mM)'
-    }
-
-"""
-    dv_conc: Divalent cation conc. (mM)
-    dntp_conc: dNTP conc. (mM)
-    dna_conc: DNA conc. (nM)
-    temp_c: Simulation temperature for dG (Celsius)
-    max_loop: Maximum size of loops in the structure
-"""
-
+DEFAULT_PRIMER3_ARGS = Primer3Args(
+    mv_conc = 50.0,
+    dv_conc = 1.5,
+    dntp_conc = 0.2,
+    dna_conc = 500,
+    temp_c = 37,
+    max_loop = 30
+)
 
 class DesignPrimersArgs(NamedTuple):
     sequence: str

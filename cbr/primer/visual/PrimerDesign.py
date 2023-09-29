@@ -10,6 +10,9 @@ from typing import Optional
 from ...core.Context import Context
 from ...core.Qt.QtCore import run_in_thread
 from ...core.Qt.QtWidgets import progress_manager, show_error, show_exception
+from ...core.Qt.visual.EditRecordsDialog import EditRecordsDialog
+
+from ..data import DEFAULT_PRIMER3_ARGS, Primer3Args
 from ..operations import design_primers
 from .PrimerViewer import PrimerViewer
 from .Ui_PrimerDesign import Ui_PrimerDesign
@@ -19,10 +22,6 @@ dna_re = re.compile(r"(?P<left>(A|C|T|G)+)\[(?P<design>(A|C|T|G)+)\](?P<right>(A
 KNOWN_ORGANISMS = ['E_COLI', 'P_PASTORIS']
 
 PrimerOrganism = str
-
-DEFAULT_PRIMER_ARGS = {
-
-}
 
 class PrimerDesign(QWidget):
 
@@ -42,9 +41,14 @@ class PrimerDesign(QWidget):
         self.__ui.minSizeInput.setValidator(validator)
         self.__ui.maxSizeInput.setValidator(validator)
 
+        # Primer3 Aargs
+        self.__primer3_args : Primer3Args = DEFAULT_PRIMER3_ARGS
+        self.__ui.advancedButton.clicked.connect(self.__on_advanced_clicked)
+        #self.__advanced_dialog = EditRecordsDialog(self, self.__primer3_args, DEFAULT_PRIMER3_ARGS)
         # DNA concentration validator
         validator = QDoubleValidator(0.01, 10000, 2)
         self.__ui.concInput.setValidator(validator)
+        self.__ui.concInput.setText(str(self.__primer3_args.dna_conc))
 
         self.__progress = progress_manager(
             self.__ui.primerDesignProgress,
@@ -55,6 +59,14 @@ class PrimerDesign(QWidget):
         self.__ui.organismCombo.addItems(KNOWN_ORGANISMS)
         self.__ui.openPrimersButton.clicked.connect(self.__on_open_primers)
         self.__workdir = TemporaryDirectory()
+
+    @pyqtSlot()
+    def __on_advanced_clicked(self):
+        dialog = EditRecordsDialog(self, self.__primer3_args, DEFAULT_PRIMER3_ARGS)
+        #self.__advanced_dialog.exec_()
+        dialog.exec_()
+        self.__primer3_args = dialog.new_value()
+        self.__ui.concInput.setText(str(self.__primer3_args.dna_conc))
 
     def __del__(self):
         self.__workdir.cleanup()
