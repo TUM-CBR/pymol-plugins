@@ -89,25 +89,43 @@ class DesignPrimersResults(NamedTuple):
     dv_conc = 'Divalent cation conc. (mM)',
     dntp_conc = 'dNTP conc. (mM)',
     dna_conc = 'DNA conc. (nM)',
-    temp_c = 'Simulation temperature for dG (Celsius)',
-    max_loop = 'Maximum size of loops in the structure'
+    dmso_conc = "Concentration of DMSO (%)",
+    dmso_fact = "DMSO correction factor, default 0.6",
+    formamide_conc = "Concentration of formamide (mol/l)",
+    annealing_temp_c = "Actual annealing temperature of the PCR reaction in (C)",
+    max_nn_length = "Maximum length for nearest-neighbor calcs"
 )
 class Primer3Args(NamedTuple):
-
     mv_conc: float
     dv_conc: float
     dntp_conc : float
     dna_conc : float
-    temp_c : float
-    max_loop : float
+    annealing_temp_c : float
+    max_nn_length : int
+    dmso_conc: float
+    dmso_fact: float
+    formamide_conc: float
+
+    def to_json_dict(self) -> dict:
+
+        json_dict = {}
+        for field, field_type in self._field_types.items():
+            assert field_type in [int, float], "Bug in code: This function needs to be updated!"
+            json_dict[field] = getattr(self, field)
+
+        return json_dict
+
 
 DEFAULT_PRIMER3_ARGS = Primer3Args(
     mv_conc = 50.0,
     dv_conc = 1.5,
     dntp_conc = 0.2,
     dna_conc = 500,
-    temp_c = 37,
-    max_loop = 30
+    annealing_temp_c = -10.0,
+    max_nn_length = 60,
+    dmso_conc = 0.0,
+    dmso_fact = 0.6,
+    formamide_conc = 0.8
 )
 
 class DesignPrimersArgs(NamedTuple):

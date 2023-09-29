@@ -38,7 +38,9 @@ class PrimerDesign(QWidget):
 
         # Primer size validators
         validator = QIntValidator(1,50)
+        self.__ui.minSizeInput.setText("5")
         self.__ui.minSizeInput.setValidator(validator)
+        self.__ui.maxSizeInput.setText("30")
         self.__ui.maxSizeInput.setValidator(validator)
 
         # Primer3 Aargs
@@ -116,7 +118,7 @@ class PrimerDesign(QWidget):
         if min_size >= max_size:
             show_error(self, "Input Error", "Minimum primer size must be smaller than maximum primer size.")
 
-        result = self.__design_primers(sequence, organism, min_size, max_size)
+        result = self.__design_primers(sequence, organism, min_size, max_size, self.__primer3_args)
         self.__progress.watch_progress(result)
 
     def __new_file_name(self):
@@ -131,8 +133,9 @@ class PrimerDesign(QWidget):
         self,
         raw_sequence : str,
         organism : PrimerOrganism,
-        min_primer_size,
-        max_primer_size
+        min_primer_size : int,
+        max_primer_size : int,
+        primer3_args : Primer3Args
     ) -> str:
 
         sections = dna_re.match(raw_sequence)
@@ -152,6 +155,7 @@ class PrimerDesign(QWidget):
             max_primer_size,
             organism,
             sequence,
+            primer3_args,
             result_file
         )
         return result_file

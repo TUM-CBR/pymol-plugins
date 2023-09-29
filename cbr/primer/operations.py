@@ -4,7 +4,7 @@ import subprocess
 from typing import Callable, List, Optional, TextIO, TypeVar
 
 from ..extra.main import cbrtools_bin
-from .data import DesignPrimersResults
+from .data import DesignPrimersResults, Primer3Args
 
 T = TypeVar('T')
 
@@ -59,6 +59,7 @@ def design_primers(
     max_length : int,
     organism : str,
     sequence : str,
+    primer3Args : Primer3Args,
     result_db : str
 ):
     with StringIO() as in_data:
@@ -69,7 +70,8 @@ def design_primers(
                 "min_length": min_length,
                 "max_length": max_length,
                 "organism": organism,
-                "sequence": sequence
+                "sequence": sequence,
+                "primer3Args": primer3Args.to_json_dict()
             },
             in_data
         )

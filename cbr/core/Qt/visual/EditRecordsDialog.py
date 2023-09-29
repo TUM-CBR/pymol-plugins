@@ -1,6 +1,6 @@
 from typing import Any, Callable, Dict, Generic, NamedTuple, Optional, Type, TypeVar
 from PyQt5.QtCore import QModelIndex, QObject, Qt, pyqtSlot
-from PyQt5.QtGui import QDoubleValidator, QValidator
+from PyQt5.QtGui import QDoubleValidator, QIntValidator, QValidator
 from PyQt5.QtWidgets import QDialog, QItemDelegate, QLineEdit, QStyleOptionViewItem, QTableWidgetItem,QWidget
 
 from .Ui_editrecords import Ui_EditRecords
@@ -13,6 +13,20 @@ NUM_COLUMNS = len(COLUMN_NAMES)
 
 T = TypeVar('T', bound=NamedTuple)
 CellDataParser = Callable[[str], Any]
+
+class SupportedType(NamedTuple):
+    type_class : Type
+    parser : CellDataParser
+    validator : QValidator
+    default : Any
+
+    def is_supported(self, other_type : Type) -> bool:
+        return self.type_class == other_type
+
+SUPPORTED_NATIVE_TYPES = [
+    SupportedType(type_class=int, parser=lambda x: int(x), validator=QIntValidator(), default=0),
+    SupportedType(type_class=float, parser=lambda x: float(x), validator=QDoubleValidator(), default=0)
+]
 
 def argsinfo(**args):
 
@@ -134,13 +148,14 @@ class EditRecordsDialog(QDialog, Generic[T]):
             delegate = None
             parser : Optional[CellDataParser] = None
 
-            if value_type == float:
-                value = getattr(current, name, 0)
-                delegate = table.setItemDelegateForRow(
-                    row,
-                    DelegateWithValidator(table, QDoubleValidator(-2**31, 2**31, 4))
-                )
-                parser = lambda x: float(x)
+            for supported_type in SUPPORTED_NATIVE_TYPES:
+                if supported_type.is_supported(float):
+                    value = getattr(current, name, supported_type.default)
+                    delegate = table.setItemDelegateForRow(
+                        row,
+                        DelegateWithValidator(table, supported_type.validator)
+                    )
+                    parser = supported_type.parser
 
             if value is not None:
 
