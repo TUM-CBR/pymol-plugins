@@ -14,87 +14,14 @@
    <string>PrimerDesigner</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="3" column="10">
-    <widget class="QLineEdit" name="concInput">
-     <property name="maximumSize">
-      <size>
-       <width>40</width>
-       <height>16777215</height>
-      </size>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="11">
-    <widget class="QLabel" name="label_2">
+   <item row="5" column="15">
+    <widget class="QPushButton" name="advancedButton">
      <property name="text">
-      <string>Min Size</string>
+      <string>Advanced Config</string>
      </property>
     </widget>
    </item>
-   <item row="4" column="0">
-    <widget class="QWidget" name="widget" native="true">
-     <property name="minimumSize">
-      <size>
-       <width>0</width>
-       <height>25</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>1</width>
-       <height>16777215</height>
-      </size>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="17">
-    <widget class="QPushButton" name="openPrimersButton">
-     <property name="text">
-      <string>Open Primers</string>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="0">
-    <widget class="QLabel" name="label_3">
-     <property name="text">
-      <string>Organism</string>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="14">
-    <widget class="QLineEdit" name="maxSizeInput">
-     <property name="maximumSize">
-      <size>
-       <width>40</width>
-       <height>16777215</height>
-      </size>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="1" colspan="8">
-    <widget class="QComboBox" name="organismCombo"/>
-   </item>
-   <item row="4" column="1" colspan="17">
-    <widget class="QProgressBar" name="primerDesignProgress">
-     <property name="minimumSize">
-      <size>
-       <width>0</width>
-       <height>25</height>
-      </size>
-     </property>
-     <property name="value">
-      <number>24</number>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="13">
-    <widget class="QLabel" name="label_4">
-     <property name="text">
-      <string>Max Size</string>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="12">
+   <item row="5" column="12">
     <widget class="QLineEdit" name="minSizeInput">
      <property name="maximumSize">
       <size>
@@ -104,10 +31,10 @@
      </property>
     </widget>
    </item>
-   <item row="3" column="16">
-    <widget class="QPushButton" name="designPrimersButton">
+   <item row="5" column="17">
+    <widget class="QPushButton" name="openPrimersButton">
      <property name="text">
-      <string>Design Primers</string>
+      <string>Open Primers</string>
      </property>
     </widget>
    </item>
@@ -124,20 +51,106 @@
      </property>
     </widget>
    </item>
-   <item row="3" column="15">
-    <widget class="QPushButton" name="advancedButton">
-     <property name="text">
-      <string>Advanced Config</string>
+   <item row="5" column="1" colspan="8">
+    <widget class="QComboBox" name="organismCombo"/>
+   </item>
+   <item row="3" column="0" colspan="18">
+    <widget class="QTableView" name="selectGeneTable"/>
+   </item>
+   <item row="5" column="14">
+    <widget class="QLineEdit" name="maxSizeInput">
+     <property name="maximumSize">
+      <size>
+       <width>40</width>
+       <height>16777215</height>
+      </size>
      </property>
     </widget>
    </item>
    <item row="1" column="0" colspan="18">
     <widget class="QPlainTextEdit" name="sequenceInputText"/>
    </item>
-   <item row="3" column="9">
+   <item row="5" column="9">
     <widget class="QLabel" name="label_5">
      <property name="text">
       <string>Concentration (nM)</string>
+     </property>
+    </widget>
+   </item>
+   <item row="6" column="0">
+    <widget class="QWidget" name="widget" native="true">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>25</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>1</width>
+       <height>16777215</height>
+      </size>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="13">
+    <widget class="QLabel" name="label_4">
+     <property name="text">
+      <string>Max Size</string>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QLabel" name="label_3">
+     <property name="text">
+      <string>Organism</string>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="10">
+    <widget class="QLineEdit" name="concInput">
+     <property name="maximumSize">
+      <size>
+       <width>40</width>
+       <height>16777215</height>
+      </size>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="16">
+    <widget class="QPushButton" name="designPrimersButton">
+     <property name="text">
+      <string>Design Primers</string>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="11">
+    <widget class="QLabel" name="label_2">
+     <property name="text">
+      <string>Min Size</string>
+     </property>
+    </widget>
+   </item>
+   <item row="6" column="1" colspan="17">
+    <widget class="QProgressBar" name="primerDesignProgress">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>25</height>
+      </size>
+     </property>
+     <property name="value">
+      <number>24</number>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QLabel" name="label_6">
+     <property name="styleSheet">
+      <string notr="true">font-weight: bold;</string>
+     </property>
+     <property name="text">
+      <string>Select Gene</string>
      </property>
     </widget>
    </item>

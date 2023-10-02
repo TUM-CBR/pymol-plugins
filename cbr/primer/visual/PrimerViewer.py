@@ -14,7 +14,7 @@ from .. import operations
 from .PrimerResultViewer import PrimerResultContext, PrimerResultViewer
 from .Ui_PrimerViewer import Ui_PrimerViewer
 
-K_ITEM_DATA_ROLE = 1
+K_ITEM_DATA_ROLE = Qt.UserRole
 
 def render_tm(tm : float):
     return f"{round(tm, ndigits=1)}° C"

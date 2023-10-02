@@ -1,11 +1,12 @@
+from io import StringIO
 import os
-from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtCore import QAbstractTableModel, QModelIndex, Qt, pyqtSlot
 from PyQt5.QtGui import QDoubleValidator, QIntValidator
 from PyQt5.QtWidgets import QFileDialog, QWidget
 import random
 import re
 from tempfile import TemporaryDirectory
-from typing import Optional
+from typing import Iterable, Optional
 
 from ...core.Context import Context
 from ...core.Qt.QtCore import run_in_thread
@@ -20,8 +21,50 @@ from .Ui_PrimerDesign import Ui_PrimerDesign
 dna_re = re.compile(r"(?P<left>(A|C|T|G)+)\[(?P<design>(A|C|T|G)+)\](?P<right>(A|C|T|G)+)", re.IGNORECASE)
 
 KNOWN_ORGANISMS = ['E_COLI', 'P_PASTORIS']
+GENE_SEQUENCE_DATA_ROLE = Qt.UserRole
 
 PrimerOrganism = str
+
+START_CODONS = ["ATG"]
+
+STOP_CODONS = ["TAA", "TAG", "TGA"]
+
+class GeneDataModel(QAbstractTableModel):
+
+    def __init__(self, genes: Iterable[str]):
+        super().__init__()
+        self.__genes = [gene for gene in genes if len(gene) > 0]
+        self.__columns = ["Size", "Sequence"]
+
+    def headerData(self, section, orientation, role=Qt.DisplayRole):
+        if role == Qt.DisplayRole and orientation == Qt.Horizontal:
+            headers = self.__columns
+            if 0 <= section < len(headers):
+                return headers[section]
+        return super().headerData(section, orientation, role)
+
+    def rowCount(self, parent=None):
+        return len(self.__genes)
+
+    def columnCount(self, parent=None):
+        return len(self.__columns)
+
+    def data(self, index: QModelIndex, role=Qt.DisplayRole):
+
+        if not index.isValid():
+            return None
+
+        if role == Qt.DisplayRole:
+            gene = self.__genes[index.row()]
+            cols = [
+                str(len(gene)),
+                gene
+            ]
+            return cols[index.column()]
+        elif role == GENE_SEQUENCE_DATA_ROLE:
+            return self.__genes[index.row()]
+        else:
+            return None
 
 class PrimerDesign(QWidget):
 
@@ -43,6 +86,9 @@ class PrimerDesign(QWidget):
         self.__ui.maxSizeInput.setText("30")
         self.__ui.maxSizeInput.setValidator(validator)
 
+        # Automatically find genes
+        self.__ui.sequenceInputText.textChanged.connect(self.__on_text_changed)
+
         # Primer3 Aargs
         self.__primer3_args : Primer3Args = DEFAULT_PRIMER3_ARGS
         self.__ui.advancedButton.clicked.connect(self.__on_advanced_clicked)
@@ -61,6 +107,54 @@ class PrimerDesign(QWidget):
         self.__ui.organismCombo.addItems(KNOWN_ORGANISMS)
         self.__ui.openPrimersButton.clicked.connect(self.__on_open_primers)
         self.__workdir = TemporaryDirectory()
+
+    def __find_genes(self, plasmid: str) -> Iterable[str]:
+
+        plasmid = plasmid.upper()
+        pos = 3
+        step = 1
+
+        def next_codon():
+            nonlocal pos
+            nonlocal step
+            nonlocal plasmid
+            codon = plasmid[pos-3:pos]
+            pos += step
+            return codon
+
+        while(pos <= len(plasmid)):
+
+            codon = next_codon()
+            if codon not in START_CODONS:
+                continue
+
+            step = 3
+
+            # Beforehand we were reading one by one, so
+            # next_codon had advanced by one on the last call.
+            # We need to advance two more positions to be aligned
+            # with the first codon of the gene
+            pos += 2
+            codon = next_codon()
+            with StringIO() as gene:
+
+                while(codon not in STOP_CODONS and pos <= len(plasmid)):
+                    gene.write(codon)
+                    codon = next_codon()
+
+                gene.seek(0)
+
+                if codon in STOP_CODONS:
+                    yield gene.read()
+                step = 1
+
+
+    @pyqtSlot()
+    def __on_text_changed(self):
+
+        genes = self.__find_genes(self.__ui.sequenceInputText.toPlainText())
+        self.__ui.selectGeneTable.setModel(GeneDataModel(genes))
+        self.__ui.selectGeneTable.resizeColumnsToContents()
 
     @pyqtSlot()
     def __on_advanced_clicked(self):
@@ -105,21 +199,44 @@ class PrimerDesign(QWidget):
     def __on_design_primers_error(self, exception : Exception):
         show_exception(self, exception)
 
+    def __get_plasmid_sequence(self) -> str:
+        sequence = self.__ui.sequenceInputText.toPlainText()
+
+        if dna_re.match(sequence):
+            return sequence
+
+        selection = list(self.__ui.selectGeneTable.selectedIndexes())
+
+        if len(selection) != 1:
+            raise Exception("Only one gene can be selected! Make sure only one cell is selected.")
+
+        selected = selection[0]
+
+        if selected:
+            gene = selected.data(GENE_SEQUENCE_DATA_ROLE)
+            return sequence.upper().replace("[", "").replace("]", "").replace(gene, f"[{gene}]")
+
+        return sequence
+
     @pyqtSlot()
     def __on_design_primers(self):
-        sequence = self.__ui.sequenceInputText.toPlainText()
-        organism = self.__get_organism()
-        if organism is None:
-            return
 
-        min_size = int(self.__ui.minSizeInput.text())
-        max_size = int(self.__ui.maxSizeInput.text())
+        try:
+            sequence = self.__get_plasmid_sequence()
+            organism = self.__get_organism()
+            if organism is None:
+                return
 
-        if min_size >= max_size:
-            show_error(self, "Input Error", "Minimum primer size must be smaller than maximum primer size.")
+            min_size = int(self.__ui.minSizeInput.text())
+            max_size = int(self.__ui.maxSizeInput.text())
 
-        result = self.__design_primers(sequence, organism, min_size, max_size, self.__primer3_args)
-        self.__progress.watch_progress(result)
+            if min_size >= max_size:
+                show_error(self, "Input Error", "Minimum primer size must be smaller than maximum primer size.")
+
+            result = self.__design_primers(sequence, organism, min_size, max_size, self.__primer3_args)
+            self.__progress.watch_progress(result)
+        except Exception as e:
+            show_exception(self, e)
 
     def __new_file_name(self):
         dir = self.__workdir.name
