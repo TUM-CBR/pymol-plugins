@@ -11,6 +11,7 @@ def cbrtools_bin():
         return os.path.join(
             os.path.dirname(__file__),
             "resources",
+            "cbrtools",
             "cbrtools.exe"
         )
 
