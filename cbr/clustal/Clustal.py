@@ -21,6 +21,9 @@ MsaInput = TypeVar('MsaInput', str, Iterable[Tuple[str, str]], TextIOBase)
 
 MsaOutput = TypeVar('MsaOutput', str, TextIOBase)
 
+def get_clustal() -> 'Clustal':
+    return Clustal()
+
 def get_clustal_from_context(context : Context):
     return Clustal()
 

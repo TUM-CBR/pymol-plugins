@@ -1,24 +1,24 @@
 from PyQt5.QtWidgets import QMainWindow, QWidget
+from PyQt5.QtGui import QCloseEvent
 from typing import Any, Callable, Dict, TypeVar
 
 T = TypeVar('T')
 
-class RunQWidgetContext(object):
+class RunQWidgetContext(QMainWindow):
     
     def __init__(
-        self, window : QMainWindow,
-        widget : QWidget):
+        self,
+        widget : QWidget,
+        on_close : 'Callable[[RunQWidgetContext], None]'
+    ):
+        super().__init__()
 
-        self.__window = window
-        self.__widget = widget
+        self.__on_close = on_close
+        self.setCentralWidget(widget)
 
-    @property
-    def window(self) -> QMainWindow:
-        return self.__window
-
-    def show(self) -> None:
-
-        self.__window.show()
+    def closeEvent(self, a0: QCloseEvent) -> None:
+        super().closeEvent(a0)
+        self.__on_close(self)
 
 class Context(object):
 
@@ -35,13 +35,19 @@ class Context(object):
 
         return result
 
+    def __on_close(self, window: RunQWidgetContext):
+
+        try:
+            self.__widgets.remove(window)
+        except ValueError:
+            # This should not happen, but not critical if it does
+            pass
+
     def run_widget(self, run_widget : Callable[['Context'], QWidget]) -> RunQWidgetContext:
 
-        window = QMainWindow()
         widget = run_widget(self)
-        window.setCentralWidget(widget)
+        window = RunQWidgetContext(widget, self.__on_close)
 
-        instance = RunQWidgetContext(window, widget)
-        self.__widgets.append(instance)
+        self.__widgets.append(window)
 
-        return instance
+        return window

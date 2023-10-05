@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'FastaSequencesInput.ui'
+# Form implementation generated from reading ui file 'cbr/support/msa/visual/FastaSequencesInput.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.9
 #
@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_FastaSequencesInput(object):
     def setupUi(self, FastaSequencesInput):
         FastaSequencesInput.setObjectName("FastaSequencesInput")
-        FastaSequencesInput.resize(400, 300)
+        FastaSequencesInput.resize(417, 314)
         self.verticalLayout = QtWidgets.QVBoxLayout(FastaSequencesInput)
         self.verticalLayout.setObjectName("verticalLayout")
         self.label = QtWidgets.QLabel(FastaSequencesInput)

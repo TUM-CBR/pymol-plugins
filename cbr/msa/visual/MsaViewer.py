@@ -1,6 +1,6 @@
 import pymol.cmd as cmd
 from PyQt5.QtCore import pyqtSlot, QPoint, Qt
-from PyQt5.QtWidgets import QDialog, QFileDialog, QTableWidgetItem, QWidget
+from PyQt5.QtWidgets import QTableWidgetItem, QWidget
 from typing import Callable, Dict, List, NamedTuple, Optional, Set
 
 from ...clustal import msa
@@ -11,8 +11,8 @@ from ...core.pymol import structure
 from ...core.pymol.structure import StructureSelection
 from ...core.pymol.visual.PymolResidueResultsTable import PymolResidueSelector
 from ...core.Qt.QtWidgets import open_copy_context_menu
+from ...support.msa import msa_selector
 
-from .FastaSequencesInput import FastaSequencesInput
 from .Ui_MsaViewer import Ui_MsaViewer
 
 COLOR_MAX = 999
@@ -122,7 +122,13 @@ class MsaViewer(QWidget):
         )
         self.__set_sequences({})
         self.__clustal = Clustal.get_clustal_from_context(context)
-        self.__msa_input_dialog = FastaSequencesInput(context, parent = self)
+        self.__msa_selector = msa_selector(
+            self,
+            self.__ui.selectMsaButton,
+            self.__ui.selectedFileLabel,
+            self.__ui.createMsaButton
+        )
+        self.__msa_selector.msa_file_selected.connect(self.__set_sequences)
         self.__residue_selector = PymolResidueSelector(self.__ui.resultsTable)
 
         # Context menu for copy/paste
@@ -133,31 +139,11 @@ class MsaViewer(QWidget):
     def __on_results_context_menu(self, pos):
         open_copy_context_menu(self.__ui.resultsTable, pos)
 
+    @pyqtSlot(object)
     def __set_sequences(self, sequences : Dict[str, str]):
         self.__sequences = dict(sequences)
         self.__ui.sequenceCombo.clear()
         self.__ui.sequenceCombo.addItems(self.__sequences.keys())
-
-    @pyqtSlot()
-    def on_createMsaButton_clicked(self):
-
-        if self.__msa_input_dialog.exec() == QDialog.Accepted:
-            assert self.__msa_input_dialog.msa_result, "Bug in the code, result should be set"
-            self.__set_sequences(self.__msa_input_dialog.msa_result)
-
-    @pyqtSlot()
-    def on_selectMsaButton_clicked(self):
-        options = QFileDialog.Options()
-        options |= QFileDialog.ReadOnly  # Optionally set file dialog options
-
-        # Show the file dialog and get the selected file
-        file_path, _ = QFileDialog.getOpenFileName(self, "Open File", "", "Clustal alignment Files (*.*)", options=options)
-
-        if not file_path:
-            return
-
-        print("Selected file:", file_path)
-        self.__set_sequences(msa.parse_alignments(file_path))
 
     @property
     def __selected_structure(self) -> Optional[StructureSelection]:

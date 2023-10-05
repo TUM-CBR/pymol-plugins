@@ -1,3 +1,5 @@
 {
-    "files": ["FastaSequencesInput.ui","MsaViewer.ui"]
+    "files": [
+        "MsaViewer.ui"
+    ]
 }

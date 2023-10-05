@@ -2,13 +2,13 @@ from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QComboBox, QLabel, QPushButton
 from typing import Optional, List, Tuple
 
-from ...clustal.Clustal import Clustal
-from ...clustal import msa
-from ...core.pymol import structure
-from ...core.pymol.structure import StructureSelection
-from ...core.visual import as_structure_selector, StructureSelector
+from ....clustal.Clustal import Clustal
+from ....clustal import msa
+from ....core.pymol import structure
+from ....core.pymol.structure import StructureSelection
+from ....core.visual import as_structure_selector, StructureSelector
 
-from .MsaSelector import Msa
+from ..core import Msa
 
 class AlignmentIndexSelector(QObject):
 

@@ -1,16 +1,15 @@
 from PyQt5.QtCore import pyqtSlot
-from PyQt5.QtWidgets import QDialog
+from PyQt5.QtWidgets import QDialog, QWidget
 from typing import Dict
 
-from ...core.Context import Context
-from ...clustal import Clustal
+from ....clustal import Clustal
 from .Ui_FastaSequencesInput import Ui_FastaSequencesInput
 
 class FastaSequencesInput(QDialog):
 
-    def __init__(self, context : Context, *args, **kwargs):
-        super(FastaSequencesInput, self).__init__(*args, **kwargs)
-        self.__clustal = Clustal.get_clustal_from_context(context)
+    def __init__(self, parent : QWidget):
+        super(FastaSequencesInput, self).__init__(parent=parent)
+        self.__clustal = Clustal.get_clustal()
         self.__msa_result : 'Dict[str,str] | None' = None
         self.__ui = Ui_FastaSequencesInput()
         self.__ui.setupUi(self)
