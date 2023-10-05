@@ -1,121 +1,46 @@
-import pymol.cmd as cmd
-from PyQt5.QtCore import pyqtSlot, QPoint, Qt
-from PyQt5.QtWidgets import QTableWidgetItem, QWidget
-from typing import Callable, Dict, List, NamedTuple, Optional, Set
+from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtWidgets import QWidget
+from typing import Dict, Optional
 
-from ...clustal import msa
 from ...clustal import Clustal
 from ...core.Context import Context
 from ...core import visual
-from ...core.pymol import structure
 from ...core.pymol.structure import StructureSelection
-from ...core.pymol.visual.PymolResidueResultsTable import PymolResidueSelector
-from ...core.Qt.QtWidgets import open_copy_context_menu
-from ...support.msa import msa_selector
+from ...support.msa import msa_selector, Msa
 
+from .ColorByResidue import ColorByResidue
 from .Ui_MsaViewer import Ui_MsaViewer
-
-COLOR_MAX = 999
-COLOR_MIN = 600
-
-def perc_str(n : float):
-    return str(round(100*n, ndigits=2))
-
-class MsaConservationResult(object):
-
-    def __init__(
-            self,
-            pdb_position : int,
-            msa_position : int,
-            structure_residue : str,
-            score : Dict[str, int]
-        ):
-        score = score.copy()
-        self.__blanks = score.get("-") or 0
-        if "-" in score:
-            del score["-"]
-        self.__structure_residue = structure_residue
-        self.__score = score
-        self.__pdb_position = pdb_position
-        self.__msa_position = msa_position
-
-    @property
-    def blanks(self) -> int:
-        return self.__blanks
-
-    @property
-    def blanks_percent(self) -> float:
-        return self.blanks / self.sum_with_blanks
-
-    @property
-    def residue(self) -> str:
-        return self.__structure_residue
-
-    @property
-    def pdb_position(self) -> int:
-        return self.__pdb_position
-
-    @property
-    def msa_position(self) -> int:
-        return self.__msa_position
-
-    @property
-    def score(self) -> Dict[str, int]:
-        return self.__score
-    
-    @property
-    def sum_with_blanks(self) -> float:
-        return sum(self.__score.values()) + self.__blanks
-
-    @property
-    def score_percent(self) -> Dict[str, float]:
-        total = self.sum_with_blanks
-        return dict([
-            (res, score/total)
-            for (res, score) in self.__score.items()
-        ])
-
-    @property
-    def residue_count_score(self) -> float:
-        return len(self.__score)
-    
-    @property
-    def max_conservation_score(self) -> int:
-        return max(self.__score.values())
-    
-    @property
-    def max_conservation_weighted(self) -> int:
-        return self.max_conservation_score + self.__blanks
-    
-    @property
-    def relative_to_structure_conservation_score(self) -> int:
-        return self.__score[self.__structure_residue]
-
-    @property
-    def structure_relative_to_consensus_score(self):
-        return self.relative_to_structure_conservation_score / self.max_conservation_score
-    
-class MsaConservationResults(NamedTuple):
-    results_keys : Set[str]
-    results : Dict[int, MsaConservationResult]
+from .MsaContext import MsaContext
 
 class MsaViewer(QWidget):
 
-    scoring_methods : Dict[str, Callable[[MsaConservationResult], float]] = {
-        'maximum conservation': lambda x: x.max_conservation_score,
-        'maximum conservation (gaps weightd)': lambda x: x.max_conservation_weighted,
-        'residue count': lambda x: x.residue_count_score,
-        'relative to structure': lambda x: x.relative_to_structure_conservation_score,
-        'structure relative to consensus': lambda x: x.structure_relative_to_consensus_score
-    }
-
     NoStructureSelectedException = ValueError("No structure has been selected for the alignment")
+
+    class MsaContextImpl(MsaContext):
+
+        def __init__(
+            self,
+            msa_viewer : 'MsaViewer'
+        ) -> None:
+            super().__init__()
+            self.__msa_viewer = msa_viewer
+
+        @property
+        def selected_msa_sequence_name(self) -> str:
+            return self.__msa_viewer.__ui__.sequenceCombo.currentText()
+
+        @property
+        def selected_structure(self) -> Optional[StructureSelection]:
+            return self.__msa_viewer.__structure_selector__.currentSelection
+
+        @property
+        def sequences(self) -> Msa:
+            return self.__msa_viewer.__sequences__
 
     def __init__(self, context : Context, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.__ui = Ui_MsaViewer()
         self.__ui.setupUi(self)
-        self.__ui.scoringCombo.addItems(MsaViewer.scoring_methods)
         self.__structure_selector = visual.as_structure_selector(
             self.__ui.structuresCombo,
             self.__ui.structuresRefreshButton
@@ -129,15 +54,23 @@ class MsaViewer(QWidget):
             self.__ui.createMsaButton
         )
         self.__msa_selector.msa_file_selected.connect(self.__set_sequences)
-        self.__residue_selector = PymolResidueSelector(self.__ui.resultsTable)
 
-        # Context menu for copy/paste
-        self.__ui.resultsTable.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.__ui.resultsTable.customContextMenuRequested.connect(self.__on_results_context_menu)
+        self.__ui.msaColoringWidgets.addTab(
+            ColorByResidue(self.__clustal, self.MsaContextImpl(self)),
+            "Color by Residue"
+        )
 
-    @pyqtSlot(QPoint)
-    def __on_results_context_menu(self, pos):
-        open_copy_context_menu(self.__ui.resultsTable, pos)
+    @property
+    def __structure_selector__(self) -> visual.StructureSelector:
+        return self.__structure_selector
+
+    @property
+    def __ui__(self) -> Ui_MsaViewer:
+        return self.__ui
+
+    @property
+    def __sequences__(self) -> Msa:
+        return self.__sequences
 
     @pyqtSlot(object)
     def __set_sequences(self, sequences : Dict[str, str]):
@@ -145,134 +78,3 @@ class MsaViewer(QWidget):
         self.__ui.sequenceCombo.clear()
         self.__ui.sequenceCombo.addItems(self.__sequences.keys())
 
-    @property
-    def __selected_structure(self) -> Optional[StructureSelection]:
-        return self.__structure_selector.currentSelection
-
-    def __get_structure_sequence(self):
-
-        if self.__selected_structure:
-            return structure.get_pdb_sequence(self.__selected_structure)
-        else:
-            raise MsaViewer.NoStructureSelectedException
-
-    def __get_structure_positions(self)  -> 'List[int | None]':
-        sequence_name = self.__ui.sequenceCombo.currentText()
-        sequence = msa.clean_msa_blanks(self.__sequences[sequence_name])
-        structure_sequence = self.__get_structure_sequence()
-        result = self.__clustal.run_msa_items(
-            [ ("structure", structure_sequence)
-            , (sequence_name, sequence)
-            ]
-        )
-
-        return list(msa.get_relative_positions(self.__sequences, result))
-
-    def __get_structure_conservation(self) -> MsaConservationResults:
-        selection = self.__selected_structure
-        if selection is None:
-            raise MsaViewer.NoStructureSelectedException
-
-        sequences = list(self.__sequences.values())
-        positions = self.__get_structure_positions()
-        structure_sequence = self.__get_structure_sequence()
-        result = {}
-        results_keys = set()
-        offset = list(sorted(structure.get_pdb_sequence_index(selection).keys()))
-
-        for (i, ix) in filter(lambda x: x[1], enumerate(positions)):
-
-            assert ix, "Bug in code, only positions that occur in the structure should be there"
-            structure_residue = structure_sequence[ix].lower()
-            conserved = {structure_residue: 1}
-            for sequence in sequences:
-                aa = sequence[i].lower()
-
-                if not(msa.is_blank(aa)):
-                    results_keys.add(aa)
-
-                if aa in conserved:
-                    conserved[aa] += 1
-                else:
-                    conserved[aa] = 1
-
-            assert ix, "Bug in filtering criteria!"
-            result[ix] = MsaConservationResult(offset[ix], i, structure_residue, conserved)
-
-        return MsaConservationResults(results_keys, result)
-    
-    @property
-    def __scoring_function(self) -> Callable[[MsaConservationResult], float]:
-        return MsaViewer.scoring_methods.get(self.__ui.scoringCombo.currentText()) or (lambda x: 0.0)
-
-    def __set_results_table(self, results : MsaConservationResults) -> None:
-        table = self.__ui.resultsTable
-        table.reset()
-        residue_selector = self.__residue_selector
-        residue_selector.reset()
-        scoring = self.__scoring_function
-        structure_selection = self.__selected_structure
-
-        if structure_selection is None:
-            raise MsaViewer.NoStructureSelectedException
-
-        self.__residue_selector.set_selection(structure_selection.selection)
-
-        base_columns = ['structure position', 'MSA position', 'structure residue', 'score']
-        column_names = base_columns + \
-            ["%s (%%)" % r for r in results.results_keys] + \
-            ["gaps (%)"]
-        table.setColumnCount(len(column_names))
-        table.setRowCount(len(results.results))
-        table.setHorizontalHeaderLabels(column_names)
-
-        for (i,score) in enumerate(results.results.values()):
-            residue_selector.set_item_riesidues(i, [score.pdb_position])
-            table.setItem(i, 0, QTableWidgetItem(str(score.pdb_position)))
-            table.setItem(i, 1, QTableWidgetItem(str(score.msa_position)))
-            table.setItem(i, 2, QTableWidgetItem(score.residue))
-            table.setItem(i, 3, QTableWidgetItem(str(scoring(score))))
-
-            for (j, key) in enumerate(results.results_keys):
-                k_score = perc_str(score.score_percent.get(key) or 0.0)
-                table.setItem(i, j + len(base_columns), QTableWidgetItem("%s%%" % k_score))
-
-            table.setItem(
-                i,
-                len(column_names) - 1,
-                QTableWidgetItem("%s%%" % perc_str(score.blanks_percent))
-            )
-
-    @pyqtSlot(int)
-    def on_gapTresholdSlider_sliderMoved(self, value : int):
-        self.__ui.gapTresholdLabel.setText("%i%%" % value)
-
-    def __color_by_conservation(self):
-        selection = self.__selected_structure
-
-        if selection is None:
-            raise MsaViewer.NoStructureSelectedException
-
-        conservation = self.__get_structure_conservation()
-        scoring = self.__scoring_function
-        scores = [(result, scoring(result)) for (i, result) in conservation.results.items()]
-        factor = (COLOR_MAX - COLOR_MIN) / max(score for (r, score) in scores)
-        structure_query = selection.selection
-        gaps_treshold = self.__ui.gapTresholdSlider.value()
-
-        cmd.color("999", structure_query)
-
-        for (result, score) in scores:
-            ix = result.pdb_position
-            if result.blanks_percent > gaps_treshold / 100:
-                color = "white"
-            else:
-                i_score = int(score * factor)
-                color = str(999 - i_score)
-            cmd.color(color, "%s and resi %i-%i" % (structure_query, ix, ix))
-
-        self.__set_results_table(conservation)
-
-    @pyqtSlot()
-    def on_colorConservedButton_clicked(self):
-        self.__color_by_conservation()

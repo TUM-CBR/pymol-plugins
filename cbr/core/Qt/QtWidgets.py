@@ -1,6 +1,6 @@
 from concurrent.futures import Future
 from io import StringIO
-from typing import Callable, Generic, Iterable, Set, TypeVar
+from typing import Any, Callable, Generic, Iterable, Set, TypeVar
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QAction, QApplication, QMenu, QMessageBox, QProgressBar, QTableWidget, QWidget
 
@@ -89,6 +89,35 @@ def show_exception(
     )
 
 TResult = TypeVar('TResult')
+
+TErrorHandler = TypeVar('TErrorHandler')
+
+def with_error_handler(fn : TErrorHandler) -> TErrorHandler:
+
+    invalid_use_exception = ValueError("'with_error_handler' can only be used with methods of QWidget instances!")
+
+    if not callable(fn):
+        raise invalid_use_exception
+
+    fnAny : Any = fn
+
+    def error_handler(qWidget : QWidget, *args, **kwargs):
+
+        if not isinstance(qWidget, QWidget):
+            raise invalid_use_exception
+
+        result = None
+        try:
+            result = fnAny(qWidget, *args, **kwargs)
+        except Exception as exn:
+            show_exception(qWidget, exn)
+            return
+
+        if result is not None:
+            raise ValueError("'with_error_handler' can only be used for methods that return None")
+
+    result : Any = error_handler
+    return result
 
 class ProgressManager(QObject, Generic[TResult]):
 
