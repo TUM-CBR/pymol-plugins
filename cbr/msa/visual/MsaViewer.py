@@ -8,6 +8,7 @@ from ...core import visual
 from ...core.pymol.structure import StructureSelection
 from ...support.msa import msa_selector, Msa
 
+from .ColorByMotif import ColorByMotif
 from .ColorByResidue import ColorByResidue
 from .Ui_MsaViewer import Ui_MsaViewer
 from .MsaContext import MsaContext
@@ -55,9 +56,15 @@ class MsaViewer(QWidget):
         )
         self.__msa_selector.msa_file_selected.connect(self.__set_sequences)
 
+        msa_context = self.MsaContextImpl(self)
         self.__ui.msaColoringWidgets.addTab(
-            ColorByResidue(self.__clustal, self.MsaContextImpl(self)),
+            ColorByResidue(self.__clustal, msa_context),
             "Color by Residue"
+        )
+
+        self.__ui.msaColoringWidgets.addTab(
+            ColorByMotif(msa_context),
+            "Color by Motif"
         )
 
     @property

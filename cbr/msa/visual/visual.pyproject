@@ -1,5 +1,6 @@
 {
     "files": [
+        "ColorByMotif.ui",
         "ColorByResidue.ui",
         "MsaViewer.ui"
     ]
