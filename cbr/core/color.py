@@ -1,5 +1,6 @@
-from colorsys import hls_to_rgb
-from typing import List, Tuple
+from colorsys import hls_to_rgb, rgb_to_hsv, hsv_to_rgb
+import math
+from typing import cast, List, NamedTuple, Tuple
 
 RgbColor = Tuple[int, int, int]
 
@@ -69,3 +70,40 @@ def int_to_rgb(value : int) -> RgbColor:
 
 def int_to_pymol_color(value : int) -> str:
     return to_pymol_color(int_to_rgb(value))
+
+def norm(color : RgbColor) -> float:
+    return math.sqrt(sum(x * x for x in color))
+
+def delta(c1: RgbColor, c2: RgbColor) -> RgbColor:
+    return cast(RgbColor, tuple((ca - cb) for (ca, cb) in zip(c2, c1)))
+
+def scale(factor: float, c: RgbColor) -> RgbColor:
+    return cast(RgbColor, tuple(factor * i for i in c))
+
+def add(c1 : RgbColor, c2 : RgbColor) -> RgbColor:
+    return cast(RgbColor, tuple(ca + cb for (ca, cb) in zip(c1, c2)))
+
+class ColorRange(NamedTuple):
+
+    base_color : RgbColor
+
+    def get_color(self, scale_factor: float) -> RgbColor:
+
+        if scale_factor < 0 or scale_factor > 1:
+            raise ValueError("The 'distance' argument must be between 0 and 1.")
+
+        rgb = self.base_color
+        r, g, b = [x/255.0 for x in rgb] # Normalize to [0, 1]
+        h, s, v = rgb_to_hsv(r, g, b)
+        v *= scale_factor # Reduce the value (brightness)
+        r, g, b = hsv_to_rgb(h, s, v)
+        return (
+            int(r * 255),
+            int(g * 255),
+            int(b * 255)
+        )
+
+def color_range_scale(color: RgbColor) -> ColorRange:
+    return ColorRange(
+        base_color=color
+    )

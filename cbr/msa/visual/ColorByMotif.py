@@ -1,3 +1,4 @@
+import pymol
 from PyQt5.QtCore import QAbstractTableModel, QModelIndex, pyqtSlot, Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QWidget
@@ -5,15 +6,57 @@ import re
 from typing import Dict, Iterable, Iterator, List, NamedTuple, Optional
 
 from ...core import color
+from ...core.color import RgbColor
 from ...core.Qt.QtWidgets import with_error_handler
 from ...support.msa import Msa
 
 from .MsaContext import MsaContext
+from .support import msa_to_structure_position_map, sequence_to_structure_position_map
 from .Ui_ColorByMotif import Ui_ColorByMotif
+
+class MotifMatch(NamedTuple):
+    start : int
+    end : int
+
+class MotifMatches(NamedTuple):
+    matches : List[MotifMatch]
+
+    def add_match(self, match : re.Match):
+        self.matches.append(
+            MotifMatch(
+                start=match.start(),
+                end = match.end()
+            )
+        )
+
+class SequenceMatchEntry(NamedTuple):
+    sequence_name : str
+    sequence : str
+    matches : Dict[str, MotifMatches]
+
+    def add_match(self, motif : str, match : re.Match):
+
+        if motif not in self.matches:
+            self.matches[motif] = MotifMatches(list())
+
+        self.matches[motif].add_match(match)
+
+    def count(self, motif : str) -> int:
+
+        match = self.matches.get(motif)
+
+        if match is None:
+            return 0
+
+        return len(match.matches)
 
 class PatternEntry(NamedTuple):
     pattern : re.Pattern
     color_index : int
+
+    @property
+    def rgb_color(self) -> RgbColor:
+        return color.get_color_rgb(self.color_index)
 
     @property
     def qt_color(self) -> QColor:
@@ -25,7 +68,8 @@ class PatternEntry(NamedTuple):
 MotifsDict = Dict[str, PatternEntry]
 
 class MatchMotifsResult(NamedTuple):
-    results : Dict[int, Dict[str, int]]
+    by_msa_position_results : Dict[int, Dict[str, int]]
+    by_sequence_name_results : Dict[str, SequenceMatchEntry]
     motifs : MotifsDict
 
 MOTIF_ID_ROLE = Qt.UserRole
@@ -91,7 +135,7 @@ class StructureByPositionModel(QAbstractTableModel):
         # Copy the dictionary, don't trust the outside
         # forces not to modify it
         self.__result = result
-        self.__keys = sorted(list(result.results.keys()))
+        self.__keys = sorted(list(result.by_msa_position_results.keys()))
 
     @property
     def __front_headers(self) -> List[str]:
@@ -114,13 +158,13 @@ class StructureByPositionModel(QAbstractTableModel):
 
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if role == Qt.DisplayRole and orientation == Qt.Horizontal:
-            headers = self.__front_headers + list(self.__result.motifs.keys())
+            headers = self.__front_headers + [f"{k} (count)" for k in self.__result.motifs.keys()]
             if 0 <= section < len(headers):
                 return headers[section]
         return super().headerData(section, orientation, role)
 
     def rowCount(self, parent = None) -> int:
-        return len(self.__result.results)
+        return len(self.__result.by_msa_position_results)
 
     def columnCount(self, parent = None) -> int:
         return len(self.__result.motifs) + self.__static_column_count
@@ -131,7 +175,7 @@ class StructureByPositionModel(QAbstractTableModel):
             return None
 
         key = self.__keys[index.row()]
-        entry = self.__result.results[key]
+        entry = self.__result.by_msa_position_results[key]
 
         if role == Qt.DisplayRole:
             values : List[str] = [
@@ -139,9 +183,65 @@ class StructureByPositionModel(QAbstractTableModel):
             ] + [str(entry[k]) for k in self.__result.motifs.keys()]
             return values[index.column()]
         elif role == Qt.BackgroundColorRole:
-            return self.__get_column_color
+            return self.__get_column_color(index.column())
         else:
             return None
+
+class MatchesByNameModel(QAbstractTableModel):
+    def __init__(
+        self,
+        result : MatchMotifsResult
+    ):
+        super().__init__()
+
+        # Copy the dictionary, don't trust the outside
+        # forces not to modify it
+        self.__result = result
+        self.__keys = sorted(list(result.by_sequence_name_results.keys()))
+        self.__motifs = list(self.__result.motifs.keys())
+
+        self.__front_headers = ["Sequence Name"]
+
+        self.__column_names = \
+            self.__front_headers+ \
+            [f"{motif} (count)" for motif in self.__motifs]
+
+    def headerData(self, section, orientation, role=Qt.DisplayRole):
+        if role == Qt.DisplayRole and orientation == Qt.Horizontal:
+            headers = self.__column_names
+            if 0 <= section < len(headers):
+                return headers[section]
+        return super().headerData(section, orientation, role)
+
+    def rowCount(self, parent = None) -> int:
+        return len(self.__keys)
+
+    def columnCount(self, parent = None) -> int:
+        return len(self.__column_names)
+
+    def __get_column_color(self, i : int) -> Optional[QColor]:
+        motif_column_start = len(self.__front_headers)
+        if i < motif_column_start:
+            return None
+        else:
+            motif = self.__motifs[i - motif_column_start]
+            return self.__result.motifs[motif].qt_color
+
+    def data(self, index: QModelIndex, role = Qt.DisplayRole):
+
+        if not index.isValid():
+            return None
+
+        key = self.__keys[index.row()]
+        entry = self.__result.by_sequence_name_results[key]
+
+        if role == Qt.DisplayRole:
+            columns : List[str] = \
+                [key] + \
+                [str(entry.count(motif)) for motif in self.__motifs]
+            return columns[index.column()]
+        elif role == Qt.BackgroundColorRole:
+            return self.__get_column_color(index.column())
 
 class ColorByMotif(QWidget):
 
@@ -214,24 +314,35 @@ class ColorByMotif(QWidget):
 
     def __find_motifs(self, msa : Msa) -> MatchMotifsResult:
 
-        results = {}
+        by_position_results = {}
 
         def add_count(start : int, end : int, motif_name: str, count: int):
 
             for i in range(start, end):
 
-                if i not in results:
-                    results[i] = dict((k,0) for k in self.__selected_motifs.keys())
+                if i not in by_position_results:
+                    by_position_results[i] = dict((k,0) for k in self.__selected_motifs.keys())
 
-                results[i][motif_name] += count
+                by_position_results[i][motif_name] += count
+
+        by_sequence_results = {}
+
+        def add_sequence_match(name: str, motif : str, sequence : str, match : re.Match):
+
+            if name not in by_sequence_results:
+                by_sequence_results[name] = SequenceMatchEntry(sequence_name=name, sequence=sequence, matches=dict())
+
+            by_sequence_results[name].add_match(motif, match)
 
         for name, sequence in msa.items():
             for motif_name, pattern in self.__selected_motifs.items():
                 for match in pattern.finditer(sequence):
                     add_count(match.start(), match.end(), motif_name, 1)
+                    add_sequence_match(name, motif_name, sequence, match)
 
         return MatchMotifsResult(
-            results=results,
+            by_msa_position_results=by_position_results,
+            by_sequence_name_results=by_sequence_results,
             motifs=dict(self.__selected_motifs)
         )
 
@@ -239,5 +350,58 @@ class ColorByMotif(QWidget):
     @with_error_handler()
     def __on_run_clicked(self):
         results = self.__find_motifs(self.__msa_context.sequences)
+
+        # Update the positions table
         self.__ui.structurePositionsTable.setModel(StructureByPositionModel(results))
         self.__ui.structurePositionsTable.resizeColumnsToContents()
+
+        # Update the names table
+        self.__ui.msaItemsTable.setModel(MatchesByNameModel(results))
+        self.__ui.msaItemsTable.resizeColumnsToContents()
+
+        self.__color_structure_by_motifs(results)
+
+    def __color_structure_by_motifs(self, results : MatchMotifsResult):
+
+        if self.__msa_context.selected_structure is None:
+            return
+
+        mappings = msa_to_structure_position_map(
+            self.__msa_context.selected_msa_sequence_name,
+            self.__msa_context.sequences,
+            self.__msa_context.get_structure_sequence()
+        )
+
+        for motif in results.motifs.keys():
+            self.__color_structure_by_motif(results, motif, mappings)
+
+    def __color_structure_by_motif(
+        self,
+        results : MatchMotifsResult,
+        motif : str,
+        msa_to_structure : List[Optional[int]]
+    ):
+        selected_structure = self.__msa_context.selected_structure
+
+        if selected_structure is None:
+            return
+
+        min_color_factor = 0.5
+        max_color_factor = 0.99
+
+        min_score = min(r[motif] for r in results.by_msa_position_results.values())
+        max_score = max(r[motif] for r in results.by_msa_position_results.values())
+        step = (max_color_factor - min_color_factor) / (max_score - min_score)
+        structure_mappings = sequence_to_structure_position_map(selected_structure)
+        color_range = color.color_range_scale(results.motifs[motif].rgb_color)
+
+        for k,v in results.by_msa_position_results.items():
+            structure_pos = msa_to_structure[k]
+
+            if structure_pos is None:
+                continue
+
+            resi = structure_mappings[structure_pos]
+            scaled_score = (v[motif] * step) + min_color_factor
+            pymol_color = color.to_pymol_color(color_range.get_color(scaled_score))
+            pymol.cmd.color(pymol_color, f"{selected_structure.selection} and resi {resi}")

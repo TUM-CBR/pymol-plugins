@@ -5,7 +5,6 @@ from typing import Callable, Dict, List, NamedTuple, Optional, Set
 
 from ...clustal import msa
 from ...clustal.Clustal import Clustal
-from ...core.pymol import structure
 from ...core.pymol.structure import StructureSelection
 from ...core.pymol.visual.PymolResidueResultsTable import PymolResidueSelector
 from ...core.Qt.QtWidgets import open_copy_context_menu, with_error_handler
@@ -13,6 +12,7 @@ from ...core.sequence import residue_to_3
 from ...support.msa import Msa
 
 from .MsaContext import MsaContext
+from .support import msa_to_structure_position_map, sequence_to_structure_position_map
 from .Ui_ColorByResidue import Ui_ColorByResidue
 
 COLOR_MAX = 999
@@ -151,16 +151,11 @@ class ColorByResidue(QWidget):
         open_copy_context_menu(self.__ui.resultsTable, pos)
 
     def __get_structure_positions(self)  -> 'List[int | None]':
-        sequence_name = self.__selected_structure_name
-        sequence = msa.clean_msa_blanks(self.__sequences[sequence_name])
-        structure_sequence = self.__get_structure_sequence()
-        result = self.__clustal.run_msa_items(
-            [ ("structure", structure_sequence)
-            , (sequence_name, sequence)
-            ]
+        return msa_to_structure_position_map(
+            self.__selected_structure_name,
+            self.__sequences,
+            self.__get_structure_sequence()
         )
-
-        return list(msa.get_relative_positions(self.__sequences, result))
 
     def __get_structure_conservation(self) -> MsaConservationResults:
         selection = self.__selected_structure
@@ -172,7 +167,7 @@ class ColorByResidue(QWidget):
         structure_sequence = self.__get_structure_sequence()
         result = {}
         results_keys = set()
-        offset = list(sorted(structure.get_pdb_sequence_index(selection).keys()))
+        offset = sequence_to_structure_position_map(selection)
 
         for (i, ix) in filter(lambda x: x[1], enumerate(positions)):
 

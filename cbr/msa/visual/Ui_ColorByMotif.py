@@ -68,7 +68,7 @@ class Ui_ColorByMotif(object):
         self.gridLayout_3.setColumnStretch(7, 9)
 
         self.retranslateUi(ColorByMotif)
-        self.viewsTabs.setCurrentIndex(1)
+        self.viewsTabs.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(ColorByMotif)
 
     def retranslateUi(self, ColorByMotif):
