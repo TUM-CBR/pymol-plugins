@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_ColorByMotif(object):
     def setupUi(self, ColorByMotif):
         ColorByMotif.setObjectName("ColorByMotif")
-        ColorByMotif.resize(852, 627)
+        ColorByMotif.resize(837, 609)
         self.gridLayout_3 = QtWidgets.QGridLayout(ColorByMotif)
         self.gridLayout_3.setObjectName("gridLayout_3")
         self.addKnownButton = QtWidgets.QPushButton(ColorByMotif)

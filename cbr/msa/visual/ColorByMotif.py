@@ -91,11 +91,15 @@ class StructureByPositionModel(QAbstractTableModel):
         # Copy the dictionary, don't trust the outside
         # forces not to modify it
         self.__result = result
-        self.__keys = list(result.results.keys())
+        self.__keys = sorted(list(result.results.keys()))
 
     @property
     def __front_headers(self) -> List[str]:
         return ["MSA Index"]
+
+    @property
+    def __static_column_count(self) -> int:
+        return len(self.__front_headers)
 
     def __map_to_column_to_motif(self, i : int) -> str:
         motifs = list(self.__result.motifs.keys())
@@ -119,7 +123,7 @@ class StructureByPositionModel(QAbstractTableModel):
         return len(self.__result.results)
 
     def columnCount(self, parent = None) -> int:
-        return len(self.__result.motifs)
+        return len(self.__result.motifs) + self.__static_column_count
 
     def data(self, index: QModelIndex, role = Qt.DisplayRole):
 
@@ -131,7 +135,7 @@ class StructureByPositionModel(QAbstractTableModel):
 
         if role == Qt.DisplayRole:
             values : List[str] = [
-                str(key)
+                str(key + 1)
             ] + [str(entry[k]) for k in self.__result.motifs.keys()]
             return values[index.column()]
         elif role == Qt.BackgroundColorRole:
@@ -179,7 +183,16 @@ class ColorByMotif(QWidget):
         self.__set_motif(combo_box.currentText(), motif)
 
     @pyqtSlot()
-    @with_error_handler
+    @with_error_handler(name="__on_remove_motif")
+    def __on_remove_motif(self):
+
+        self.__remove_motifs(
+            index.data(MOTIF_ID_ROLE)
+            for index in self.__ui.motifsTable.selectedIndexes()
+        )
+
+    @pyqtSlot(name="__on_add_custom_motif")
+    @with_error_handler()
     def __on_add_custom_motif(self):
         custom_motif_name = self.__ui.customMotifName.text().strip()
         custom_motif = self.__ui.customLineEdit.text()
@@ -197,16 +210,7 @@ class ColorByMotif(QWidget):
             if motif in self.__selected_motifs:
                 del self.__selected_motifs[motif]
 
-        self.__render_motifs_table()        
-
-    @pyqtSlot()
-    @with_error_handler
-    def __on_remove_motif(self):
-
-        self.__remove_motifs(
-            index.data(MOTIF_ID_ROLE)
-            for index in self.__ui.motifsTable.selectedIndexes()
-        )
+        self.__render_motifs_table()
 
     def __find_motifs(self, msa : Msa) -> MatchMotifsResult:
 
@@ -221,7 +225,7 @@ class ColorByMotif(QWidget):
 
                 results[i][motif_name] += count
 
-        for name, sequence in msa:
+        for name, sequence in msa.items():
             for motif_name, pattern in self.__selected_motifs.items():
                 for match in pattern.finditer(sequence):
                     add_count(match.start(), match.end(), motif_name, 1)
@@ -231,8 +235,8 @@ class ColorByMotif(QWidget):
             motifs=dict(self.__selected_motifs)
         )
 
-    @pyqtSlot()
-    @with_error_handler
+    @pyqtSlot(name="__on_run_clicked")
+    @with_error_handler()
     def __on_run_clicked(self):
         results = self.__find_motifs(self.__msa_context.sequences)
         self.__ui.structurePositionsTable.setModel(StructureByPositionModel(results))
