@@ -95,7 +95,7 @@ class ColorRange(NamedTuple):
         rgb = self.base_color
         r, g, b = [x/255.0 for x in rgb] # Normalize to [0, 1]
         h, s, v = rgb_to_hsv(r, g, b)
-        v *= scale_factor # Reduce the value (brightness)
+        s *= scale_factor # Reduce the value (brightness)
         r, g, b = hsv_to_rgb(h, s, v)
         return (
             int(r * 255),

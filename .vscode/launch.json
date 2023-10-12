@@ -35,9 +35,10 @@
             "module": "IPython",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "python": "${workspaceFolder}\\devops\\PyMol\\PyMOL\\python",
+            "python": "${workspaceFolder}\\.virtualenv\\Scripts\\python.exe",
             "env": {
-                "QTHREAD_DEBUGGING": "True"
+                "QTHREAD_DEBUGGING": "True",
+                "PATH": "${workspaceFolder}\\..\\pymol-open-source\\external\\dist\\bin" 
             }
         }
     ]

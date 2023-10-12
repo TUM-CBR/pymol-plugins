@@ -190,7 +190,8 @@ class StructureByPositionModel(QAbstractTableModel):
 class MatchesByNameModel(QAbstractTableModel):
     def __init__(
         self,
-        result : MatchMotifsResult
+        result : MatchMotifsResult,
+        msa_to_structure_mappings : Optional[List[int]]
     ):
         super().__init__()
 
@@ -345,6 +346,17 @@ class ColorByMotif(QWidget):
             by_sequence_name_results=by_sequence_results,
             motifs=dict(self.__selected_motifs)
         )
+    
+    def __get_structure_mapping(self) -> Optional[List[int]]:
+        if self.__msa_context.selected_structure is None:
+            return None
+
+        return msa_to_structure_position_map(
+            self.__msa_context.selected_msa_sequence_name,
+            self.__msa_context.sequences,
+            self.__msa_context.get_structure_sequence()
+        )
+
 
     @pyqtSlot(name="__on_run_clicked")
     @with_error_handler()
@@ -355,22 +367,18 @@ class ColorByMotif(QWidget):
         self.__ui.structurePositionsTable.setModel(StructureByPositionModel(results))
         self.__ui.structurePositionsTable.resizeColumnsToContents()
 
+        msa_to_structure_position_map = self.__get_structure_mapping()
+
         # Update the names table
         self.__ui.msaItemsTable.setModel(MatchesByNameModel(results))
         self.__ui.msaItemsTable.resizeColumnsToContents()
 
         self.__color_structure_by_motifs(results)
 
-    def __color_structure_by_motifs(self, results : MatchMotifsResult):
+    def __color_structure_by_motifs(self, results : MatchMotifsResult, mappings : Optional[List[int]]):
 
-        if self.__msa_context.selected_structure is None:
+        if mappings is None:
             return
-
-        mappings = msa_to_structure_position_map(
-            self.__msa_context.selected_msa_sequence_name,
-            self.__msa_context.sequences,
-            self.__msa_context.get_structure_sequence()
-        )
 
         for motif in results.motifs.keys():
             self.__color_structure_by_motif(results, motif, mappings)
@@ -386,7 +394,7 @@ class ColorByMotif(QWidget):
         if selected_structure is None:
             return
 
-        min_color_factor = 0.5
+        min_color_factor = 0.25
         max_color_factor = 0.99
 
         min_score = min(r[motif] for r in results.by_msa_position_results.values())
