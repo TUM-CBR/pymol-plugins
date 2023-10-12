@@ -5,14 +5,18 @@ from PyQt5.QtWidgets import QWidget
 import re
 from typing import Dict, Iterable, Iterator, List, NamedTuple, Optional
 
+from ...control import viter
 from ...core import color
 from ...core.color import RgbColor
 from ...core.Qt.QtWidgets import with_error_handler
 from ...support.msa import Msa
+from ...core.pymol.visual.PymolResidueSelectionModel import pymol_residue_selection_model
 
 from .MsaContext import MsaContext
-from .support import msa_to_structure_position_map, sequence_to_structure_position_map
+from .support import msa_to_structure_position_map, sequence_to_structure_position_map, MsaToStructureMap
 from .Ui_ColorByMotif import Ui_ColorByMotif
+
+RESIDUE_ITEM_DATA_ROLE = Qt.UserRole
 
 class MotifMatch(NamedTuple):
     start : int
@@ -128,7 +132,8 @@ class MotifsModel(QAbstractTableModel):
 class StructureByPositionModel(QAbstractTableModel):
     def __init__(
         self,
-        result : MatchMotifsResult
+        result : MatchMotifsResult,
+        msa_to_structure_mappings : Optional[MsaToStructureMap]
     ):
         super().__init__()
 
@@ -136,10 +141,11 @@ class StructureByPositionModel(QAbstractTableModel):
         # forces not to modify it
         self.__result = result
         self.__keys = sorted(list(result.by_msa_position_results.keys()))
+        self.__msa_to_structure_mappings = msa_to_structure_mappings
 
     @property
     def __front_headers(self) -> List[str]:
-        return ["MSA Index"]
+        return ["MSA Position", "Structure Position"]
 
     @property
     def __static_column_count(self) -> int:
@@ -169,6 +175,14 @@ class StructureByPositionModel(QAbstractTableModel):
     def columnCount(self, parent = None) -> int:
         return len(self.__result.motifs) + self.__static_column_count
 
+    def __structure_position(self, position : int) -> Optional[int]:
+
+        for msa_to_structure_mappings in viter(self.__msa_to_structure_mappings):
+            for structure_pos in viter(msa_to_structure_mappings[position]):
+                return structure_pos + 1
+
+        return None
+
     def data(self, index: QModelIndex, role = Qt.DisplayRole):
 
         if not index.isValid():
@@ -179,7 +193,8 @@ class StructureByPositionModel(QAbstractTableModel):
 
         if role == Qt.DisplayRole:
             values : List[str] = [
-                str(key + 1)
+                str(key + 1),
+                str(self.__structure_position(key) or ""),
             ] + [str(entry[k]) for k in self.__result.motifs.keys()]
             return values[index.column()]
         elif role == Qt.BackgroundColorRole:
@@ -191,7 +206,6 @@ class MatchesByNameModel(QAbstractTableModel):
     def __init__(
         self,
         result : MatchMotifsResult,
-        msa_to_structure_mappings : Optional[List[int]]
     ):
         super().__init__()
 
@@ -267,6 +281,18 @@ class ColorByMotif(QWidget):
         self.__ui.addCustomButton.clicked.connect(self.__on_add_custom_motif)
         self.__ui.removeSelected.clicked.connect(self.__on_remove_motif)
         self.__ui.runButton.clicked.connect(self.__on_run_clicked)
+
+        def get_selected_structure_name():
+            for selected in viter(self.__msa_context.selected_structure):
+                return selected.selection
+            
+            return None
+
+        self.__by_residue_selection_model = pymol_residue_selection_model(
+            self.__ui.structurePositionsTable,
+            get_selected_structure_name,
+            RESIDUE_ITEM_DATA_ROLE
+        )
 
     def __set_motif(self, name : str, motif : re.Pattern) -> None:
         color_key = len(self.__selected_motifs)
@@ -347,7 +373,7 @@ class ColorByMotif(QWidget):
             motifs=dict(self.__selected_motifs)
         )
     
-    def __get_structure_mapping(self) -> Optional[List[int]]:
+    def __get_structure_mapping(self) -> Optional[MsaToStructureMap]:
         if self.__msa_context.selected_structure is None:
             return None
 
@@ -363,19 +389,28 @@ class ColorByMotif(QWidget):
     def __on_run_clicked(self):
         results = self.__find_motifs(self.__msa_context.sequences)
 
-        # Update the positions table
-        self.__ui.structurePositionsTable.setModel(StructureByPositionModel(results))
-        self.__ui.structurePositionsTable.resizeColumnsToContents()
-
         msa_to_structure_position_map = self.__get_structure_mapping()
+
+        # Update the positions table
+        self.__ui.structurePositionsTable.setModel(
+            StructureByPositionModel(
+                results,
+                msa_to_structure_position_map
+            )
+        )
+        self.__ui.structurePositionsTable.resizeColumnsToContents()
 
         # Update the names table
         self.__ui.msaItemsTable.setModel(MatchesByNameModel(results))
         self.__ui.msaItemsTable.resizeColumnsToContents()
 
-        self.__color_structure_by_motifs(results)
+        self.__color_structure_by_motifs(results, msa_to_structure_position_map)
 
-    def __color_structure_by_motifs(self, results : MatchMotifsResult, mappings : Optional[List[int]]):
+    def __color_structure_by_motifs(
+        self,
+        results : MatchMotifsResult,
+        mappings : Optional[MsaToStructureMap]
+    ):
 
         if mappings is None:
             return

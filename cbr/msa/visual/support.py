@@ -6,12 +6,14 @@ from ...core.pymol.structure import StructureSelection
 from ...clustal.Clustal import Clustal, get_clustal
 from ...support.msa import Msa
 
+MsaToStructureMap = List[Optional[int]]
+
 def msa_to_structure_position_map(
     sequence_name : str,    
     full_msa : Msa,
     structure_sequence : str,
     clustal : Optional[Clustal] = None
-)  -> 'List[int | None]':
+)  -> MsaToStructureMap:
     clustal = clustal or get_clustal()
     sequence = msa.clean_msa_blanks(full_msa[sequence_name])
     result = clustal.run_msa_items(
@@ -22,7 +24,9 @@ def msa_to_structure_position_map(
 
     return list(msa.get_relative_positions(full_msa, result))
 
+SequenceToStructureMap = List[int]
+
 def sequence_to_structure_position_map(
     selection : StructureSelection
-) -> List[int]:
+) -> SequenceToStructureMap:
     return list(sorted(structure.get_pdb_sequence_index(selection).keys()))
