@@ -109,7 +109,7 @@ class Primer3Args(NamedTuple):
     def to_json_dict(self) -> dict:
 
         json_dict = {}
-        for field, field_type in self._field_types.items():
+        for field, field_type in self.__annotations__.items():
             assert field_type in [int, float], "Bug in code: This function needs to be updated!"
             json_dict[field] = getattr(self, field)
 
