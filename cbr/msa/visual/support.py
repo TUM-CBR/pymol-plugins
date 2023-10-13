@@ -1,6 +1,7 @@
-from typing import List, Optional
+from typing import List, NamedTuple, Optional
 
 from ...clustal import msa
+from ...control import viter
 from ...core.pymol import structure
 from ...core.pymol.structure import StructureSelection
 from ...clustal.Clustal import Clustal, get_clustal
@@ -30,3 +31,37 @@ def sequence_to_structure_position_map(
     selection : StructureSelection
 ) -> SequenceToStructureMap:
     return list(sorted(structure.get_pdb_sequence_index(selection).keys()))
+
+class MsaToPymolStructureMap(NamedTuple):
+    msa_to_structure : MsaToStructureMap
+    sequence_to_structure : SequenceToStructureMap
+
+    def get_pymol_structure_position(self, msa_position: int) -> Optional[int]:
+
+        for structure_pos in viter(self.msa_to_structure[msa_position]):
+            return self.sequence_to_structure[structure_pos] + 1
+
+        return None
+
+def msa_to_pymol_structure_map(
+    structure_selection: StructureSelection,
+    sequence_name : str,    
+    full_msa : Msa,
+    clustal : Optional[Clustal] = None
+):
+    structure_sequence = structure.get_pdb_sequence(structure_selection)
+    msa_to_structure = msa_to_structure_position_map(
+        sequence_name,
+        full_msa,
+        structure_sequence,
+        clustal
+    )
+    sequence_to_structure = sequence_to_structure_position_map(
+        structure_selection
+    )
+
+    return MsaToPymolStructureMap(
+        msa_to_structure = msa_to_structure,
+        sequence_to_structure = sequence_to_structure
+    )
+

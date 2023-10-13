@@ -1,8 +1,9 @@
 from concurrent.futures import Future
+import csv
 from io import StringIO
-from typing import Any, Callable, Generic, Iterable, Set, TypeVar, cast
-from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
-from PyQt5.QtWidgets import QAction, QApplication, QMenu, QMessageBox, QProgressBar, QTableWidget, QWidget
+from typing import Any, Callable, Generic, Iterable, Set, TextIO, TypeVar, cast
+from PyQt5.QtCore import pyqtSignal, pyqtSlot, QObject, Qt
+from PyQt5.QtWidgets import QAction, QApplication, QMenu, QMessageBox, QProgressBar, QTableWidget, QTableView, QWidget
 
 def open_copy_context_menu(qtable : QTableWidget, pos):
 
@@ -63,6 +64,20 @@ def copy_qtable_to_clipboard(table_widget : QTableWidget):
 
         clipboard = QApplication.clipboard()
         clipboard.setText(copied_data)
+
+def show_info(
+    parent : QWidget,
+    title : str,
+    description : str = '',
+    window_title : str = 'Information'
+):
+    dialog = QMessageBox(parent)
+    dialog.setIcon(QMessageBox.Information)
+    dialog.setWindowTitle(window_title)
+    dialog.setText(title)
+    dialog.setInformativeText(description)
+    dialog.setStandardButtons(QMessageBox.Ok)
+    dialog.exec_()
 
 def show_error(
     parent : QWidget,
@@ -187,3 +202,30 @@ def progress_manager(
     *disable : QWidget
 ):
     return ProgressManager(progress, disable)
+
+def export_table_view_to_csv(table_view : QTableView, text_stream: TextIO) -> None:
+    """
+    Export data from a QTableView to a CSV through a text stream.
+
+    :param table_view: QTableView object containing data to be exported.
+    :param text_stream: TextIO, a text stream to write the CSV data.
+    """
+    model = table_view.model()  # QAbstractItemModel
+    if not model:
+        raise ValueError("The table view does not have a model.")
+
+    writer = csv.writer(text_stream)
+    
+    # Write header
+    headers = []
+    for col in range(model.columnCount()):
+        headers.append(model.headerData(col, orientation=Qt.Horizontal))
+    writer.writerow(headers)
+    
+    # Write data
+    for row in range(model.rowCount()):
+        row_data = []
+        for col in range(model.columnCount()):
+            index = model.index(row, col)
+            row_data.append(model.data(index))
+        writer.writerow(row_data)

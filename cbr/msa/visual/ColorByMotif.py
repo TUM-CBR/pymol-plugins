@@ -1,19 +1,19 @@
 import pymol
 from PyQt5.QtCore import QAbstractTableModel, QModelIndex, pyqtSlot, Qt
 from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtWidgets import QFileDialog, QWidget
 import re
 from typing import Dict, Iterable, Iterator, List, NamedTuple, Optional
 
 from ...control import viter
 from ...core import color
 from ...core.color import RgbColor
-from ...core.Qt.QtWidgets import with_error_handler
+from ...core.Qt.QtWidgets import export_table_view_to_csv, with_error_handler
 from ...support.msa import Msa
 from ...core.pymol.visual.PymolResidueSelectionModel import pymol_residue_selection_model
 
 from .MsaContext import MsaContext
-from .support import msa_to_structure_position_map, sequence_to_structure_position_map, MsaToStructureMap
+from .support import msa_to_pymol_structure_map, MsaToPymolStructureMap
 from .Ui_ColorByMotif import Ui_ColorByMotif
 
 RESIDUE_ITEM_DATA_ROLE = Qt.UserRole
@@ -133,7 +133,7 @@ class StructureByPositionModel(QAbstractTableModel):
     def __init__(
         self,
         result : MatchMotifsResult,
-        msa_to_structure_mappings : Optional[MsaToStructureMap]
+        msa_to_structure_mappings : Optional[MsaToPymolStructureMap]
     ):
         super().__init__()
 
@@ -178,8 +178,8 @@ class StructureByPositionModel(QAbstractTableModel):
     def __structure_position(self, position : int) -> Optional[int]:
 
         for msa_to_structure_mappings in viter(self.__msa_to_structure_mappings):
-            for structure_pos in viter(msa_to_structure_mappings[position]):
-                return structure_pos + 1
+            for structure_pos in viter(msa_to_structure_mappings.get_pymol_structure_position(position)):
+                return structure_pos
 
         return None
 
@@ -190,15 +190,18 @@ class StructureByPositionModel(QAbstractTableModel):
 
         key = self.__keys[index.row()]
         entry = self.__result.by_msa_position_results[key]
+        structure_position = self.__structure_position(key)
 
         if role == Qt.DisplayRole:
             values : List[str] = [
                 str(key + 1),
-                str(self.__structure_position(key) or ""),
+                str(structure_position or ""),
             ] + [str(entry[k]) for k in self.__result.motifs.keys()]
             return values[index.column()]
         elif role == Qt.BackgroundColorRole:
             return self.__get_column_color(index.column())
+        elif role == RESIDUE_ITEM_DATA_ROLE:
+            return structure_position
         else:
             return None
 
@@ -281,6 +284,7 @@ class ColorByMotif(QWidget):
         self.__ui.addCustomButton.clicked.connect(self.__on_add_custom_motif)
         self.__ui.removeSelected.clicked.connect(self.__on_remove_motif)
         self.__ui.runButton.clicked.connect(self.__on_run_clicked)
+        self.__ui.exportButton.clicked.connect(self.__on_export_by_sequence)
 
         def get_selected_structure_name():
             for selected in viter(self.__msa_context.selected_structure):
@@ -288,7 +292,7 @@ class ColorByMotif(QWidget):
             
             return None
 
-        self.__by_residue_selection_model = pymol_residue_selection_model(
+        self.__by_position_selection_model = pymol_residue_selection_model(
             self.__ui.structurePositionsTable,
             get_selected_structure_name,
             RESIDUE_ITEM_DATA_ROLE
@@ -373,15 +377,13 @@ class ColorByMotif(QWidget):
             motifs=dict(self.__selected_motifs)
         )
     
-    def __get_structure_mapping(self) -> Optional[MsaToStructureMap]:
-        if self.__msa_context.selected_structure is None:
-            return None
-
-        return msa_to_structure_position_map(
-            self.__msa_context.selected_msa_sequence_name,
-            self.__msa_context.sequences,
-            self.__msa_context.get_structure_sequence()
-        )
+    def __get_structure_mapping(self) -> Optional[MsaToPymolStructureMap]:
+        for selected_structure in viter(self.__msa_context.selected_structure):
+            return msa_to_pymol_structure_map(
+                selected_structure,
+                self.__msa_context.selected_msa_sequence_name,
+                self.__msa_context.sequences,
+            )
 
 
     @pyqtSlot(name="__on_run_clicked")
@@ -392,7 +394,7 @@ class ColorByMotif(QWidget):
         msa_to_structure_position_map = self.__get_structure_mapping()
 
         # Update the positions table
-        self.__ui.structurePositionsTable.setModel(
+        self.__by_position_selection_model.setModel(
             StructureByPositionModel(
                 results,
                 msa_to_structure_position_map
@@ -409,7 +411,7 @@ class ColorByMotif(QWidget):
     def __color_structure_by_motifs(
         self,
         results : MatchMotifsResult,
-        mappings : Optional[MsaToStructureMap]
+        mappings : Optional[MsaToPymolStructureMap]
     ):
 
         if mappings is None:
@@ -422,7 +424,7 @@ class ColorByMotif(QWidget):
         self,
         results : MatchMotifsResult,
         motif : str,
-        msa_to_structure : List[Optional[int]]
+        msa_to_structure : MsaToPymolStructureMap
     ):
         selected_structure = self.__msa_context.selected_structure
 
@@ -435,16 +437,27 @@ class ColorByMotif(QWidget):
         min_score = min(r[motif] for r in results.by_msa_position_results.values())
         max_score = max(r[motif] for r in results.by_msa_position_results.values())
         step = (max_color_factor - min_color_factor) / (max_score - min_score)
-        structure_mappings = sequence_to_structure_position_map(selected_structure)
         color_range = color.color_range_scale(results.motifs[motif].rgb_color)
 
         for k,v in results.by_msa_position_results.items():
-            structure_pos = msa_to_structure[k]
+            resi = msa_to_structure.get_pymol_structure_position(k)
 
-            if structure_pos is None:
+            if resi is None:
                 continue
 
-            resi = structure_mappings[structure_pos]
             scaled_score = (v[motif] * step) + min_color_factor
             pymol_color = color.to_pymol_color(color_range.get_color(scaled_score))
             pymol.cmd.color(pymol_color, f"{selected_structure.selection} and resi {resi}")
+
+    @pyqtSlot(name="__on_export_by_sequence")
+    @with_error_handler()
+    def __on_export_by_sequence(self):
+        filepath, _ = QFileDialog.getSaveFileName(self, "Save As", "", "CSV Files (*.csv)")
+
+        with open(filepath, 'w') as stream:
+            export_table_view_to_csv(
+                self.__ui.msaItemsTable,
+                stream
+            )
+
+        

@@ -268,11 +268,11 @@ def dialog(_self=None):
             handle_exception(exception, stdout)
             return
 
-        quit_msg = "Finished with Success. Close the APBS dialog?"
-        if QMessageBox.Yes == QMessageBox.question(
-                form._dialog, 'Finished', quit_msg, QMessageBox.Yes,
-                QMessageBox.No):
-            form._dialog.close()
+        #quit_msg = "Finished with Success. Close the APBS dialog?"
+        #if QMessageBox.Yes == QMessageBox.question(
+        #        form._dialog, 'Finished', quit_msg, QMessageBox.Yes,
+        #        QMessageBox.No):
+        #    form._dialog.close()
 
     def handle_exception(e, stdout):
         if isinstance(e, SilentAbort):
