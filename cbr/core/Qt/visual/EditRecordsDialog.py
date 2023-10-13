@@ -96,7 +96,7 @@ class EditRecordsDialog(QDialog, Generic[T]):
 
     def __validate(self):
         
-        if list(self.__current._field_types.items()) != list(self.__defaults._field_types.items()):
+        if list(self.__current.__annotations__.items()) != list(self.__defaults.__annotations__.items()):
             raise ValueError("Default value must have the same fields as current value.")
 
     @pyqtSlot()
@@ -132,7 +132,7 @@ class EditRecordsDialog(QDialog, Generic[T]):
         self.__validate()
 
         current = self.__current
-        fields = list(current._field_types.items())
+        fields = list(current.__annotations__.items())
         meta : Dict[str, str] = getattr(current, K_ARGS_META, {})
 
         table = self.__ui.valuesTable
