@@ -1,8 +1,8 @@
 from concurrent.futures import Future
 import csv
 from io import StringIO
-from typing import Any, Callable, Generic, Iterable, Set, TextIO, TypeVar, cast
-from PyQt5.QtCore import pyqtSignal, pyqtSlot, QObject, Qt
+from typing import Any, Callable, Generic, Iterable, Optional, Set, TextIO, TypeVar, cast
+from PyQt5.QtCore import QTime, QTimer, pyqtSignal, pyqtSlot, QObject, Qt
 from PyQt5.QtWidgets import QAction, QApplication, QMenu, QMessageBox, QProgressBar, QTableWidget, QTableView, QWidget
 
 def open_copy_context_menu(qtable : QTableWidget, pos):
@@ -106,6 +106,45 @@ def show_exception(
 TResult = TypeVar('TResult')
 
 TErrorHandler = TypeVar('TErrorHandler')
+
+def throttle(time : int) -> Callable[[TErrorHandler], TErrorHandler]:
+
+    class ThrottleHandler(QObject):
+
+        def __init__(self, action):
+            super().__init__()
+            self.__action = action
+            self.__last_args = []
+            self.__last_kwargs = {}
+            self.__timer = QTimer()
+            self.__timer.setSingleShot(True)
+            self.__timer.timeout.connect(self.__on_timeout)
+            self.__widget : Optional[QObject] = None
+
+        def __call__(self, widget : QObject, *args, **kwargs):
+
+            if not self.__timer.isActive():
+                self.__timer.start(time)
+
+            self.__last_args = args
+            self.__last_kwargs = kwargs
+            self.__widget = widget
+
+        @pyqtSlot()
+        def __on_timeout(self):
+            self.__action(self.__widget, *self.__last_args, **self.__last_kwargs)
+
+    def factory(fn : TErrorHandler) -> TErrorHandler:
+
+        throttle = ThrottleHandler(fn)
+
+        def __run_handler__(widget : QObject, *args, **kwargs):
+            nonlocal throttle
+            throttle(widget, *args, **kwargs)
+        return cast(TErrorHandler, __run_handler__)
+
+    return factory
+        
 
 def with_error_handler(*args, **kwargs):
 

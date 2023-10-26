@@ -1,7 +1,7 @@
 from concurrent.futures import Future
-from PyQt5.QtCore import QObject, pyqtSlot, QTimer, QThread, QObject, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import QAbstractTableModel, QObject, pyqtSlot, QModelIndex, Qt, QTimer, QThread, QObject, pyqtSignal, pyqtSlot
 import os
-from typing import Any, Callable, List, TypeVar
+from typing import Any, Callable, Dict, List, TypeVar
 
 class Throttle(QObject):
 
@@ -61,3 +61,30 @@ def run_in_thread(func: Callable[..., TResult]) -> Callable[..., 'Future[TResult
         return future
 
     return wrapper
+
+class DictionaryModel(QAbstractTableModel):
+
+    def __init__(
+        self,
+        values : Dict[str, str]
+    ):
+        super().__init__()
+        self.__values = list(values.items())
+
+    def rowCount(self, parent = None) -> int:
+        return len(self.__values)
+
+    def columnCount(self, parent = None) -> int:
+        return 2
+
+    def data(self, index: QModelIndex, role=Qt.DisplayRole):
+
+        if not index.isValid():
+            return None
+
+        row_ix = index.row()
+        col_ix = index.column()
+        item = self.__values[row_ix]
+
+        if role == Qt.DisplayRole:
+            return item[col_ix]

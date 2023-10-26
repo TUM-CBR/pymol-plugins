@@ -2,6 +2,8 @@
     "files": [
         "ColorByMotif.ui",
         "ColorByResidue.ui",
-        "MsaViewer.ui"
+        "MsaCleaner.ui",
+        "MsaViewer.ui",
+        "ScoreByDivergence.ui"
     ]
 }

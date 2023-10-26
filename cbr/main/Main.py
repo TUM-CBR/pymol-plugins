@@ -37,6 +37,11 @@ APP_DEFINITIONS = [
         init = Msa.msa_viewer
     ),
     AppDefinition(
+        icon = "msa.png",
+        text = "MSA Cleaner",
+        init = Msa.msa_cleaner
+    ),
+    AppDefinition(
         icon = "chimeras.jpg",
         text = "Chimeras Generator",
         init = Chimeras.chimeras_generator
