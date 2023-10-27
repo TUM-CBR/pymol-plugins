@@ -2,7 +2,7 @@ from Bio.Align import MultipleSeqAlignment, SeqRecord
 from PyQt5.QtCore import pyqtSlot, QAbstractTableModel, QModelIndex, Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QWidget
-from typing import cast, List, NamedTuple, Tuple
+from typing import Optional, cast, List, NamedTuple, Tuple
 
 from ...core.Context import (Context)
 from ...core.Qt.QtWidgets import with_error_handler
@@ -33,9 +33,12 @@ class ScoreEntry(NamedTuple):
     def score(self, i : int) -> float:
         return self.scores[i]
 
+class ScoreMeta(NamedTuple):
+    keep_always : bool
+
 class SequenceScoresModel(QAbstractTableModel):
 
-    fixed_headers = ["Sequence Id"]
+    fixed_headers = ["Always Include", "Sequence Id"]
 
     def __init__(
         self,
@@ -46,6 +49,7 @@ class SequenceScoresModel(QAbstractTableModel):
 
         self.__alignment = alignment
         self.__scores = scores
+        self.__score_meta = [ScoreMeta(keep_always=False) for _ in range(0, len(alignment))]
 
     @property
     def headers(self):
@@ -56,6 +60,11 @@ class SequenceScoresModel(QAbstractTableModel):
 
     def columnCount(self, parent = None) -> int:
         return len(self.headers)
+
+    def set_always_keep(self, index : QModelIndex, keep : bool):
+        row = index.row()
+        self.__score_meta[row] = self.__score_meta[row]._replace(keep_always = keep)
+        self.dataChanged.emit(index, index)
 
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if role == Qt.DisplayRole and orientation == Qt.Horizontal:
@@ -81,6 +90,7 @@ class SequenceScoresModel(QAbstractTableModel):
         sequence = self.__get_seq(row_ix)
         if role == Qt.DisplayRole:
             cols : List[str] = [
+                "",
                 sequence.id,
                 self.fromat_score(self.__scores[0].score(row_ix))
             ]
@@ -90,6 +100,8 @@ class SequenceScoresModel(QAbstractTableModel):
                 return QColor(255,0,0,100)
             else:
                 return None
+        elif role == Qt.CheckStateRole and col_ix == 0:
+            return Qt.Checked
         else:
             return None
 
@@ -99,6 +111,7 @@ class MsaCleaner(QWidget):
         super().__init__()
         self.__ui = Ui_MsaCleaner()
         self.__ui.setupUi(self)
+        self.__scores_model : Optional[SequenceScoresModel] = None
 
         self.__cleaners : List[Tuple[str, MsaCleanerBase]] = [
             ("Gap Divergence", ScoreByDivergence())
@@ -110,6 +123,14 @@ class MsaCleaner(QWidget):
 
         self.__msa_selector = msa.msa_selector(self, self.__ui.loadMsaButton, self.__ui.selectedFileLabel)
         self.__msa_selector.msa_file_selected.connect(self.__on_msa_selected)
+        self.__ui.scoresTable.clicked.connect(self.__on_sequence_score_clicked)
+
+    @pyqtSlot()
+    def __on_sequence_score_clicked(self, index : QModelIndex):
+
+        if index.column == 0 and self.__scores_model is not None:
+            self.__scores_model
+        pass
 
     @pyqtSlot()
     def __on_score_changed(self):
@@ -132,6 +153,7 @@ class MsaCleaner(QWidget):
 
     def __update_table(self, model : SequenceScoresModel) -> None:
 
+        self.__scores_model = model
         self.__ui.scoresTable.setModel(model)
         self.__ui.scoresTable.resizeColumnsToContents()
 
