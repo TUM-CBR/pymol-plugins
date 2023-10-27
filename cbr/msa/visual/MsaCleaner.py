@@ -67,6 +67,10 @@ class SequenceScoresModel(QAbstractTableModel):
     def __get_seq(self, index : int) -> SeqRecord:
         return cast(SeqRecord, self.__alignment[index])
 
+    @staticmethod
+    def fromat_score(value : float) -> str:
+        return str(round(value, 2))
+
     def data(self, index: QModelIndex, role=Qt.DisplayRole):
 
         if not index.isValid():
@@ -78,7 +82,7 @@ class SequenceScoresModel(QAbstractTableModel):
         if role == Qt.DisplayRole:
             cols : List[str] = [
                 sequence.id,
-                str(self.__scores[0].score(row_ix))
+                self.fromat_score(self.__scores[0].score(row_ix))
             ]
             return cols[col_ix]
         elif role == Qt.BackgroundColorRole:
@@ -102,9 +106,34 @@ class MsaCleaner(QWidget):
 
         for name, cleaner in self.__cleaners:
             self.__ui.cleanersWidget.addTab(cleaner, name)
+            cleaner.on_score_changed.connect(self.__on_score_changed)
 
         self.__msa_selector = msa.msa_selector(self, self.__ui.loadMsaButton, self.__ui.selectedFileLabel)
         self.__msa_selector.msa_file_selected.connect(self.__on_msa_selected)
+
+    @pyqtSlot()
+    def __on_score_changed(self):
+
+        alignment = self.__msa_selector.alignment
+
+        if alignment is None:
+            return
+
+        self.__update_table(
+            SequenceScoresModel(
+                alignment,
+                [
+                    ScoreEntry.from_result(name, result)
+                    for name, cleaner in self.__cleaners
+                    for result in [cleaner.score] if result is not None
+                ]
+            )
+        )
+
+    def __update_table(self, model : SequenceScoresModel) -> None:
+
+        self.__ui.scoresTable.setModel(model)
+        self.__ui.scoresTable.resizeColumnsToContents()
 
     @pyqtSlot(name="__on_msa_selected")
     @with_error_handler()
@@ -114,7 +143,7 @@ class MsaCleaner(QWidget):
         if alignment is None:
             raise Exception("The selected alignment could not be opened.")
 
-        self.__ui.scoresTable.setModel(
+        self.__update_table(
             SequenceScoresModel(
                 alignment,
                 [

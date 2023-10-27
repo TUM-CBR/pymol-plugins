@@ -1,6 +1,8 @@
 from Bio.Align import MultipleSeqAlignment
 from typing import Optional, Tuple
 
+from PyQt5.QtCore import pyqtSlot
+
 from ..cleanup import score_by_gap_divergence
 from .Ui_ScoreByDivergence import Ui_ScoreByDivergence
 from .MsaCleanerResult import MsaCleanerBase, MsaCleanerResult
@@ -12,6 +14,16 @@ class ScoreByDivergence(MsaCleanerBase):
         self.__ui = Ui_ScoreByDivergence()
         self.__ui.setupUi(self)
         self.__score : Optional[MsaCleanerResult] = None
+        self.__ui.divergenceSlider.valueChanged.connect(self.__on_range_changed)
+
+    @pyqtSlot()
+    def __on_range_changed(self):
+
+        if self.__score is None:
+            return
+
+        self.__score = self.__score._replace(treshold = self.__treshold)
+        self.on_score_changed.emit()
 
     @property
     def score(self) -> Optional[MsaCleanerResult]:

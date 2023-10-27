@@ -1,7 +1,7 @@
 from Bio.Align import MultipleSeqAlignment
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QWidget
-from typing import List, NamedTuple, Tuple
+from typing import List, NamedTuple, Optional, Tuple
 
 class MsaCleanerResult(NamedTuple):
     scores : List[float]
@@ -22,6 +22,10 @@ class MsaCleanerResultImplementation(MsaCleanerResult):
 class MsaCleanerBase(QWidget):
 
     on_score_changed = pyqtSignal()
+
+    @property
+    def score(self) -> Optional[MsaCleanerResult]:
+        raise NotImplemented()
 
     def score_alignment(self, alignment : MultipleSeqAlignment) -> MsaCleanerResult:
         raise NotImplemented()
