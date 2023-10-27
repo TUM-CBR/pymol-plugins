@@ -14,7 +14,7 @@ def gaps_by_position(alignment : MultipleSeqAlignment) -> List[int]:
 
     return result
 
-def score_by_gap_divergence(alignment : MultipleSeqAlignment) -> List[int]:
+def score_by_gap_divergence(alignment : MultipleSeqAlignment) -> List[float]:
     score_by_position = gaps_by_position(alignment)
 
     def score_sequence(seq : SeqRecord) -> int:
