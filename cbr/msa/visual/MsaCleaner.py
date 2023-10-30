@@ -1,12 +1,14 @@
 from Bio.Align import MultipleSeqAlignment, SeqRecord
 from PyQt5.QtCore import pyqtSlot, QAbstractTableModel, QModelIndex, Qt
 from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtWidgets import QFileDialog, QWidget
 from typing import Iterable, Optional, cast, List, NamedTuple, Tuple
+
 
 from ...core.Context import (Context)
 from ...core.Qt.QtWidgets import throttle, with_error_handler
 from ...support import msa
+from ...support.msa.io import save_msa
 from ...support.msa.visual.MsaViewer import MsaViewer
 
 from .Ui_MsaCleaner import Ui_MsaCleaner
@@ -174,6 +176,8 @@ class MsaCleaner(QWidget):
             self.__msa_viewer
         )
 
+        self.__ui.saveResultsButtons.clicked.connect(self.__save_alignment)
+
     @pyqtSlot(QModelIndex)
     def __on_sequence_score_clicked(self, index : QModelIndex):
 
@@ -241,3 +245,16 @@ class MsaCleaner(QWidget):
 
         self.__msa_viewer.set_alignment(alignment)
         self.__mask_msa_sequences()
+
+    @pyqtSlot(name = "__save_alignment")
+    @with_error_handler()
+    def __save_alignment(self):
+        result_file,_ = QFileDialog.getSaveFileName(
+            self,
+            "Save File",
+            "",
+            "Multiple Sequence Alignment (*.fasta *.clustal)"
+        )
+
+        save_msa(result_file, self.__msa_viewer.get_new_alignment())
+

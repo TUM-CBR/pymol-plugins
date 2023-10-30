@@ -1,3 +1,4 @@
+from Bio.SeqRecord import SeqRecord
 from Bio.Align import MultipleSeqAlignment
 from PyQt5.QtCore import QAbstractTableModel, QModelIndex, Qt
 from PyQt5.QtGui import QColor
@@ -16,10 +17,20 @@ class MsaViewerModel(QAbstractTableModel):
         super().__init__()
         self.__alignment = alignment
         self.__residue_index = self.index_residues(alignment)
-        self.__mask = []
+        self.__mask = set([])
         self.__masked_columns = []
         self.__row_mappings = list(range(0, len(alignment)))
         self.__column_mappings = list(range(0, alignment.get_alignment_length()))
+
+    def get_masked_alignment(self) -> MultipleSeqAlignment:
+
+        return MultipleSeqAlignment(
+            SeqRecord(
+                "".join(c for i,c in enumerate(seq) if i not in self.__masked_columns),
+                id = seq.id
+            )
+            for row_ix, seq in enumerate(self.__alignment) if row_ix not in self.__mask
+        )
 
     @staticmethod
     def index_residues(alignment : MultipleSeqAlignment) -> List[Set[int]]:
@@ -140,4 +151,12 @@ class MsaViewer(QWidget):
         self.__model = model = MsaViewerModel(alignment)
         self.__ui.msaTable.setModel(model)
         self.__adjust_columns_size()
+
+    def get_new_alignment(self) -> MultipleSeqAlignment:
+        """Get the resulting alignment when the selected rows are masked"""
+
+        if self.__model is None:
+            raise ValueError("No alignment has been provided.")
+
+        return self.__model.get_masked_alignment()
 
