@@ -2,11 +2,12 @@ from Bio.Align import MultipleSeqAlignment, SeqRecord
 from PyQt5.QtCore import pyqtSlot, QAbstractTableModel, QModelIndex, Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QWidget
-from typing import Optional, cast, List, NamedTuple, Tuple
+from typing import Iterable, Optional, cast, List, NamedTuple, Tuple
 
 from ...core.Context import (Context)
-from ...core.Qt.QtWidgets import with_error_handler
+from ...core.Qt.QtWidgets import throttle, with_error_handler
 from ...support import msa
+from ...support.msa.visual.MsaViewer import MsaViewer
 
 from .Ui_MsaCleaner import Ui_MsaCleaner
 from .MsaCleanerResult import MsaCleanerBase, MsaCleanerResult
@@ -36,9 +37,13 @@ class ScoreEntry(NamedTuple):
 class ScoreMeta(NamedTuple):
     keep_always : bool
 
+    def toggle_keep_always(self) -> 'ScoreMeta':
+        return self._replace(keep_always = not self.keep_always)
+
 class SequenceScoresModel(QAbstractTableModel):
 
     fixed_headers = ["Always Include", "Sequence Id"]
+    ALWAYS_INCLUDE_COLUMN = 0
 
     def __init__(
         self,
@@ -50,6 +55,14 @@ class SequenceScoresModel(QAbstractTableModel):
         self.__alignment = alignment
         self.__scores = scores
         self.__score_meta = [ScoreMeta(keep_always=False) for _ in range(0, len(alignment))]
+
+    @property
+    def scores(self) -> List[ScoreEntry]:
+        return self.__scores
+
+    @property
+    def alignment(self) -> MultipleSeqAlignment:
+        return self.__alignment
 
     @property
     def headers(self):
@@ -80,6 +93,33 @@ class SequenceScoresModel(QAbstractTableModel):
     def fromat_score(value : float) -> str:
         return str(round(value, 2))
 
+    def toggle_keep_always(self, index : QModelIndex) -> None:
+        """Toggle wether to alwasy include the current
+        sequence in the MSA regardless of the analysis results.
+        Only toggle if the index corresponds to the correct column."""
+
+        if index.column() != self.ALWAYS_INCLUDE_COLUMN:
+            return
+
+
+        self.__score_meta[index.row()] = self.__score_meta[index.row()].toggle_keep_always()
+        self.dataChanged.emit(index, index.siblingAtColumn(self.columnCount() - 1))
+
+    def __is_included(self, index : QModelIndex) -> bool:
+        return self.is_included(index.row())
+
+    def is_included(self, row_ix : int) -> bool:
+        return self.__score_meta[row_ix].keep_always \
+            or all(score.is_included(row_ix) for score in self.__scores)
+
+    def update_scores(self, scores : List[ScoreEntry]) -> None:
+        self.__scores = scores
+        
+        self.dataChanged.emit(
+            self.index(0, 0),
+            self.index(self.rowCount() - 1, self.columnCount() - 1)
+        )
+
     def data(self, index: QModelIndex, role=Qt.DisplayRole):
 
         if not index.isValid():
@@ -96,12 +136,15 @@ class SequenceScoresModel(QAbstractTableModel):
             ]
             return cols[col_ix]
         elif role == Qt.BackgroundColorRole:
-            if any(not score.is_included(index.row()) for score in self.__scores):
-                return QColor(255,0,0,100)
-            else:
+            if self.__is_included(index):
                 return None
-        elif role == Qt.CheckStateRole and col_ix == 0:
-            return Qt.Checked
+            else:
+                return QColor(255,0,0,100)
+        elif role == Qt.CheckStateRole and col_ix == self.ALWAYS_INCLUDE_COLUMN:
+            if self.__score_meta[row_ix].keep_always:
+                return Qt.Checked
+            else:
+                return Qt.Unchecked
         else:
             return None
 
@@ -124,32 +167,52 @@ class MsaCleaner(QWidget):
         self.__msa_selector = msa.msa_selector(self, self.__ui.loadMsaButton, self.__ui.selectedFileLabel)
         self.__msa_selector.msa_file_selected.connect(self.__on_msa_selected)
         self.__ui.scoresTable.clicked.connect(self.__on_sequence_score_clicked)
+        self.__msa_viewer = MsaViewer()
 
-    @pyqtSlot()
+        self.layout().replaceWidget(
+            self.__ui.msaViewerWidget,
+            self.__msa_viewer
+        )
+
+    @pyqtSlot(QModelIndex)
     def __on_sequence_score_clicked(self, index : QModelIndex):
 
-        if index.column == 0 and self.__scores_model is not None:
-            self.__scores_model
-        pass
-
-    @pyqtSlot()
-    def __on_score_changed(self):
-
-        alignment = self.__msa_selector.alignment
-
-        if alignment is None:
+        if self.__scores_model is None:
             return
 
-        self.__update_table(
-            SequenceScoresModel(
-                alignment,
-                [
-                    ScoreEntry.from_result(name, result)
-                    for name, cleaner in self.__cleaners
-                    for result in [cleaner.score] if result is not None
-                ]
-            )
+        self.__scores_model.toggle_keep_always(index)
+        self.__mask_msa_sequences()
+
+    def __list_unwanted(self) -> Iterable[int]:
+
+        assert(self.__scores_model)
+
+        for score in self.__scores_model.scores:
+
+            if score is None:
+                continue
+            for i,_ in enumerate(self.__scores_model.alignment):
+                if not self.__scores_model.is_included(i):
+                    yield i
+
+    def __mask_msa_sequences(self):
+        self.__msa_viewer.mask_sequences(self.__list_unwanted())
+
+    @pyqtSlot(name="__on_score_changed")
+    @throttle(1000)
+    def __on_score_changed(self):
+        if self.__scores_model is None:
+            return
+
+        self.__scores_model.update_scores(
+            [
+                ScoreEntry.from_result(name, result)
+                for name, cleaner in self.__cleaners
+                for result in [cleaner.score] if result is not None
+            ]
         )
+
+        self.__mask_msa_sequences()
 
     def __update_table(self, model : SequenceScoresModel) -> None:
 
@@ -175,3 +238,6 @@ class MsaCleaner(QWidget):
                 ]
             )
         )
+
+        self.__msa_viewer.set_alignment(alignment)
+        self.__mask_msa_sequences()

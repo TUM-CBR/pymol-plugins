@@ -1,3 +1,8 @@
+"""This score is defined as the number of gaps introduced by a sequence devided by the total number of
+of gaps in the multiple sequence alignment. The higher the score means that a greater percentage of the
+gaps are introduced by the sequence.
+"""
+
 from Bio.Align import MultipleSeqAlignment
 from typing import Optional, Tuple
 
@@ -13,8 +18,14 @@ class ScoreByDivergence(MsaCleanerBase):
         super().__init__()
         self.__ui = Ui_ScoreByDivergence()
         self.__ui.setupUi(self)
+        assert(__doc__)
+        self.__ui.descriptionLabel.setText(__doc__.replace("\n", " "))
         self.__score : Optional[MsaCleanerResult] = None
         self.__ui.divergenceSlider.valueChanged.connect(self.__on_range_changed)
+        self.__update_score_label()
+
+    def __update_score_label(self):
+        self.__ui.valueLabel.setText(str(self.__treshold[1]))
 
     @pyqtSlot()
     def __on_range_changed(self):
@@ -23,6 +34,7 @@ class ScoreByDivergence(MsaCleanerBase):
             return
 
         self.__score = self.__score._replace(treshold = self.__treshold)
+        self.__update_score_label()
         self.on_score_changed.emit()
 
     @property

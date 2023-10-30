@@ -6,14 +6,24 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>504</width>
-    <height>203</height>
+    <width>981</width>
+    <height>620</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QLabel" name="descriptionLabel">
+     <property name="text">
+      <string/>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
@@ -28,8 +38,27 @@
        <property name="maximum">
         <number>100</number>
        </property>
+       <property name="value">
+        <number>10</number>
+       </property>
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="tickPosition">
+        <enum>QSlider::NoTicks</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="valueLabel">
+       <property name="minimumSize">
+        <size>
+         <width>30</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="text">
+        <string/>
        </property>
       </widget>
      </item>

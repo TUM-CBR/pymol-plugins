@@ -1,3 +1,4 @@
+from Bio.Data import IUPACData
 from colorsys import hls_to_rgb, rgb_to_hsv, hsv_to_rgb
 import math
 from typing import cast, List, NamedTuple, Tuple
@@ -18,6 +19,13 @@ def generate_colors(n : int) -> List[RgbColor]:
     return colors
 
 distinct_colors_15 : List[RgbColor] = generate_colors(15)
+
+residue_letter_colors = dict(
+    zip(
+        IUPACData.protein_letters,
+        generate_colors(len(IUPACData.protein_letters))
+    )
+)
 
 def to_hex(i : int, desired_length = 2) -> str:
     value = hex(i).replace("0x", "")
