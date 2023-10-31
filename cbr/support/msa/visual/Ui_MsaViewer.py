@@ -15,11 +15,21 @@ class Ui_MsaViewer(object):
     def setupUi(self, MsaViewer):
         MsaViewer.setObjectName("MsaViewer")
         MsaViewer.resize(633, 344)
-        self.verticalLayout = QtWidgets.QVBoxLayout(MsaViewer)
-        self.verticalLayout.setObjectName("verticalLayout")
+        self.gridLayout = QtWidgets.QGridLayout(MsaViewer)
+        self.gridLayout.setObjectName("gridLayout")
+        self.maskCombo = QtWidgets.QComboBox(MsaViewer)
+        self.maskCombo.setMinimumSize(QtCore.QSize(150, 0))
+        self.maskCombo.setMaximumSize(QtCore.QSize(150, 16777215))
+        self.maskCombo.setObjectName("maskCombo")
+        self.gridLayout.addWidget(self.maskCombo, 0, 1, 1, 1)
+        self.label = QtWidgets.QLabel(MsaViewer)
+        self.label.setObjectName("label")
+        self.gridLayout.addWidget(self.label, 0, 0, 1, 1)
+        spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.gridLayout.addItem(spacerItem, 0, 2, 1, 1)
         self.msaTable = QtWidgets.QTableView(MsaViewer)
         self.msaTable.setObjectName("msaTable")
-        self.verticalLayout.addWidget(self.msaTable)
+        self.gridLayout.addWidget(self.msaTable, 1, 0, 1, 3)
 
         self.retranslateUi(MsaViewer)
         QtCore.QMetaObject.connectSlotsByName(MsaViewer)
@@ -27,3 +37,4 @@ class Ui_MsaViewer(object):
     def retranslateUi(self, MsaViewer):
         _translate = QtCore.QCoreApplication.translate
         MsaViewer.setWindowTitle(_translate("MsaViewer", "Form"))
+        self.label.setText(_translate("MsaViewer", "Masked Positions"))
