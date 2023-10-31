@@ -37,7 +37,7 @@ class MsaViewerModel(QAbstractTableModel):
     def index_residues(alignment : MultipleSeqAlignment) -> List[Set[int]]:
 
         return [
-            set(seq_ix for seq_ix in range(0, len(alignment)) if not msa.is_blank(alignment[seq_ix][i])) # type: ignore[reportGeneralTypeIssues]
+            set(seq_ix for seq_ix,seq in enumerate(alignment) if not msa.is_blank(seq[i])) # type: ignore[reportGeneralTypeIssues]
             for i in range(0, alignment.get_alignment_length())
         ]
 
@@ -59,7 +59,7 @@ class MsaViewerModel(QAbstractTableModel):
         ]
 
         self.__column_mappings = [
-            next(ix for ix in range(0, alignment_length) if ix >= col_ix and ix not in masked_columns)
+            col_ix + sum(1 for ix in masked_columns if col_ix >= ix)
             for col_ix in range(0, alignment_length - len(masked_columns))
         ]
 
