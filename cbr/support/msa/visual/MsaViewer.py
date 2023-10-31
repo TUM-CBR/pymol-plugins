@@ -37,7 +37,7 @@ class MsaViewerModel(QAbstractTableModel):
     def index_residues(alignment : MultipleSeqAlignment) -> List[Set[int]]:
 
         return [
-            set(seq_ix for seq_ix in range(0, len(alignment)) if not msa.is_blank(alignment[seq_ix][i]))
+            set(seq_ix for seq_ix in range(0, len(alignment)) if not msa.is_blank(alignment[seq_ix][i])) # type: ignore[reportGeneralTypeIssues]
             for i in range(0, alignment.get_alignment_length())
         ]
 
@@ -80,12 +80,12 @@ class MsaViewerModel(QAbstractTableModel):
         return len(self.META_COLUMNS)
 
     def __get_residue_at(self, row : int, col : int) -> str:
-        return self.__alignment[row][col - len(self.META_COLUMNS)].upper()
+        return self.__alignment[row][col - len(self.META_COLUMNS)].upper() # type: ignore[reportGeneralTypeIssues]
 
     def __get_content_at(self, index : QModelIndex) -> str:
         row, col = self.__get_row_and_col(index)
         if col == 0:
-            return self.__alignment[row].id
+            return self.__alignment[row].id # type: ignore[reportGeneralTypeIssues]
         else:
             return self.__get_residue_at(row, col)
 
