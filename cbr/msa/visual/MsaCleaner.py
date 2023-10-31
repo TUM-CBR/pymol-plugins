@@ -4,9 +4,9 @@ from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QFileDialog, QWidget
 from typing import Iterable, Optional, cast, List, NamedTuple, Tuple
 
-
 from ...core.Context import (Context)
-from ...core.Qt.QtWidgets import throttle, with_error_handler
+from ...core.Qt.QtCore import DictionaryModel
+from ...core.Qt.QtWidgets import show_info, throttle, with_error_handler
 from ...support import msa
 from ...support.msa.io import save_msa
 from ...support.msa.visual.MsaViewer import MsaViewer
@@ -186,6 +186,7 @@ class MsaCleaner(QWidget):
 
         self.__scores_model.toggle_keep_always(index)
         self.__mask_msa_sequences()
+        self.__update_stats()
 
     def __list_unwanted(self) -> Iterable[int]:
 
@@ -217,6 +218,7 @@ class MsaCleaner(QWidget):
         )
 
         self.__mask_msa_sequences()
+        self.__update_stats()
 
     def __update_table(self, model : SequenceScoresModel) -> None:
 
@@ -245,6 +247,7 @@ class MsaCleaner(QWidget):
 
         self.__msa_viewer.set_alignment(alignment)
         self.__mask_msa_sequences()
+        self.__update_stats()
 
     @pyqtSlot(name = "__save_alignment")
     @with_error_handler()
@@ -258,3 +261,32 @@ class MsaCleaner(QWidget):
 
         save_msa(result_file, self.__msa_viewer.get_new_alignment())
 
+        show_info(
+            self,
+            "Saving Succeeded",
+            "Location: {result_file}"
+        )
+
+    def __update_stats(self) -> None:
+
+        scores = self.__scores_model
+        if scores is None:
+            model_dict = {}
+        else:
+            total_seqs = len(scores.alignment)
+            remaining_seqs = self.__msa_viewer.masked_alignment_seqs
+            remaining_perc = round(100*remaining_seqs/total_seqs, 0)
+            deleted_seqs = total_seqs - remaining_seqs
+            deleted_seqs_perc = round(100*deleted_seqs/total_seqs, 0)
+            alignment_length = scores.alignment.get_alignment_length()
+            cleaned_length = self.__msa_viewer.masked_alignment_length
+            cleaned_length_perc = round(100*cleaned_length / alignment_length, 0)
+            model_dict = {
+                'Original Sequences': str(total_seqs),
+                'Remaining Sequences': f"{remaining_seqs} ({remaining_perc}%)",
+                'Deleted Sequences': f"{deleted_seqs} ({deleted_seqs_perc}%)",
+                'Original Length': str(alignment_length),
+                'Cleaned Length': f"{cleaned_length} ({cleaned_length_perc}%)"
+            }
+
+        self.__ui.statsTable.setModel(DictionaryModel(model_dict))

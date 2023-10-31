@@ -1,3 +1,4 @@
+from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio.Align import MultipleSeqAlignment
 from PyQt5.QtCore import QAbstractTableModel, QModelIndex, Qt
@@ -26,7 +27,7 @@ class MsaViewerModel(QAbstractTableModel):
 
         return MultipleSeqAlignment(
             SeqRecord(
-                "".join(c for i,c in enumerate(seq) if i not in self.__masked_columns),
+                Seq("".join(c for i,c in enumerate(seq) if i not in self.__masked_columns)),
                 id = seq.id
             )
             for row_ix, seq in enumerate(self.__alignment) if row_ix not in self.__mask
@@ -106,7 +107,15 @@ class MsaViewerModel(QAbstractTableModel):
         return len(self.__alignment) - len(self.__mask)
 
     def columnCount(self, parent = None) -> int:
-        return len(self.META_COLUMNS) + self.__alignment.get_alignment_length() - len(self.__masked_columns)
+        return len(self.META_COLUMNS) + self.masked_alignment_length
+
+    @property
+    def masked_alignment_length(self) -> int:
+        return self.__alignment.get_alignment_length() - len(self.__masked_columns)
+
+    @property
+    def masked_alignment_seqs(self) -> int:
+        return self.rowCount()
 
     def data(self, index: QModelIndex, role=Qt.DisplayRole):
 
@@ -137,6 +146,22 @@ class MsaViewer(QWidget):
         self.__ui.msaTable.resizeColumnToContents(0)
         for i in range(1, model.columnCount()):
             self.__ui.msaTable.setColumnWidth(i, 10)
+
+    @property
+    def masked_alignment_length(self) -> int:
+
+        if self.__model is None:
+            return 0
+
+        return self.__model.masked_alignment_length
+
+    @property
+    def masked_alignment_seqs(self) -> int:
+
+        if self.__model is None:
+            return 0
+
+        return self.__model.masked_alignment_seqs
 
     def mask_sequences(self, rows : Iterable[int]) -> None:
 

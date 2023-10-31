@@ -29,7 +29,7 @@ class Ui_ScoreByDivergence(object):
         self.horizontalLayout.addWidget(self.label)
         self.divergenceSlider = QtWidgets.QSlider(ScoreByDivergence)
         self.divergenceSlider.setMaximum(100)
-        self.divergenceSlider.setProperty("value", 10)
+        self.divergenceSlider.setProperty("value", 50)
         self.divergenceSlider.setOrientation(QtCore.Qt.Horizontal)
         self.divergenceSlider.setTickPosition(QtWidgets.QSlider.NoTicks)
         self.divergenceSlider.setObjectName("divergenceSlider")

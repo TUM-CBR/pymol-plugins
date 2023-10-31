@@ -1,5 +1,5 @@
-"""This score is defined as the number of gaps introduced by a sequence devided by the total number of
-of gaps in the multiple sequence alignment. The higher the score means that a greater percentage of the
+"""This score is defined as the number of gaps introduced by a sequence divided by the number the largest
+number of gaps instroduced by a single sequence. The higher the score means that a greater percentage of the
 gaps are introduced by the sequence.
 """
 
