@@ -264,7 +264,7 @@ class MsaCleaner(QWidget):
         show_info(
             self,
             "Saving Succeeded",
-            "Location: {result_file}"
+            f"Location: {result_file}"
         )
 
     def __update_stats(self) -> None:
