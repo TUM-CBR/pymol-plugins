@@ -18,6 +18,7 @@ class MaskPositionMode(Enum):
 class MsaViewerModel(QAbstractTableModel):
 
     META_COLUMNS = ["Name"]
+    BLACK = QColor(0,0,0)
 
     def __init__(self, alignment : MultipleSeqAlignment):
         super().__init__()
@@ -60,13 +61,13 @@ class MsaViewerModel(QAbstractTableModel):
         ]
 
         self.__masked_row_mappings = [
-            next(ix for ix,_ in enumerate(self.__alignment) if ix >= row_ix and ix not in mask)
-            for row_ix in range(0, self.rowCount())
+            row_ix + sum(1 for ix in self.__mask if row_ix >= ix)
+            for row_ix in range(0, self.masked_alignment_seqs)
         ]
 
         self.__masked_column_mappings = [
             col_ix + sum(1 for ix in masked_columns if col_ix >= ix)
-            for col_ix in range(0, alignment_length - len(masked_columns))
+            for col_ix in range(0, self.masked_alignment_length)
         ]
 
         self.modelReset.emit()
@@ -127,20 +128,17 @@ class MsaViewerModel(QAbstractTableModel):
             return None
 
         if self.__mask_position_mode == MaskPositionMode.HIGHLIGHT and self.__is_masked(index):
-            return QColor(0, 0, 0)
+            return self.BLACK
 
         return self.__get_resiude_color(index)
 
+    RESIDUE_COLORS = dict((resi, QColor(*rgb)) for resi, rgb in color.residue_letter_colors.items())
 
     def __get_resiude_color(self, index: QModelIndex) -> Optional[QColor]:
         row, col = self.__get_row_and_col(index)
         resi = self.__get_residue_at(row, col)
-        m_rgb = color.residue_letter_colors.get(resi)
 
-        if m_rgb is None:
-            return None
-
-        return QColor(*m_rgb)
+        return self.RESIDUE_COLORS.get(resi)
 
     def rowCount(self, parent = None) -> int:
 
@@ -161,7 +159,7 @@ class MsaViewerModel(QAbstractTableModel):
 
     @property
     def masked_alignment_seqs(self) -> int:
-        return self.rowCount()
+        return len(self.__alignment) - len(self.__mask)
 
     def set_mask_position_mode(self, mode: MaskPositionMode):
         self.__mask_position_mode = mode
@@ -170,12 +168,14 @@ class MsaViewerModel(QAbstractTableModel):
     def __is_meta(self, index: QModelIndex) -> bool:
         return index.column() < len(self.META_COLUMNS)
 
+    WHITE = QColor(255, 255, 255)
+
     def __get_text_color_at(self, index: QModelIndex) -> Optional[QColor]:
 
         if not self.__is_meta(index) \
             and self.__mask_position_mode == MaskPositionMode.HIGHLIGHT \
             and self.__is_masked(index):
-            return self.__get_resiude_color(index) or QColor(255, 255, 255)
+            return self.__get_resiude_color(index) or self.WHITE
 
         return None
 
@@ -216,6 +216,7 @@ class MsaViewer(QWidget):
             return
 
         self.__model.set_mask_position_mode(MASK_POSITION_MODE[self.__ui.maskCombo.currentText()])
+        self.__adjust_columns_size()
 
     def __adjust_columns_size(self) -> None:
         model = self.__model

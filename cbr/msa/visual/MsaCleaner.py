@@ -171,10 +171,11 @@ class MsaCleaner(QWidget):
         self.__ui.scoresTable.clicked.connect(self.__on_sequence_score_clicked)
         self.__msa_viewer = MsaViewer()
 
-        self.layout().replaceWidget(
+        self.__ui.msaViewerAndScoreLayout.replaceWidget(
             self.__ui.msaViewerWidget,
             self.__msa_viewer
         )
+        self.__msa_viewer.show()
 
         self.__ui.saveResultsButtons.clicked.connect(self.__save_alignment)
 
