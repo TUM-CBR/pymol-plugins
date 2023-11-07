@@ -4,6 +4,7 @@
         "ColorByResidue.ui",
         "MsaCleaner.ui",
         "MsaViewer.ui",
-        "ScoreByDivergence.ui"
+        "ScoreByDivergence.ui",
+        "ScoreByLongInserts.ui"
     ]
 }

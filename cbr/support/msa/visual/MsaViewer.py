@@ -5,7 +5,7 @@ from enum import Enum
 from PyQt5.QtCore import QAbstractTableModel, QModelIndex, Qt, pyqtSlot
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QWidget
-from typing import Iterable, List, Optional, Set, Tuple
+from typing import Iterable, List, Optional, Set
 
 from ....core import color
 from ....clustal import msa
@@ -14,6 +14,25 @@ from .Ui_MsaViewer import Ui_MsaViewer
 class MaskPositionMode(Enum):
     HIGHLIGHT = 0
     HIDE = 1
+
+def mask_offset(
+    mask : Set[int],
+    length : int
+):
+    masked_mappings = []
+    col_ix = 0
+
+    while(col_ix < length):
+        ix = 0 if len(masked_mappings) == 0 else 1 + masked_mappings[-1]
+        while(ix in mask):
+            ix += 1
+
+        assert ix not in mask
+
+        masked_mappings.append(ix)
+        col_ix += 1
+
+    return masked_mappings
 
 class MsaViewerModel(QAbstractTableModel):
 
@@ -54,21 +73,14 @@ class MsaViewerModel(QAbstractTableModel):
         self.__mask = mask = set(mask)
         alignment_length = self.__alignment.get_alignment_length()
 
-        self.__masked_columns = masked_columns = [
+        self.__masked_columns = masked_columns = set(
             column
             for column in range(0, alignment_length)
             for residue_index in [self.__residue_index[column]] if len(residue_index.difference(mask)) == 0
-        ]
+        )
 
-        self.__masked_row_mappings = [
-            row_ix + sum(1 for ix in self.__mask if row_ix >= ix)
-            for row_ix in range(0, self.masked_alignment_seqs)
-        ]
-
-        self.__masked_column_mappings = [
-            col_ix + sum(1 for ix in masked_columns if col_ix >= ix)
-            for col_ix in range(0, self.masked_alignment_length)
-        ]
+        self.__masked_row_mappings = mask_offset(mask, self.masked_alignment_seqs)
+        self.__masked_column_mappings = mask_offset(masked_columns, self.masked_alignment_length)
 
         self.modelReset.emit()
 
@@ -80,46 +92,35 @@ class MsaViewerModel(QAbstractTableModel):
 
     def __get_column_mapping(self, seq_column_ix : int) -> int:
 
+        seq_column_ix = seq_column_ix - self.__meta_columns_count
         if self.__mask_position_mode == MaskPositionMode.HIDE:
             return self.__masked_column_mappings[seq_column_ix]
 
         return seq_column_ix
-
-    def __get_row_and_col(self, index : QModelIndex) -> Tuple[int, int]:
-        row = self.__get_row_mapping(index.row())
-        column = index.column()
-
-        if self.__is_meta(index):
-            return (row, column)
-
-        row, column = self.__get_structure_position(index)
-        return (row, len(self.META_COLUMNS) + column)
-
-    def __get_structure_position(self, index : QModelIndex) -> Tuple[int, int]:
-        assert not self.__is_meta(index) >= len(self.META_COLUMNS), "The index is a metadata column"
-
-        return (index.row(), self.__get_column_mapping(index.column() - len(self.META_COLUMNS)))
 
     @property
     def __meta_columns_count(self) -> int:
         return len(self.META_COLUMNS)
 
     def __get_residue_at(self, row : int, col : int) -> str:
-        return self.__alignment[row][col - len(self.META_COLUMNS)].upper() # type: ignore[reportGeneralTypeIssues]
+        return self.__alignment[row][col].upper() # type: ignore[reportGeneralTypeIssues]
 
     def __get_content_at(self, index : QModelIndex) -> str:
-        row, col = self.__get_row_and_col(index)
-        if col == 0:
+        row = self.__get_row_mapping(index.row())
+        if self.__is_meta(index):
             return self.__alignment[row].id # type: ignore[reportGeneralTypeIssues]
-        else:
-            return self.__get_residue_at(row, col)
+
+        col = self.__get_column_mapping(index.column())
+        return self.__get_residue_at(row, col)
 
     def __is_masked(self, index : QModelIndex) -> bool:
 
         if self.__is_meta(index):
             return False
 
-        row, col = self.__get_structure_position(index)
+        row = index.row()
+        col = index.column() - self.__meta_columns_count
+
         return row in self.__mask or col in self.__masked_columns
 
     def __get_color_at(self, index : QModelIndex) -> Optional[QColor]:
@@ -135,8 +136,10 @@ class MsaViewerModel(QAbstractTableModel):
     RESIDUE_COLORS = dict((resi, QColor(*rgb)) for resi, rgb in color.residue_letter_colors.items())
 
     def __get_resiude_color(self, index: QModelIndex) -> Optional[QColor]:
-        row, col = self.__get_row_and_col(index)
-        resi = self.__get_residue_at(row, col)
+
+        assert not self.__is_meta(index), "The meta columns don't have a residue color"
+
+        resi = self.__get_content_at(index)
 
         return self.RESIDUE_COLORS.get(resi)
 

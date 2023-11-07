@@ -6,7 +6,7 @@ from typing import Iterable, Optional, cast, List, NamedTuple, Tuple
 
 from ...core.Context import (Context)
 from ...core.Qt.QtCore import DictionaryModel
-from ...core.Qt.QtWidgets import show_info, throttle, with_error_handler
+from ...core.Qt.QtWidgets import show_info, with_error_handler
 from ...support import msa
 from ...support.msa.io import save_msa
 from ...support.msa.visual.MsaViewer import MsaViewer
@@ -14,6 +14,7 @@ from ...support.msa.visual.MsaViewer import MsaViewer
 from .Ui_MsaCleaner import Ui_MsaCleaner
 from .MsaCleanerResult import MsaCleanerBase, MsaCleanerResult
 from .ScoreByDivergence import ScoreByDivergence
+from .ScoreByLongInserts import ScoreByLongInserts
 
 class ScoreEntry(NamedTuple):
     name : str
@@ -133,9 +134,8 @@ class SequenceScoresModel(QAbstractTableModel):
         if role == Qt.DisplayRole:
             cols : List[str] = [
                 "",
-                sequence.id,
-                self.fromat_score(self.__scores[0].score(row_ix))
-            ]
+                sequence.id
+            ] + [self.fromat_score(score.score(row_ix)) for score in self.__scores]
             return cols[col_ix]
         elif role == Qt.BackgroundColorRole:
             if self.__is_included(index):
@@ -159,7 +159,8 @@ class MsaCleaner(QWidget):
         self.__scores_model : Optional[SequenceScoresModel] = None
 
         self.__cleaners : List[Tuple[str, MsaCleanerBase]] = [
-            ("Gap Divergence", ScoreByDivergence())
+            ("Gap Divergence", ScoreByDivergence()),
+            ("Long Inserts", ScoreByLongInserts())
         ]
 
         for name, cleaner in self.__cleaners:
@@ -205,7 +206,6 @@ class MsaCleaner(QWidget):
         self.__msa_viewer.mask_sequences(self.__list_unwanted())
 
     @pyqtSlot(name="__on_score_changed")
-    @throttle(1000)
     def __on_score_changed(self):
         if self.__scores_model is None:
             return

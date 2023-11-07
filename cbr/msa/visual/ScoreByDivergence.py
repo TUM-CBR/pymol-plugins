@@ -8,6 +8,7 @@ from typing import Optional, Tuple
 
 from PyQt5.QtCore import pyqtSlot
 
+from ...core.Qt.QtWidgets import throttle
 from ..cleanup import score_by_gap_divergence
 from .Ui_ScoreByDivergence import Ui_ScoreByDivergence
 from .MsaCleanerResult import MsaCleanerBase, MsaCleanerResult
@@ -27,7 +28,8 @@ class ScoreByDivergence(MsaCleanerBase):
     def __update_score_label(self):
         self.__ui.valueLabel.setText(str(self.__treshold[1]))
 
-    @pyqtSlot()
+    @pyqtSlot(name="__on_range_changed")
+    @throttle(1000)
     def __on_range_changed(self):
 
         if self.__score is None:

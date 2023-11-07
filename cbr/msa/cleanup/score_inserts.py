@@ -1,9 +1,10 @@
 from Bio.Align import MultipleSeqAlignment
 from typing import List, Optional
 
+from ...clustal.msa import is_blank
 from .score_gap_divergence import gaps_by_position
 
-def score_insert_line(line : List[bool]) -> int:
+def score_insert_line(line : List[bool]) -> float:
     score = 0
     ix = 0
     acc = 0
@@ -15,7 +16,7 @@ def score_insert_line(line : List[bool]) -> int:
         elif acc == 0:
             acc = 2
         else:
-            acc*=2
+            acc*=1.1
         
         ix += 1
 
@@ -31,7 +32,10 @@ def score_inserts(
         gaps_in_position = gaps_by_position(sequences)
 
     inserts = [
-        [gaps_in_position[ix] / len(sequences) < continuity_treshold for ix,_ in enumerate(seq)]
+        [
+            not is_blank(res) and gaps_in_position[ix] / len(sequences) > continuity_treshold
+            for ix,res in enumerate(seq)
+        ]
         for seq in sequences
     ]
 
