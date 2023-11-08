@@ -6,15 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>849</width>
-    <height>637</height>
+    <width>912</width>
+    <height>546</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout_3">
-   <item>
+  <layout class="QGridLayout" name="gridLayout" rowstretch="0,9,9,0,0,0" columnstretch="9,0">
+   <item row="0" column="0">
     <widget class="QLabel" name="label">
      <property name="styleSheet">
       <string notr="true">font-size: 28px;
@@ -25,87 +25,51 @@ font-weight: bold;</string>
      </property>
     </widget>
    </item>
-   <item>
-    <widget class="QSplitter" name="splitter">
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
+   <item row="1" column="0">
+    <widget class="QTableView" name="scoresTable"/>
+   </item>
+   <item row="1" column="1">
+    <widget class="QTableView" name="statsTable"/>
+   </item>
+   <item row="2" column="0" colspan="2">
+    <widget class="QWidget" name="msaViewerWidget" native="true">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>150</height>
+      </size>
      </property>
-     <widget class="QWidget" name="">
-      <layout class="QVBoxLayout" name="msaViewerAndScoreLayout">
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout" stretch="6,2">
-         <item>
-          <widget class="QTableView" name="scoresTable"/>
-         </item>
-         <item>
-          <widget class="QTableView" name="statsTable"/>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <widget class="QWidget" name="msaViewerWidget" native="true">
-         <property name="minimumSize">
-          <size>
-           <width>0</width>
-           <height>150</height>
-          </size>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
-     <widget class="QWidget" name="">
-      <layout class="QHBoxLayout" name="horizontalLayout_2">
-       <item>
-        <widget class="QTabWidget" name="cleanersWidget"/>
-       </item>
-       <item>
-        <layout class="QVBoxLayout" name="verticalLayout">
-         <item>
-          <spacer name="verticalSpacer">
-           <property name="orientation">
-            <enum>Qt::Vertical</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>20</width>
-             <height>40</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item>
-          <widget class="QLabel" name="selectedFileLabel">
-           <property name="minimumSize">
-            <size>
-             <width>200</width>
-             <height>0</height>
-            </size>
-           </property>
-           <property name="text">
-            <string/>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="loadMsaButton">
-           <property name="text">
-            <string>Load MSA</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="saveResultsButtons">
-           <property name="text">
-            <string>Save Results</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-      </layout>
-     </widget>
     </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QLabel" name="selectedFileLabel">
+     <property name="minimumSize">
+      <size>
+       <width>200</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QPushButton" name="loadMsaButton">
+     <property name="text">
+      <string>Load MSA</string>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="1">
+    <widget class="QPushButton" name="saveResultsButtons">
+     <property name="text">
+      <string>Save Results</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="0" rowspan="3">
+    <widget class="QTabWidget" name="cleanersWidget"/>
    </item>
   </layout>
  </widget>

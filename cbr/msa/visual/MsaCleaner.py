@@ -1,8 +1,10 @@
+from typing_extensions import override
 from Bio.Align import MultipleSeqAlignment, SeqRecord
+from enum import Enum
 from PyQt5.QtCore import pyqtSlot, QAbstractTableModel, QModelIndex, Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QFileDialog, QWidget
-from typing import Iterable, Optional, cast, List, NamedTuple, Tuple
+from typing import Any, Iterable, Optional, cast, List, NamedTuple, Tuple
 
 from ...core.Context import (Context)
 from ...core.Qt.QtCore import DictionaryModel
@@ -37,16 +39,33 @@ class ScoreEntry(NamedTuple):
     def score(self, i : int) -> float:
         return self.scores[i]
 
-class ScoreMeta(NamedTuple):
-    keep_always : bool
+class ScoreOverride(Enum):
+    Green = 0
+    Red = 1
+    NoOverride = 2
 
-    def toggle_keep_always(self) -> 'ScoreMeta':
-        return self._replace(keep_always = not self.keep_always)
+class ScoreMeta(NamedTuple):
+    override : ScoreOverride
+
+    def check_state(self, override : ScoreOverride) -> Qt.CheckState:
+        if self.override == override:
+            return Qt.Checked
+        else:
+            return Qt.Unchecked
+
+    def toggle(self, base_status : ScoreOverride) -> 'ScoreMeta':
+
+        if self.override != base_status:
+            return self._replace(override = base_status)
+        else:
+            return self._replace(override = ScoreOverride.NoOverride)
 
 class SequenceScoresModel(QAbstractTableModel):
 
-    fixed_headers = ["Always Include", "Sequence Id"]
-    ALWAYS_INCLUDE_COLUMN = 0
+    fixed_headers = ["Greenlist", "Redlist", "Sequence Id"]
+    GREENLIST_COLUMN = fixed_headers.index("Greenlist")
+    REDLIST_COLUMN = fixed_headers.index("Redlist")
+    OVERRIDE_COLUMNS = [GREENLIST_COLUMN, REDLIST_COLUMN]
 
     def __init__(
         self,
@@ -57,7 +76,7 @@ class SequenceScoresModel(QAbstractTableModel):
 
         self.__alignment = alignment
         self.__scores = scores
-        self.__score_meta = [ScoreMeta(keep_always=False) for _ in range(0, len(alignment))]
+        self.__score_meta = [ScoreMeta(override=ScoreOverride.NoOverride) for _ in range(0, len(alignment))]
 
     @property
     def scores(self) -> List[ScoreEntry]:
@@ -96,24 +115,31 @@ class SequenceScoresModel(QAbstractTableModel):
     def fromat_score(value : float) -> str:
         return str(round(value, 2))
 
-    def toggle_keep_always(self, index : QModelIndex) -> None:
+    def toggle_override(self, index : QModelIndex, override: ScoreOverride) -> None:
         """Toggle wether to alwasy include the current
         sequence in the MSA regardless of the analysis results.
         Only toggle if the index corresponds to the correct column."""
 
-        if index.column() != self.ALWAYS_INCLUDE_COLUMN:
-            return
+        assert index.column() in self.OVERRIDE_COLUMNS
 
-
-        self.__score_meta[index.row()] = self.__score_meta[index.row()].toggle_keep_always()
-        self.dataChanged.emit(index, index.siblingAtColumn(self.columnCount() - 1))
+        self.__score_meta[index.row()] = self.__score_meta[index.row()].toggle(override)
+        self.dataChanged.emit(
+            index,
+            index.siblingAtColumn(self.columnCount() - 1),
+            [Qt.CheckStateRole, Qt.BackgroundColorRole]
+        )
 
     def __is_included(self, index : QModelIndex) -> bool:
         return self.is_included(index.row())
 
     def is_included(self, row_ix : int) -> bool:
-        return self.__score_meta[row_ix].keep_always \
-            or all(score.is_included(row_ix) for score in self.__scores)
+        override = self.__score_meta[row_ix].override
+
+        return override != ScoreOverride.Red \
+            and (
+                override == ScoreOverride.Green \
+                or all(score.is_included(row_ix) for score in self.__scores)
+            )
 
     def update_scores(self, scores : List[ScoreEntry]) -> None:
         self.__scores = scores
@@ -122,6 +148,25 @@ class SequenceScoresModel(QAbstractTableModel):
             self.index(0, 0),
             self.index(self.rowCount() - 1, self.columnCount() - 1)
         )
+
+    def flags(self, index: QModelIndex) -> Qt.ItemFlags:
+
+        if index.column() in self.OVERRIDE_COLUMNS:
+            return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsUserCheckable
+        else:
+            return super().flags(index)
+
+    def setData(self, index: QModelIndex, value: Any, role: int = Qt.DisplayRole) -> bool:
+
+        if index.column() == self.GREENLIST_COLUMN and role == Qt.CheckStateRole:
+            self.toggle_override(index, ScoreOverride.Green)
+            return True
+
+        if index.column() == self.REDLIST_COLUMN and role == Qt.CheckStateRole:
+            self.toggle_override(index, ScoreOverride.Red)
+            return True
+
+        return super().setData(index, value, role)
 
     def data(self, index: QModelIndex, role=Qt.DisplayRole):
 
@@ -134,6 +179,7 @@ class SequenceScoresModel(QAbstractTableModel):
         if role == Qt.DisplayRole:
             cols : List[str] = [
                 "",
+                "",
                 sequence.id
             ] + [self.fromat_score(score.score(row_ix)) for score in self.__scores]
             return cols[col_ix]
@@ -142,13 +188,13 @@ class SequenceScoresModel(QAbstractTableModel):
                 return None
             else:
                 return QColor(255,0,0,100)
-        elif role == Qt.CheckStateRole and col_ix == self.ALWAYS_INCLUDE_COLUMN:
-            if self.__score_meta[row_ix].keep_always:
-                return Qt.Checked
-            else:
-                return Qt.Unchecked
+        elif role == Qt.CheckStateRole and col_ix == self.GREENLIST_COLUMN:
+            return self.__score_meta[row_ix].check_state(ScoreOverride.Green)
+        elif role == Qt.CheckStateRole and col_ix == self.REDLIST_COLUMN:
+            return self.__score_meta[row_ix].check_state(ScoreOverride.Red)
         else:
             return None
+
 
 class MsaCleaner(QWidget):
 
@@ -169,10 +215,10 @@ class MsaCleaner(QWidget):
 
         self.__msa_selector = msa.msa_selector(self, self.__ui.loadMsaButton, self.__ui.selectedFileLabel)
         self.__msa_selector.msa_file_selected.connect(self.__on_msa_selected)
-        self.__ui.scoresTable.clicked.connect(self.__on_sequence_score_clicked)
+        #self.__ui.scoresTable.itemup.connect(self.__on_sequence_score_clicked)
         self.__msa_viewer = MsaViewer()
 
-        self.__ui.msaViewerAndScoreLayout.replaceWidget(
+        self.layout().replaceWidget(
             self.__ui.msaViewerWidget,
             self.__msa_viewer
         )
@@ -180,13 +226,11 @@ class MsaCleaner(QWidget):
 
         self.__ui.saveResultsButtons.clicked.connect(self.__save_alignment)
 
-    @pyqtSlot(QModelIndex)
-    def __on_sequence_score_clicked(self, index : QModelIndex):
-
-        if self.__scores_model is None:
+    @pyqtSlot(QModelIndex, QModelIndex, 'QVector<int>')
+    def __on_sequence_score_clicked(self, start : QModelIndex, stop: QModelIndex, roles : List[Qt.ItemDataRole] = []):
+        if self.__scores_model is None or Qt.CheckStateRole not in roles:
             return
 
-        self.__scores_model.toggle_keep_always(index)
         self.__mask_msa_sequences()
         self.__update_stats()
 
@@ -226,6 +270,7 @@ class MsaCleaner(QWidget):
         self.__scores_model = model
         self.__ui.scoresTable.setModel(model)
         self.__ui.scoresTable.resizeColumnsToContents()
+        model.dataChanged.connect(self.__on_sequence_score_clicked)
 
     @pyqtSlot(name="__on_msa_selected")
     @with_error_handler()

@@ -20,8 +20,8 @@ class ScoreByLongInserts(MsaCleanerBase):
         self.__ui = Ui_ScoreByLongInserts()
         self.__ui.setupUi(self)
 
-        assert(__doc__.replace("\n", " "))
-        self.__ui.descriptionLabel.setText(__doc__)
+        assert(__doc__)
+        self.__ui.descriptionLabel.setText(__doc__.replace("\n", " "))
         self.__alignment : Optional[MultipleSeqAlignment] = None
 
         self.__ui.continuityTresholdSlider.valueChanged.connect(self.__update_score)
