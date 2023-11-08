@@ -3,6 +3,7 @@ from typing import List, Optional
 
 from ...clustal.msa import is_blank
 from .score_gap_divergence import gaps_by_position
+from .utils import normalized
 
 def score_insert_line(line : List[bool]) -> float:
     score = 0
@@ -43,7 +44,5 @@ def score_inserts(
         score_insert_line(line) for line in inserts
     ]
 
-    max_score = max(scores_raw)
-
-    return [score/max_score for score in scores_raw]
+    return normalized(scores_raw)
 

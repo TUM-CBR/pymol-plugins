@@ -2,6 +2,7 @@ from Bio.Align import MultipleSeqAlignment, SeqRecord
 from typing import List
 
 from ...clustal import msa
+from .utils import normalized
 
 def gaps_by_position(alignment : MultipleSeqAlignment) -> List[int]:
     positions = alignment.get_alignment_length()
@@ -26,5 +27,4 @@ def score_by_gap_divergence(alignment : MultipleSeqAlignment) -> GapDivergenceSc
         )
 
     abs_scores = [score_sequence(s) for s in alignment]
-    max_score = max(abs_scores)
-    return [score / max_score for score in abs_scores]
+    return normalized(abs_scores)
