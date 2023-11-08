@@ -25,7 +25,7 @@ class Ui_ScoreByLongInserts(object):
         self.descriptionLabel.setObjectName("descriptionLabel")
         self.gridLayout.addWidget(self.descriptionLabel, 0, 0, 1, 2)
         self.continuityTresholdSlider = QtWidgets.QSlider(ScoreByLongInserts)
-        self.continuityTresholdSlider.setProperty("value", 10)
+        self.continuityTresholdSlider.setProperty("value", 90)
         self.continuityTresholdSlider.setOrientation(QtCore.Qt.Horizontal)
         self.continuityTresholdSlider.setObjectName("continuityTresholdSlider")
         self.gridLayout.addWidget(self.continuityTresholdSlider, 1, 1, 1, 1)

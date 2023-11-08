@@ -12,12 +12,10 @@ def score_insert_line(line : List[bool]) -> float:
 
     while(ix < len(line)):
         if not line[ix]:
-            score += acc
+            score += 0 if acc < 3 else 2**acc
             acc = 0
-        elif acc == 0:
-            acc = 2
         else:
-            acc*=1.1
+            acc+=1
         
         ix += 1
 

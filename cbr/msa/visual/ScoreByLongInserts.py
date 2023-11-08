@@ -1,4 +1,4 @@
-"""This scoring function is designed to eliminate sequences taht create long inserts in the MSA.
+"""This scoring function is designed to eliminate sequences that create long inserts in the MSA.
 It has two parameters. The first one "Continuity Treshold" determines the percentage of sequences
 that must have gaps at a given position for two consecutive residues to be considered an "insert".
 The second parameter "Score Treshold" controls how many sequences should be dropped based on the
