@@ -19,6 +19,7 @@ class ScoreByLongInserts(MsaCleanerBase):
         super().__init__()
         self.__ui = Ui_ScoreByLongInserts()
         self.__ui.setupUi(self)
+        self.__score : Optional[MsaCleanerResult] = None
 
         assert(__doc__)
         self.__ui.descriptionLabel.setText(__doc__.replace("\n", " "))

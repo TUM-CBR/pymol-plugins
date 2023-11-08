@@ -6,14 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>912</width>
-    <height>546</height>
+    <width>888</width>
+    <height>640</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout" rowstretch="0,9,9,0,0,0" columnstretch="9,0">
+  <layout class="QGridLayout" name="gridLayout" rowstretch="0,9,9,0,0,0" columnstretch="5,0">
    <item row="0" column="0">
     <widget class="QLabel" name="label">
      <property name="styleSheet">
@@ -32,13 +32,33 @@ font-weight: bold;</string>
     <widget class="QTableView" name="statsTable"/>
    </item>
    <item row="2" column="0" colspan="2">
-    <widget class="QWidget" name="msaViewerWidget" native="true">
+    <widget class="QWidget" name="msaViewerContainerWidget" native="true">
      <property name="minimumSize">
       <size>
        <width>0</width>
        <height>150</height>
       </size>
      </property>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <property name="spacing">
+       <number>0</number>
+      </property>
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <widget class="QWidget" name="msaViewerWidget" native="true"/>
+      </item>
+     </layout>
     </widget>
    </item>
    <item row="3" column="1">

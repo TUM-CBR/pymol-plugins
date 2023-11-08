@@ -1,4 +1,3 @@
-from typing_extensions import override
 from Bio.Align import MultipleSeqAlignment, SeqRecord
 from enum import Enum
 from PyQt5.QtCore import pyqtSlot, QAbstractTableModel, QModelIndex, Qt
@@ -17,6 +16,7 @@ from .Ui_MsaCleaner import Ui_MsaCleaner
 from .MsaCleanerResult import MsaCleanerBase, MsaCleanerResult
 from .ScoreByDivergence import ScoreByDivergence
 from .ScoreByLongInserts import ScoreByLongInserts
+from .ScoreByLength import ScoreByLength
 
 class ScoreEntry(NamedTuple):
     name : str
@@ -206,7 +206,8 @@ class MsaCleaner(QWidget):
 
         self.__cleaners : List[Tuple[str, MsaCleanerBase]] = [
             ("Gap Divergence", ScoreByDivergence()),
-            ("Long Inserts", ScoreByLongInserts())
+            ("Long Inserts", ScoreByLongInserts()),
+            ("Sequence Length", ScoreByLength())
         ]
 
         for name, cleaner in self.__cleaners:
@@ -218,7 +219,7 @@ class MsaCleaner(QWidget):
         #self.__ui.scoresTable.itemup.connect(self.__on_sequence_score_clicked)
         self.__msa_viewer = MsaViewer()
 
-        self.layout().replaceWidget(
+        self.__ui.msaViewerContainerWidget.layout().replaceWidget(
             self.__ui.msaViewerWidget,
             self.__msa_viewer
         )

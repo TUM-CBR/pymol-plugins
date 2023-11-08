@@ -5,6 +5,7 @@
         "MsaCleaner.ui",
         "MsaViewer.ui",
         "ScoreByDivergence.ui",
+        "ScoreByLength.ui",
         "ScoreByLongInserts.ui"
     ]
 }
