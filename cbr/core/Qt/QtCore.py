@@ -88,3 +88,18 @@ class DictionaryModel(QAbstractTableModel):
 
         if role == Qt.DisplayRole:
             return item[col_ix]
+
+
+class BlockSignalsContextManager(object):
+
+    def __init__(self, obj : QObject):
+        self.__obj = obj
+
+    def __enter__(self, *args, **kwargs):
+        self.__obj.blockSignals(True)
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        self.__obj.blockSignals(False)
+
+block_signals = BlockSignalsContextManager

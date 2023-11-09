@@ -1,46 +1,32 @@
 from Bio.Align import MultipleSeqAlignment
-from typing import List, Optional
+from Bio.SeqRecord import SeqRecord
+from typing import Iterable, List, Optional
 
 from ...clustal.msa import is_blank
-from .score_gap_divergence import gaps_by_position
-from .utils import normalized
+from ..cleanup.support import score_contigous
+from .score_gap_ravines import position_to_ravines
 
-def score_insert_line(line : List[bool]) -> float:
-    score = 0
-    ix = 0
-    acc = 0
+def score_insert_line(
+    position_ravine_mapping : List[int],
+    sequence : SeqRecord
+    ) -> Iterable[int]:
 
-    while(ix < len(line)):
-        if not line[ix]:
-            score += 0 if acc < 3 else 2**acc
-            acc = 0
-        else:
-            acc+=1
-        
-        ix += 1
-
-    return score
+    return score_contigous(
+        position_ravine_mapping[ix] > 0 and not is_blank(resi)
+        for ix,resi in enumerate(sequence)
+    )
 
 def score_inserts(
         sequences : MultipleSeqAlignment,
         continuity_treshold : float,
-        gaps_in_position : Optional[List[int]] = None
-) -> List[float]:
+        gap_ravines : Optional[List[int]] = None
+) -> List[List[int]]:
     
-    if gaps_in_position is None:
-        gaps_in_position = gaps_by_position(sequences)
+    if gap_ravines is None:
+        gap_ravines = position_to_ravines(sequences, continuity_treshold)
 
-    inserts = [
-        [
-            not is_blank(res) and gaps_in_position[ix] / len(sequences) > continuity_treshold
-            for ix,res in enumerate(seq)
-        ]
+    return [
+        list(score_insert_line(gap_ravines, seq))
         for seq in sequences
     ]
-
-    scores_raw = [
-        score_insert_line(line) for line in inserts
-    ]
-
-    return normalized(scores_raw)
 

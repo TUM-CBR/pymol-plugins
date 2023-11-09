@@ -6,6 +6,8 @@
         "MsaViewer.ui",
         "ScoreByDivergence.ui",
         "ScoreByLength.ui",
-        "ScoreByLongInserts.ui"
+        "ScoreByLongInserts.ui",
+        "ScoreByRavines.ui",
+        "ScoreWithScope.ui"
     ]
 }

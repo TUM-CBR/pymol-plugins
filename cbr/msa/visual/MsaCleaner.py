@@ -17,6 +17,7 @@ from .MsaCleanerResult import MsaCleanerBase, MsaCleanerResult
 from .ScoreByDivergence import ScoreByDivergence
 from .ScoreByLongInserts import ScoreByLongInserts
 from .ScoreByLength import ScoreByLength
+from .ScoreWithScope import ScoreWithScope
 
 class ScoreEntry(NamedTuple):
     name : str
@@ -205,8 +206,8 @@ class MsaCleaner(QWidget):
         self.__scores_model : Optional[SequenceScoresModel] = None
 
         self.__cleaners : List[Tuple[str, MsaCleanerBase]] = [
-            ("Gap Divergence", ScoreByDivergence()),
-            ("Long Inserts", ScoreByLongInserts()),
+            ("Gap Divergence", ScoreWithScope(ScoreByDivergence())),
+            ("Long Inserts", ScoreWithScope(ScoreByLongInserts())),
             ("Sequence Length", ScoreByLength())
         ]
 
@@ -216,7 +217,7 @@ class MsaCleaner(QWidget):
 
         self.__msa_selector = msa.msa_selector(self, self.__ui.loadMsaButton, self.__ui.selectedFileLabel)
         self.__msa_selector.msa_file_selected.connect(self.__on_msa_selected)
-        #self.__ui.scoresTable.itemup.connect(self.__on_sequence_score_clicked)
+        self.__ui.pruneButton.clicked.connect(self.__prune)
         self.__msa_viewer = MsaViewer()
 
         self.__ui.msaViewerContainerWidget.layout().replaceWidget(
@@ -268,18 +269,29 @@ class MsaCleaner(QWidget):
 
     def __update_table(self, model : SequenceScoresModel) -> None:
 
+        if self.__scores_model is not None:
+            self.__scores_model.dataChanged.disconnect(self.__on_sequence_score_clicked)
+
         self.__scores_model = model
         self.__ui.scoresTable.setModel(model)
         self.__ui.scoresTable.resizeColumnsToContents()
         model.dataChanged.connect(self.__on_sequence_score_clicked)
 
+    @pyqtSlot()
+    def __prune(self):
+        self.__update_alignment(self.__msa_viewer.get_new_alignment())
+        show_info(self, "Alignment has been pruned")
+
     @pyqtSlot(name="__on_msa_selected")
     @with_error_handler()
     def __on_msa_selected(self):
         alignment = self.__msa_selector.alignment
-
         if alignment is None:
             raise Exception("The selected alignment could not be opened.")
+
+        self.__update_alignment(alignment)
+
+    def __update_alignment(self, alignment: MultipleSeqAlignment):
 
         self.__update_table(
             SequenceScoresModel(

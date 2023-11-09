@@ -2,8 +2,8 @@ from concurrent.futures import Future
 import csv
 from io import StringIO
 from typing import Any, Callable, Generic, Iterable, Optional, Set, TextIO, TypeVar, cast
-from PyQt5.QtCore import QTime, QTimer, pyqtSignal, pyqtSlot, QObject, Qt
-from PyQt5.QtWidgets import QAction, QApplication, QMenu, QMessageBox, QProgressBar, QTableWidget, QTableView, QWidget
+from PyQt5.QtCore import QTimer, pyqtSignal, pyqtSlot, QObject, Qt
+from PyQt5.QtWidgets import QAction, QApplication, QLabel, QMenu, QMessageBox, QProgressBar, QSlider, QTableWidget, QTableView, QWidget
 
 def open_copy_context_menu(qtable : QTableWidget, pos):
 
@@ -268,3 +268,35 @@ def export_table_view_to_csv(table_view : QTableView, text_stream: TextIO) -> No
             index = model.index(row, col)
             row_data.append(model.data(index))
         writer.writerow(row_data)
+
+class SliderWithLabel(QObject):
+
+    value_changed = pyqtSignal()
+
+    def __init__(
+        self,
+        slider : QSlider,
+        label : QLabel,
+    ):
+        super().__init__()
+
+        self.__label = label
+        self.__slider = slider
+        label.setText(self.__format(slider.value()))
+
+        self.__slider.valueChanged.connect(self.__on_value_changed)
+
+    @property
+    def value(self):
+        return self.__slider.value()
+
+    def __format(self, value : int):
+        return str(value)
+
+    @pyqtSlot()
+    def __on_value_changed(self):
+        value = self.__slider.value()
+        self.__label.setText(self.__format(value))
+        self.value_changed.emit()
+
+slider_with_label = SliderWithLabel
