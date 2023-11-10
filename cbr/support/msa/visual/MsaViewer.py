@@ -3,7 +3,7 @@ from Bio.SeqRecord import SeqRecord
 from Bio.Align import MultipleSeqAlignment
 from enum import Enum
 import pymol
-from PyQt5.QtCore import QAbstractTableModel, QItemSelection, QModelIndex, Qt, pyqtSlot
+from PyQt5.QtCore import QAbstractTableModel, QItemSelection, QItemSelectionModel, QModelIndex, Qt, pyqtSlot
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QDialog, QWidget
 from typing import Dict, Iterable, List, NamedTuple, Optional, Set
@@ -11,9 +11,9 @@ from typing import Dict, Iterable, List, NamedTuple, Optional, Set
 from ....core import color
 from ....core.pymol.structure import StructureSelection
 from ....clustal import msa
-from ....control import viter
+from ....control import viter, update_key
 from .MsaStructureSelector import MsaStructureSelector
-from ..structure import msa_to_structure_position_map
+from ..structure import msa_to_pymol_structure_map, MsaToPymolStructureMap
 from .Ui_MsaViewer import Ui_MsaViewer
 
 class MaskPositionMode(Enum):
@@ -42,11 +42,17 @@ def mask_offset(
 class SequenceMeta(NamedTuple):
     sequence : SeqRecord
     structure : Optional[StructureSelection]
-    structure_to_sequence : Optional[List[int]]
+    structure_to_sequence : Optional[MsaToPymolStructureMap]
 
     @staticmethod
     def create(seq : SeqRecord):
         return SequenceMeta(seq, None, None)
+
+    def get_structure_position(self, pos: int) -> Optional[int]:
+        if self.structure_to_sequence is None:
+            return None
+        else:
+            self.structure_to_sequence.get_pymol_structure_position(pos)
 
     def update_structure(
         self,
@@ -57,10 +63,10 @@ class SequenceMeta(NamedTuple):
         if structure is None:
             return self._replace(structure = None, structure_to_sequence = None)
 
-        mapping = msa_to_structure_position_map(
-            structure.show(),
+        mapping = msa_to_pymol_structure_map(
+            structure,
+            self.sequence.id,
             msa,
-            str(self.sequence)
         )
 
         return self._replace(
@@ -86,7 +92,28 @@ class MsaViewerModel(QAbstractTableModel):
         self.__sequences_meta = [SequenceMeta.create(seq) for seq in alignment]
 
     def get_positions_from_selection(self, selection : QItemSelection) -> Dict[str, List[int]]:
-        raise NotImplementedError()
+
+        result = dict()
+        for index in selection.indexes():
+            if self.__is_meta(index):
+                continue
+
+            msa_row = self.__get_row_mapping(index.row())
+            msa_col = self.__get_column_mapping(index.column())
+            meta = self.__get_sequence_meta(msa_row)
+
+            if meta.structure is None:
+                continue
+
+            sele_str = meta.structure.selection
+
+            with update_key(result, sele_str, []) as update:
+                update.value = update.value + [meta.get_structure_position(msa_col)]
+
+        return result
+
+    def __get_sequence_meta(self, col : int) -> SequenceMeta:
+        return self.__sequences_meta[col]
 
     def set_structure(self, index: QModelIndex, structure: Optional[StructureSelection]):
         assert index.column() == self.STRUCTURE_COLUMN
@@ -108,14 +135,6 @@ class MsaViewerModel(QAbstractTableModel):
             if 0 <= section < len(headers):
                 return headers[section]
         return super().headerData(section, orientation, role)
-
-    def flags(self, index : QModelIndex) -> Qt.ItemFlags:
-        flags = super().flags(index)
-
-        if index.column() != self.STRUCTURE_COLUMN:
-            return flags
-
-        return flags | Qt.ItemIsEditable
 
     def get_masked_alignment(self) -> MultipleSeqAlignment:
 
@@ -173,20 +192,19 @@ class MsaViewerModel(QAbstractTableModel):
     def __get_residue_at(self, row : int, col : int) -> str:
         return self.__alignment[row][col].upper() # type: ignore[reportGeneralTypeIssues]
 
-    def __get_meta_content(self, index: QModelIndex) -> str:
-        row = index.row()
+    def __get_meta_content(self, row: int, col : int) -> str:
         structure = self.__sequences_meta[row].structure
         content = [
             self.__alignment[row].id, # type: ignore[reportGeneralTypeIssues],
             structure.show() if structure else "<double click to select>"
         ]
 
-        return content[index.column()]
+        return content[col]
 
     def __get_content_at(self, index : QModelIndex) -> str:
         row = self.__get_row_mapping(index.row())
         if self.__is_meta(index):
-            return self.__get_meta_content(index)
+            return self.__get_meta_content(row, index.column())
 
         col = self.__get_column_mapping(index.column())
         return self.__get_residue_at(row, col)
@@ -291,13 +309,18 @@ class MsaViewer(QWidget):
         self.__ui.maskCombo.currentIndexChanged.connect(self.__on_mask_combo_changed)
         self.__ui.msaTable.doubleClicked.connect(self.__select_structure)
         self.__select_structure_dialog = MsaStructureSelector(self)
-        self.__ui.msaTable.selectionModel().selectionChanged.connect(self.__on_selection)
+        self.__ui.msaTable.setSelectionModel(QItemSelectionModel())
 
     @pyqtSlot(QItemSelection, QItemSelection)
     def __on_selection(self, selected: QItemSelection, deselected: QItemSelection):
 
         for model in viter(self.__model):
-            pass
+            for model_sele, resi in model.get_positions_from_selection(selected):
+                resi_sele = " or ".join(f"resi {i}" for i in resi)
+                pymol.cmd.select(
+                    "sele (msa cleaner)",
+                    f"{model_sele} and {resi_sele}"
+                )
 
     @pyqtSlot()
     def __on_mask_combo_changed(self):
@@ -321,9 +344,12 @@ class MsaViewer(QWidget):
     @pyqtSlot(QModelIndex)
     def __select_structure(self, index : QModelIndex):
 
-        if (self.__select_structure_dialog.exec() == QDialog.Accepted):
-            pass
-        pass
+        for model in viter(self.__model):
+            if (self.__select_structure_dialog.exec() == QDialog.Accepted):
+                model.set_structure(
+                    index,
+                    self.__select_structure_dialog.current_selection()
+                )
 
     @property
     def masked_alignment_length(self) -> int:
@@ -352,7 +378,10 @@ class MsaViewer(QWidget):
     def set_alignment(self, alignment : MultipleSeqAlignment) -> None:
 
         self.__model = model = MsaViewerModel(alignment)
+        selection_model = QItemSelectionModel(model)
+        selection_model.selectionChanged.connect(self.__on_selection)
         self.__ui.msaTable.setModel(model)
+        self.__ui.msaTable.setSelectionModel(selection_model)
         self.__adjust_columns_size()
 
     def get_new_alignment(self) -> MultipleSeqAlignment:

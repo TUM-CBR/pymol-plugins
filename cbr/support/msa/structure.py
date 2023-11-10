@@ -51,7 +51,7 @@ class MsaToPymolStructureMap(NamedTuple):
 def msa_to_pymol_structure_map(
     structure_selection: StructureSelection,
     sequence_name : str,    
-    full_msa : Msa,
+    full_msa : 'Msa | MultipleSeqAlignment',
     clustal : Optional[Clustal] = None
 ):
     structure_sequence = structure.get_pdb_sequence(structure_selection)
