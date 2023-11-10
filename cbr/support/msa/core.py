@@ -1,6 +1,13 @@
-from typing import Dict, Tuple
+from Bio.Align import MultipleSeqAlignment
+from typing import cast, Dict, Tuple
 
 Msa = Dict[str, str]
+
+def from_biopython(alignment: MultipleSeqAlignment) -> Msa:
+    return dict(
+            cast(Tuple[str, str], (seq.id, str(seq)))
+            for seq in alignment
+        )
 
 def enumerate_pairs(msa: Msa, pos_1: int, pos_2: int) -> Dict[Tuple[str, str], int]:
 

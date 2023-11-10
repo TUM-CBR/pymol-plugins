@@ -277,25 +277,27 @@ class SliderWithLabel(QObject):
         self,
         slider : QSlider,
         label : QLabel,
+        factor : float = 1
     ):
         super().__init__()
 
         self.__label = label
         self.__slider = slider
-        label.setText(self.__format(slider.value()))
+        self.__factor = factor
+        label.setText(self.__format(self.value))
 
         self.__slider.valueChanged.connect(self.__on_value_changed)
 
     @property
     def value(self):
-        return self.__slider.value()
+        return self.__slider.value() * self.__factor
 
-    def __format(self, value : int):
-        return str(value)
+    def __format(self, value : float):
+        return str(round(value, 2))
 
     @pyqtSlot()
     def __on_value_changed(self):
-        value = self.__slider.value()
+        value = self.value
         self.__label.setText(self.__format(value))
         self.value_changed.emit()
 

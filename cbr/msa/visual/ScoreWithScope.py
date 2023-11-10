@@ -44,6 +44,7 @@ class ScoreWithScope(MsaCleanerBase):
         self.__treshold_slider = slider_with_label(
             self.__ui.tresholdSlider,
             self.__ui.tresholdLabel,
+            1/100
         )
         self.__treshold_slider.value_changed.connect(self.__on_treshold_changed)
 
@@ -91,7 +92,7 @@ class ScoreWithScope(MsaCleanerBase):
 
     @property
     def __treshold(self) -> Tuple[float, float]:
-        return (0, self.__treshold_slider.value / 100)
+        return (0, self.__treshold_slider.value)
 
     @pyqtSlot(name="__on_treshold_changed")
     @throttle(1000)

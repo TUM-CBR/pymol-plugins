@@ -17,6 +17,7 @@ from .MsaCleanerResult import MsaCleanerBase, MsaCleanerResult
 from .ScoreByDivergence import ScoreByDivergence
 from .ScoreByLongInserts import ScoreByLongInserts
 from .ScoreByLength import ScoreByLength
+from .ScoreByRavines import ScoreByRavines
 from .ScoreWithScope import ScoreWithScope
 
 class ScoreEntry(NamedTuple):
@@ -207,7 +208,8 @@ class MsaCleaner(QWidget):
 
         self.__cleaners : List[Tuple[str, MsaCleanerBase]] = [
             ("Gap Divergence", ScoreWithScope(ScoreByDivergence())),
-            ("Long Inserts", ScoreWithScope(ScoreByLongInserts())),
+            ("Eliminate Long Inserts", ScoreWithScope(ScoreByLongInserts())),
+            ("Eliminate Large Gaps", ScoreWithScope(ScoreByRavines())),
             ("Sequence Length", ScoreByLength())
         ]
 

@@ -92,14 +92,18 @@ class DictionaryModel(QAbstractTableModel):
 
 class BlockSignalsContextManager(object):
 
-    def __init__(self, obj : QObject):
+    def __init__(self, *obj : QObject):
         self.__obj = obj
 
     def __enter__(self, *args, **kwargs):
-        self.__obj.blockSignals(True)
+
+        for obj in self.__obj:
+            obj.blockSignals(True)
         return self
 
     def __exit__(self, *args, **kwargs):
-        self.__obj.blockSignals(False)
+
+        for obj in self.__obj:
+            obj.blockSignals(False)
 
 block_signals = BlockSignalsContextManager

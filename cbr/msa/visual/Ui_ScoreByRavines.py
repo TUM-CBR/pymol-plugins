@@ -26,11 +26,13 @@ class Ui_ScoreByRavines(object):
         spacerItem = QtWidgets.QSpacerItem(20, 237, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         self.gridLayout.addItem(spacerItem, 2, 1, 1, 1)
         self.continuityTresholdSlider = QtWidgets.QSlider(ScoreByRavines)
+        self.continuityTresholdSlider.setProperty("value", 80)
         self.continuityTresholdSlider.setOrientation(QtCore.Qt.Horizontal)
         self.continuityTresholdSlider.setObjectName("continuityTresholdSlider")
         self.gridLayout.addWidget(self.continuityTresholdSlider, 1, 0, 1, 2)
         self.descriptionLabel = QtWidgets.QLabel(ScoreByRavines)
         self.descriptionLabel.setText("")
+        self.descriptionLabel.setWordWrap(True)
         self.descriptionLabel.setObjectName("descriptionLabel")
         self.gridLayout.addWidget(self.descriptionLabel, 0, 0, 1, 3)
 

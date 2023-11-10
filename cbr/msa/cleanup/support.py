@@ -11,20 +11,34 @@ def normalized(values : List[float]) -> List[float]:
     return [(value - min_v)/spread for value in values]
 
 def score_contigous(
-    values : Iterable[bool]
+    values : Iterable[bool],
+    min_segment_size = 1
     ) -> List[int]:
+    
+    segments = set()
+    segment_start = -1
+    values_len = 0
 
-    def __run__():
-        segment_size = 0
+    for ix,value in enumerate(values):
+        
+        segment_size = ix - segment_start - 1
 
-        for value in enumerate(values):
-            
-            if value:
-                segment_size += 1
-            else:
-                segment_size = 0
+        if not value and segment_size >= min_segment_size:
 
-            yield segment_size
+            # segment start is set when a 'false' value is
+            # observed. Therefore, it's index should not be
+            # included in the segment
+            segments.add((segment_start + 1, ix))
+            segment_start = ix
+        elif not value:
+            segment_start = ix
 
+        values_len += 1
 
-    return list(__run__())
+    result = list(int(0) for _ in range(0, values_len))
+
+    for (start, end) in segments:
+        for ix in range(start, end):
+            result[ix] = end - start
+
+    return result

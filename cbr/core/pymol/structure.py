@@ -18,6 +18,9 @@ class StructureSelection(NamedTuple):
 
         return " and ".join(s for s in selectors if s)
 
+    def show(self):
+        return f"{self.structure_name}/{self.chain_name}/{self.segment_identifier}"
+
 def get_structure_query(structure_name : str, chain : 'str | None' = None) -> str:
     if chain:
         return "(model %s) & (chain %s)" % (structure_name, chain)

@@ -45,6 +45,9 @@ class StructureSelector(QObject):
 
     @pyqtSlot()
     def __on_refresh_clicked(self):
+        self.refresh_structures()
+
+    def refresh_structures(self):
         self.__structures_combo.clear()
 
         for name in pymol.get_names():
