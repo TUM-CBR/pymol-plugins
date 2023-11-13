@@ -57,11 +57,24 @@ def get_selection_sequece(selection : AnySelection) -> str:
         for k in sorted(sequence.keys())
     )
 
-def get_pdb_sequence(selection : StructureSelection) -> str:
+def get_pdb_sequence(
+    selection : StructureSelection,
+    include_non_bonded = False
+) -> str:
+
+    parts = [
+        f"({selection.selection})",
+        "guide",
+        "alt +A"
+    ]
+
+    if not include_non_bonded:
+        parts.append("bonded")
+
     return "".join(
         name
         for buffer in [[]] if pymol.cmd.iterate(
-            "(%s) & guide & alt +A & bonded" % selection.selection,
+            " & ".join(parts),
             "buffer.append(oneletter)",
             space={'buffer': buffer}
         ) >= 0

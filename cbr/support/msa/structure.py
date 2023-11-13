@@ -44,7 +44,7 @@ class MsaToPymolStructureMap(NamedTuple):
     def get_pymol_structure_position(self, msa_position: int) -> Optional[int]:
 
         for structure_pos in viter(self.msa_to_structure[msa_position]):
-            return self.sequence_to_structure[structure_pos] + 1
+            return self.sequence_to_structure[structure_pos]
 
         return None
 
@@ -54,7 +54,13 @@ def msa_to_pymol_structure_map(
     full_msa : 'Msa | MultipleSeqAlignment',
     clustal : Optional[Clustal] = None
 ):
-    structure_sequence = structure.get_pdb_sequence(structure_selection)
+    if isinstance(full_msa, MultipleSeqAlignment):
+        full_msa = from_biopython(full_msa)
+
+    structure_sequence = structure.get_pdb_sequence(
+        structure_selection,
+        include_non_bonded=True
+    )
     msa_to_structure = msa_to_structure_position_map(
         sequence_name,
         full_msa,

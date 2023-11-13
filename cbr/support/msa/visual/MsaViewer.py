@@ -52,7 +52,7 @@ class SequenceMeta(NamedTuple):
         if self.structure_to_sequence is None:
             return None
         else:
-            self.structure_to_sequence.get_pymol_structure_position(pos)
+            return self.structure_to_sequence.get_pymol_structure_position(pos)
 
     def update_structure(
         self,
@@ -91,10 +91,10 @@ class MsaViewerModel(QAbstractTableModel):
         self.__mask_position_mode = MaskPositionMode.HIDE
         self.__sequences_meta = [SequenceMeta.create(seq) for seq in alignment]
 
-    def get_positions_from_selection(self, selection : QItemSelection) -> Dict[str, List[int]]:
+    def get_positions_from_selection(self, selected_indexes : List[QModelIndex]) -> Dict[str, List[int]]:
 
         result = dict()
-        for index in selection.indexes():
+        for index in selected_indexes:
             if self.__is_meta(index):
                 continue
 
@@ -117,7 +117,7 @@ class MsaViewerModel(QAbstractTableModel):
 
     def set_structure(self, index: QModelIndex, structure: Optional[StructureSelection]):
         assert index.column() == self.STRUCTURE_COLUMN
-        row = index.row()
+        row = self.__get_row_mapping(index.row())
         self.__sequences_meta[row] = self.__sequences_meta[row].update_structure(
             self.__alignment,
             structure = structure
@@ -309,16 +309,15 @@ class MsaViewer(QWidget):
         self.__ui.maskCombo.currentIndexChanged.connect(self.__on_mask_combo_changed)
         self.__ui.msaTable.doubleClicked.connect(self.__select_structure)
         self.__select_structure_dialog = MsaStructureSelector(self)
-        self.__ui.msaTable.setSelectionModel(QItemSelectionModel())
 
     @pyqtSlot(QItemSelection, QItemSelection)
     def __on_selection(self, selected: QItemSelection, deselected: QItemSelection):
 
         for model in viter(self.__model):
-            for model_sele, resi in model.get_positions_from_selection(selected):
+            for model_sele, resi in model.get_positions_from_selection(self.__ui.msaTable.selectedIndexes()).items():
                 resi_sele = " or ".join(f"resi {i}" for i in resi)
                 pymol.cmd.select(
-                    "sele (msa cleaner)",
+                    "sele_msa_cleaner",
                     f"{model_sele} and {resi_sele}"
                 )
 
@@ -337,8 +336,11 @@ class MsaViewer(QWidget):
         if model is None:
             return
 
-        self.__ui.msaTable.resizeColumnToContents(0)
-        for i in range(1, model.columnCount()):
+        meta_columns = len(model.META_COLUMNS)
+        for i in range(0, meta_columns):
+            self.__ui.msaTable.resizeColumnToContents(i)
+
+        for i in range(meta_columns, model.columnCount()):
             self.__ui.msaTable.setColumnWidth(i, 10)
 
     @pyqtSlot(QModelIndex)

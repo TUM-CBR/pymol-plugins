@@ -5,7 +5,7 @@ Msa = Dict[str, str]
 
 def from_biopython(alignment: MultipleSeqAlignment) -> Msa:
     return dict(
-            cast(Tuple[str, str], (seq.id, str(seq)))
+            cast(Tuple[str, str], (seq.id, str(seq._seq)))
             for seq in alignment
         )
 
