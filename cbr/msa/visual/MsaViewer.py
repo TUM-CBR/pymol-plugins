@@ -54,7 +54,7 @@ class MsaViewer(QWidget):
             self.__ui.selectedFileLabel,
             self.__ui.createMsaButton
         )
-        self.__msa_selector.msa_file_selected.connect(self.__set_sequences)
+        self.__msa_selector.msa_file_selected.connect(self.__on_select_msa)
 
         msa_context = self.MsaContextImpl(self)
         self.__ui.msaColoringWidgets.addTab(
@@ -80,8 +80,11 @@ class MsaViewer(QWidget):
         return self.__sequences
 
     @pyqtSlot(object)
-    def __set_sequences(self, sequences : Dict[str, str]):
-        self.__sequences = dict(sequences)
+    def __on_select_msa(self, _):
+        self.__set_sequences(self.__msa_selector.msa or {})
+
+    def __set_sequences(self, sequences: Msa):
+        self.__sequences = sequences
         self.__ui.sequenceCombo.clear()
         self.__ui.sequenceCombo.addItems(self.__sequences.keys())
 
