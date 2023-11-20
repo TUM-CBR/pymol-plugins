@@ -1,6 +1,7 @@
 {
     "files": [
         "FastaSequencesInput.ui",
+        "MsaOverview.ui",
         "MsaStructureSelector.ui",
         "MsaViewer.ui"
     ]

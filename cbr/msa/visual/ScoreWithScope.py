@@ -68,7 +68,11 @@ class ScoreWithScope(MsaCleanerBase):
     def __on_score_by_position(self):
         self.__update_scores_by_position(self.__score_widget.score)
 
-    def __update_scores_by_position(self, scores_by_positions: Optional[ScoreByPosition]):
+    def __update_scores_by_position(
+        self,
+        scores_by_positions: Optional[ScoreByPosition],
+        force_reset_treshold = False
+    ):
 
         self.__scores_by_positions = scores_by_positions
         if scores_by_positions is None or len(scores_by_positions) == 0:
@@ -79,9 +83,17 @@ class ScoreWithScope(MsaCleanerBase):
         msa_length = len(scores_by_positions[0])
         assert all(len(score) == msa_length for score in scores_by_positions)
 
-        self.__ui.scopeEndSlider.setMaximum(msa_length)
-        self.__ui.scopeStartSlider.setMaximum(msa_length)
-        self.__ui.scopeEndSlider.setValue(msa_length)
+        with block_signals(self.__ui.scopeStartSlider) \
+            , block_signals(self.__ui.scopeEndSlider):
+            max_scope = self.__scope_end.value
+            self.__ui.scopeEndSlider.setMaximum(msa_length)
+            self.__ui.scopeStartSlider.setMaximum(msa_length)
+
+            if force_reset_treshold:
+                self.__ui.scopeStartSlider.setValue(0)
+
+            if max_scope > msa_length or force_reset_treshold:
+                self.__ui.scopeEndSlider.setValue(msa_length)
 
         self.__update_score(
             MsaCleanerResult(
@@ -125,6 +137,10 @@ class ScoreWithScope(MsaCleanerBase):
             self.__score._replace(scores = aggregate_scores)
         )
 
+    def set_scope(self, start: int, end: int):
+        self.__ui.scopeStartSlider.setValue(start)
+        self.__ui.scopeEndSlider.setValue(end)
+
     @property
     def score(self) -> Optional[MsaCleanerResult]:
         return self.__score
@@ -133,7 +149,7 @@ class ScoreWithScope(MsaCleanerBase):
 
         with block_signals(self):
             score_by_alignment = self.__score_widget.score_alignment(alignment)
-            self.__update_scores_by_position(score_by_alignment)
+            self.__update_scores_by_position(score_by_alignment, force_reset_treshold=True)
 
             assert self.score is not None
 

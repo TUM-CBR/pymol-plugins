@@ -4,7 +4,7 @@ gaps are introduced by the sequence.
 """
 
 from Bio.Align import MultipleSeqAlignment
-from typing import Optional
+from typing import cast, Optional
 
 from ..cleanup import score_by_gap_divergence
 from .Ui_ScoreByDivergence import Ui_ScoreByDivergence
@@ -26,5 +26,6 @@ class ScoreByDivergence(ScoreWidget):
 
     def score_alignment(self, alignment : MultipleSeqAlignment) -> ScoreByPosition:
         msa_score = score_by_gap_divergence(alignment)
-        self.__score = msa_score
-        return msa_score
+        score = cast(ScoreByPosition, msa_score)
+        self.__score = score
+        return score

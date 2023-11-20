@@ -1,24 +1,20 @@
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio.Align import MultipleSeqAlignment
-from enum import Enum
 import pymol
-from PyQt5.QtCore import QAbstractTableModel, QItemSelection, QItemSelectionModel, QModelIndex, Qt, pyqtSlot
+from PyQt5.QtCore import QAbstractTableModel, QItemSelection, QItemSelectionModel, QModelIndex, Qt, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QDialog, QWidget
 from typing import Dict, Iterable, List, NamedTuple, Optional, Set
 
-from ....core import color
 from ....core.pymol.structure import StructureSelection
 from ....clustal import msa
 from ....control import viter, update_key
+from .MsaMask import MsaMask, MaskPositionMode, RESIDUE_COLORS
+from .MsaOverview import MsaOverview, MsaSelectedRange
 from .MsaStructureSelector import MsaStructureSelector
 from ..structure import msa_to_pymol_structure_map, MsaToPymolStructureMap
 from .Ui_MsaViewer import Ui_MsaViewer
-
-class MaskPositionMode(Enum):
-    HIGHLIGHT = 0
-    HIDE = 1
 
 def mask_offset(
     mask : Set[int],
@@ -84,10 +80,10 @@ class MsaViewerModel(QAbstractTableModel):
         super().__init__()
         self.__alignment = alignment
         self.__residue_index = self.index_residues(alignment)
-        self.__mask = set([])
-        self.__masked_columns = []
-        self.__masked_row_mappings = list(range(0, len(alignment)))
-        self.__masked_column_mappings = list(range(0, alignment.get_alignment_length()))
+        self.__mask : Set[int] = set([])
+        self.__masked_columns : Set[int] = set([])
+        self.__masked_row_mappings : List[int] = list(range(0, len(alignment)))
+        self.__masked_column_mappings : List[int] = list(range(0, alignment.get_alignment_length()))
         self.__mask_position_mode = MaskPositionMode.HIDE
         self.__sequences_meta = [SequenceMeta.create(seq) for seq in alignment]
 
@@ -153,6 +149,15 @@ class MsaViewerModel(QAbstractTableModel):
             set(seq_ix for seq_ix,seq in enumerate(alignment) if not msa.is_blank(seq[i])) # type: ignore[reportGeneralTypeIssues]
             for i in range(0, alignment.get_alignment_length())
         ]
+
+    def get_msa_mask(self) -> MsaMask:
+        return MsaMask(
+            masked_rows = self.__mask,
+            masked_columns = self.__masked_columns,
+            row_mappings = self.__masked_row_mappings,
+            col_mappings = self.__masked_column_mappings,
+            mask_mode = self.__mask_position_mode
+        )
 
     def mask_sequences(self, mask : Iterable[int]) -> None:
         """Exclude the sequences at the given indexes from display"""
@@ -229,15 +234,13 @@ class MsaViewerModel(QAbstractTableModel):
 
         return self.__get_resiude_color(index)
 
-    RESIDUE_COLORS = dict((resi, QColor(*rgb)) for resi, rgb in color.residue_letter_colors.items())
-
     def __get_resiude_color(self, index: QModelIndex) -> Optional[QColor]:
 
         assert not self.__is_meta(index), "The meta columns don't have a residue color"
 
         resi = self.__get_content_at(index)
 
-        return self.RESIDUE_COLORS.get(resi)
+        return RESIDUE_COLORS.get(resi)
 
     def rowCount(self, parent = None) -> int:
 
@@ -299,6 +302,8 @@ MASK_POSITION_MODE = {
 
 class MsaViewer(QWidget):
 
+    range_selected = pyqtSignal()
+
     def __init__(self):
         super().__init__()
         self.__ui = Ui_MsaViewer()
@@ -309,6 +314,7 @@ class MsaViewer(QWidget):
         self.__ui.maskCombo.currentIndexChanged.connect(self.__on_mask_combo_changed)
         self.__ui.msaTable.doubleClicked.connect(self.__select_structure)
         self.__select_structure_dialog = MsaStructureSelector(self)
+        self.__msa_overview = self.__ui.globalViewWidget
 
     @pyqtSlot(QItemSelection, QItemSelection)
     def __on_selection(self, selected: QItemSelection, deselected: QItemSelection):
@@ -321,14 +327,20 @@ class MsaViewer(QWidget):
                     f"{model_sele} and {resi_sele}"
                 )
 
+    def __update_overview(self):
+        if self.__model is None or not isinstance(self.__msa_overview, MsaOverview):
+            return
+        self.__msa_overview.set_msa_mask(self.__model.get_msa_mask())
+
     @pyqtSlot()
     def __on_mask_combo_changed(self):
 
         if self.__model is None:
             return
 
-        self.__model.set_mask_position_mode(MASK_POSITION_MODE[self.__ui.maskCombo.currentText()])
+        self.__model.set_mask_position_mode(self.__mask_position_mode)
         self.__adjust_columns_size()
+        self.__update_overview()
 
     def __adjust_columns_size(self) -> None:
         model = self.__model
@@ -376,6 +388,31 @@ class MsaViewer(QWidget):
 
         self.__model.mask_sequences(rows)
         self.__adjust_columns_size()
+        self.__update_overview()
+
+    @property
+    def selected_range(self) -> Optional[MsaSelectedRange]:
+        overview = self.__msa_overview
+        if isinstance(overview, MsaOverview):
+            return overview.selected_range
+        return None
+
+    def __set_msa_overview_widget(self, alignment: MultipleSeqAlignment):
+        current_overview = self.__msa_overview
+
+        if isinstance(current_overview, MsaOverview):
+            current_overview.range_selected.disconnect(self.range_selected)
+
+        self.__msa_overview = msa_overview = MsaOverview(alignment)
+        self.__ui.globalView.layout().replaceWidget(
+            current_overview,
+            self.__msa_overview
+        )
+        msa_overview.range_selected.connect(self.range_selected)
+
+    @property
+    def __mask_position_mode(self):
+        return MASK_POSITION_MODE[self.__ui.maskCombo.currentText()]
 
     def set_alignment(self, alignment : MultipleSeqAlignment) -> None:
 
@@ -385,6 +422,10 @@ class MsaViewer(QWidget):
         self.__ui.msaTable.setModel(model)
         self.__ui.msaTable.setSelectionModel(selection_model)
         self.__adjust_columns_size()
+        self.__set_msa_overview_widget(alignment)
+
+        if self.__mask_position_mode != MaskPositionMode.HIDE:
+            self.__on_mask_combo_changed()
 
     def get_new_alignment(self) -> MultipleSeqAlignment:
         """Get the resulting alignment when the selected rows are masked"""

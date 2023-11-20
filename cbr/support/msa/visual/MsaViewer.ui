@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>633</width>
-    <height>344</height>
+    <width>836</width>
+    <height>538</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -51,7 +51,31 @@
     </spacer>
    </item>
    <item row="1" column="0" colspan="3">
-    <widget class="QTableView" name="msaTable"/>
+    <widget class="QTabWidget" name="tabWidget">
+     <property name="currentIndex">
+      <number>0</number>
+     </property>
+     <widget class="QWidget" name="tableView">
+      <attribute name="title">
+       <string>Table View</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout">
+       <item>
+        <widget class="QTableView" name="msaTable"/>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="globalView">
+      <attribute name="title">
+       <string>Global View</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <item>
+        <widget class="QWidget" name="globalViewWidget" native="true"/>
+       </item>
+      </layout>
+     </widget>
+    </widget>
    </item>
   </layout>
  </widget>

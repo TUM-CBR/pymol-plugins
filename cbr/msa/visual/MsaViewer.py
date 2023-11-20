@@ -1,6 +1,6 @@
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QWidget
-from typing import Dict, Optional
+from typing import Optional
 
 from ...clustal import Clustal
 from ...core.Context import Context

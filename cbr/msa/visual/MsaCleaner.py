@@ -228,7 +228,22 @@ class MsaCleaner(QWidget):
         )
         self.__msa_viewer.show()
 
+        self.__msa_viewer.range_selected.connect(self.__on_range_selected)
+
         self.__ui.saveResultsButtons.clicked.connect(self.__save_alignment)
+
+    @pyqtSlot()
+    def __on_range_selected(self):
+
+        scope = self.__msa_viewer.selected_range
+
+        if scope is None:
+            return
+
+        start, end = scope
+
+        for _, cleaner in self.__cleaners:
+            cleaner.set_scope(start, end)
 
     @pyqtSlot(QModelIndex, QModelIndex, 'QVector<int>')
     def __on_sequence_score_clicked(self, start : QModelIndex, stop: QModelIndex, roles : List[Qt.ItemDataRole] = []):
@@ -342,10 +357,16 @@ class MsaCleaner(QWidget):
             alignment_length = scores.alignment.get_alignment_length()
             cleaned_length = self.__msa_viewer.masked_alignment_length
             cleaned_length_perc = round(100*cleaned_length / alignment_length, 0)
+            deleted_pos = alignment_length - cleaned_length
+            if deleted_seqs < 1:
+                efficiency = 0
+            else:
+                efficiency = round(deleted_pos/deleted_seqs, 2)
             model_dict = {
                 'Original Sequences': str(total_seqs),
                 'Remaining Sequences': f"{remaining_seqs} ({remaining_perc}%)",
                 'Deleted Sequences': f"{deleted_seqs} ({deleted_seqs_perc}%)",
+                'Efficiency': f"{efficiency}",
                 'Original Length': str(alignment_length),
                 'Cleaned Length': f"{cleaned_length} ({cleaned_length_perc}%)"
             }

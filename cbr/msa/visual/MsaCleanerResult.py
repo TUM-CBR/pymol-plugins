@@ -29,3 +29,6 @@ class MsaCleanerBase(QWidget):
 
     def score_alignment(self, alignment : MultipleSeqAlignment) -> MsaCleanerResult:
         raise NotImplemented()
+
+    def set_scope(self, start: int, end: int):
+        pass
