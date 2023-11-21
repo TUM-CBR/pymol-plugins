@@ -253,7 +253,7 @@ class ColorByResidue(QWidget):
     def on_gapTresholdSlider_sliderMoved(self, value : int):
         self.__ui.gapTresholdLabel.setText("%i%%" % value)
 
-    @with_error_handler
+    @with_error_handler()
     def __color_by_conservation(self):
         selection = self.__selected_structure
 
