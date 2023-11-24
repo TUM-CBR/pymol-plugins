@@ -8,6 +8,7 @@ from typing import Any, Callable, NamedTuple
 
 from ..core.Context import Context
 from .. import apbs as Apbs
+from ..cascades import main as Cascades
 from ..chimeras import Applications as Chimeras
 from ..coevolution import main as Coevolution
 from ..msa import Applications as Msa
@@ -60,6 +61,11 @@ APP_DEFINITIONS = [
         icon = "apbs.png",
         text = "APBS Electrostatics",
         init = Apbs.run_apbs_electrostatics
+    ),
+    AppDefinition(
+        icon = "cascades.png",
+        text = "Cascade BLAST",
+        init = Cascades.cascades_main
     )
 ]
 

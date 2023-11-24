@@ -115,3 +115,29 @@ def color_range_scale(color: RgbColor) -> ColorRange:
     return ColorRange(
         base_color=color
     )
+
+class ColorSpread(NamedTuple):
+    low_color_hsv : Tuple[float, float, float]
+    high_color_hsv : Tuple[float, float, float]
+
+    def get_color(self, scale_factor: float) -> RgbColor:
+        if scale_factor < 0 or scale_factor > 1:
+            raise ValueError("The 'distance' argument must be between 0 and 1.")
+
+        h,s,v = [
+            start + ((end - start) * scale_factor)
+            for end,start in zip(self.high_color_hsv, self.low_color_hsv)
+        ]
+
+        r, g, b = hsv_to_rgb(h, s, v)
+        return (
+            int(r * 255),
+            int(g * 255),
+            int(b * 255)
+        )
+
+def color_spread(rgb1 : RgbColor, rgb2 : RgbColor):
+    return ColorSpread(
+        low_color_hsv=rgb_to_hsv(*[c / 255 for c in rgb1]),
+        high_color_hsv=rgb_to_hsv(*[c / 255 for c in rgb2])
+    )

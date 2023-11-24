@@ -184,7 +184,8 @@ class PrimerDesign(QWidget):
             f"Primers Database Files (*.sqlite)"
         )
 
-        self.__open_primers_db(result_file)
+        if result_file is not None:
+            self.__open_primers_db(result_file)
 
     @pyqtSlot(object)
     def __on_design_primers_result(self, db: str):
