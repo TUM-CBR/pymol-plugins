@@ -1,13 +1,14 @@
 from Bio import SeqIO
 from concurrent.futures import Future
 from os import path
-from PyQt5.QtCore import QAbstractTableModel, QModelIndex, Qt
+from PyQt5.QtCore import QAbstractTableModel, QModelIndex, Qt, pyqtSlot
 from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtWidgets import QFileDialog, QWidget
+import shutil
 import tempfile
 from typing import Any, Callable, Dict, Iterable, Optional, Tuple, TypeVar
 
-from cbr.core.Qt.QtWidgets import show_exception
+from cbr.core.Qt.QtWidgets import show_exception, show_info
 
 from ...core import color
 from ...core.Qt.QtCore import run_in_thread
@@ -185,6 +186,8 @@ class CascadesViewer(QWidget):
         ]
 
         self.__toggle_working_widgets(False)
+        self.__ui.queryButton.clicked.connect(self.__filter_results)
+        self.__ui.saveResultsButton.clicked.connect(self.__save_database)
 
         if db_path is None:
             self.__tmp_dir = tempfile.TemporaryDirectory()
@@ -197,7 +200,30 @@ class CascadesViewer(QWidget):
             self.__create_cascade(create_cascade_args)
         else:
             self.__create_initial_table()
-        self.__ui.queryButton.clicked.connect(self.__filter_results)
+
+    @pyqtSlot()
+    def __save_database(self):
+        
+        result, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save results as",
+            "",
+            "Cascade BLAST databases (*.sqlite)"
+        )
+
+        if result is None:
+            return
+
+        shutil.copy(self.__db_path, result)
+        show_info(
+            self,
+            "Success",
+            f"The results have been save at {result}"
+        )
+
+    def __del__(self):
+        if self.__tmp_dir is not None:
+            self.__tmp_dir.cleanup()
 
     def __create_initial_table(self):
         organisms = query_organisms(self.__db_path)
