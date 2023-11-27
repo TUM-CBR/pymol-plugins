@@ -157,6 +157,8 @@ class CreateCascadeModel(QAbstractTableModel):
     
 
 class CascadesMain(QWidget):
+    """This is the main widget for the Cascade BLAST application. It allows creating
+    a new result set or loading an existing result set."""
 
     def __init__(
         self,
