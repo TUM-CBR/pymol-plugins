@@ -31,3 +31,23 @@ def query_organisms(
 
     assert result is not None, "Bug in the code, result is unexpetedly None"
     return result
+
+def create_cascade(
+    db_file : str,
+    spec_file : str,
+    fasta_file : str,
+    target_identity : float,
+    email : str
+):
+
+    run_cbr_tools(
+        [
+            "cascades",
+            "create",
+            f"{target_identity}",
+            email,
+            db_file,
+            fasta_file,
+            spec_file
+        ]
+    )

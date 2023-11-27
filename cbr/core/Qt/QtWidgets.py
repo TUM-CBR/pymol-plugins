@@ -95,7 +95,7 @@ def show_error(
 
 def show_exception(
     parent : QWidget,
-    exn : Exception
+    exn : BaseException
 ):
     return show_error(
         parent,

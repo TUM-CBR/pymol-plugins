@@ -1,13 +1,21 @@
-from typing import Callable, Optional
-from PyQt5.QtCore import QAbstractTableModel, QModelIndex, Qt, pyqtSlot
-from PyQt5.QtGui import QColor, QDoubleValidator
-from PyQt5.QtWidgets import QAbstractItemDelegate, QComboBox, QWidget
-from typing import Any, cast, TypeVar
+from Bio import SeqIO
+from concurrent.futures import Future
+from os import path
+from PyQt5.QtCore import QAbstractTableModel, QModelIndex, Qt
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QWidget
+import tempfile
+from typing import Any, Callable, Dict, Iterable, Optional, Tuple, TypeVar
+
+from cbr.core.Qt.QtWidgets import show_exception
 
 from ...core import color
+from ...core.Qt.QtCore import run_in_thread
 from ..data import *
-from ..operations import query_organisms
+from ..operations import query_organisms, create_cascade
 
+from .CascadeFilterWidget import CascadeFilterWidget
+from .CascadeFilterWidget import CascadeFilterWidget, CascadeFilterOperator
 from .Ui_CascadesViewer import Ui_CascadesViewer
 
 TOut = TypeVar('TOut')
@@ -44,7 +52,7 @@ class OrganismsTableModel(QAbstractTableModel):
     def __organisms(self):
         return self.__organism_results.organisms
 
-    def enumerate_organisms_rows(self):
+    def enumerate_organisms_rows(self) -> Iterable[Tuple[int, QueryCascadeResultOrganismEntry]]:
         organisms = self.__organisms
         offset = len(self.META_ROWS)
         return zip(
@@ -157,7 +165,7 @@ class CascadesViewer(QWidget):
 
     def __init__(
         self,
-        db_path : str,
+        db_path : Optional[str] = None,
         create_cascade_args : Optional[CreateCascadeDatabaseArgs] = None
     ):
         super().__init__()
@@ -165,32 +173,124 @@ class CascadesViewer(QWidget):
         self.__ui = Ui_CascadesViewer()
         self.__ui.setupUi(self)
         self.__model = OrganismsTableModel(QueryCascadeResult(organisms=[]))
+        self.__policy_combos : Dict[int, CascadeFilterWidget] = {}
 
-        self.__ui.equivalenceLineEdit.setValidator(QDoubleValidator(0,1,2))
-        self.__ui.equivalenceLineEdit.setText("0.8")
+        self.__progress_widgets : List[QWidget] = [
+            self.__ui.queryProgressBar,
+            self.__ui.blastLabel
+        ]
+        self.__action_widgets : List[QWidget] = [
+            self.__ui.queryButton,
+            self.__ui.saveResultsButton
+        ]
 
-        self.__db_path = db_path
-        self.__create_initial_table()
+        self.__toggle_working_widgets(False)
 
-        self.__policy_combos = {}
+        if db_path is None:
+            self.__tmp_dir = tempfile.TemporaryDirectory()
+            self.__db_path = path.join(self.__tmp_dir.name, "cascades.sqlite")
+        else:
+            self.__tmp_dir = None
+            self.__db_path = db_path
+
+        if create_cascade_args is not None:
+            self.__create_cascade(create_cascade_args)
+        else:
+            self.__create_initial_table()
+        self.__ui.queryButton.clicked.connect(self.__filter_results)
 
     def __create_initial_table(self):
         organisms = query_organisms(self.__db_path)
         self.__set_organisms(organisms)
 
+    def __toggle_working_widgets(self, visible : bool):
+
+        for widget in self.__progress_widgets:
+            widget.setVisible(visible)
+
+        for widget in self.__action_widgets:
+            widget.setEnabled(visible)
+
+    def __create_cascade(self, args : CreateCascadeDatabaseArgs):
+
+        self.__toggle_working_widgets(True)
+        result : Future = self.__run_create_cascade(args)
+
+        result.add_done_callback(self.__run_create_cascade_complete)
+
+    @run_in_thread
+    def __run_create_cascade(self, args : CreateCascadeDatabaseArgs):
+
+        assert self.__tmp_dir, "Tmp file needed to create a cascade"
+        spec_file = path.join(self.__tmp_dir.name, "spec.json")
+        with open(spec_file, 'w') as spec_stream:
+            args.write_spec(spec_stream)
+
+        fasta_file = path.join(self.__tmp_dir.name, "sequences.fasta")
+        SeqIO.write(args.sequences, fasta_file, "fasta")
+
+        create_cascade(
+            self.__db_path,
+            spec_file,
+            fasta_file,
+            args.target_identity,
+            args.email
+        )
+
+    def __run_create_cascade_complete(self, future : Future):
+
+        self.__toggle_working_widgets(False)
+
+        exn = future.exception()
+        if exn is not None:
+            show_exception(self, exn)
+
+        self.__create_initial_table()
+
     def __set_organisms(self, organisms : QueryCascadeResult):
         self.__model = model = OrganismsTableModel(organisms)
-        self.__ui.organismsTable.setModel(model)
-        self.__ui.organismsTable.resizeColumnsToContents()
+        organisms_table = self.__ui.organismsTable
+        organisms_table.setModel(model)
+        organisms_table.resizeColumnToContents(0)
+
         self.__policy_combos = {}
 
         for i,step in enumerate(model.steps):
-            combo = QComboBox()
-            combo.setFocusPolicy(Qt.StrongFocus)
-            combo.addItems([item.value for item in QueryStepPolicy])
-            combo.setCurrentText(cast(str, QueryStepPolicy.any))
+            filter_widget = CascadeFilterWidget()
             self.__ui.organismsTable.setIndexWidget(
                 model.index(0, i + len(model.META_COLS)),
-                combo
+                filter_widget
             )
-            self.__policy_combos[step.step_id] = combo
+            self.__policy_combos[step.step_id] = filter_widget
+            organisms_table.setColumnWidth(1+i, CascadeFilterWidget.PREFERRED_WIDTH)
+
+        organisms_table.setRowHeight(0, CascadeFilterWidget.PREFERRED_HEIGHT)
+
+    def __filter_results(self):
+        filters = dict(
+            (step_id, widget.value())
+            for step_id, widget in self.__policy_combos.items()
+        )
+
+        def accept_organism(organism_entry: QueryCascadeResultOrganismEntry):
+            for step in organism_entry.steps:
+                identity_filter = filters[step.step_id]
+
+                if identity_filter.operator == CascadeFilterOperator.LessThan \
+                    and step.identity >= identity_filter.treshold:
+                    return False
+                elif identity_filter.operator == CascadeFilterOperator.GreaterThan \
+                    and step.identity <= identity_filter.treshold:
+                    return False
+
+            return True
+
+        filtered_rows = (
+            row
+            for (row, organism_entry) in self.__model.enumerate_organisms_rows()
+            if not accept_organism(organism_entry)
+        )
+
+        for row in filtered_rows:
+            self.__ui.organismsTable.hideRow(row)
+

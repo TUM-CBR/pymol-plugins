@@ -1,8 +1,31 @@
+from Bio.SeqRecord import SeqRecord
 from enum import Enum
-from typing import List, NamedTuple
+import json
+from typing import List, NamedTuple, TextIO
+
+class CascadeStepArgs(NamedTuple):
+    step_id : int
+    step_name : str
+    sequences: List[str]
 
 class CreateCascadeDatabaseArgs(NamedTuple):
-    fasta_file : str
+    sequences : List[SeqRecord]
+    target_identity : float
+    email : str
+    steps : List[CascadeStepArgs]
+
+    def get_spec_json(self) -> List[dict]:
+        return [
+            {
+                "step_id": step.step_id,
+                "step_name": step.step_name,
+                "sequences": step.sequences
+            }
+            for step in self.steps
+        ]
+
+    def write_spec(self, stream : TextIO):
+        json.dump(self.get_spec_json(), stream)
 
 class QueryStepPolicy(Enum):
     keep = "keep"
