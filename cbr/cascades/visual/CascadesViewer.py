@@ -8,10 +8,9 @@ import shutil
 import tempfile
 from typing import Any, Callable, Dict, Iterable, Optional, Tuple, TypeVar
 
-from cbr.core.Qt.QtWidgets import show_exception, show_info
-
 from ...core import color
 from ...core.Qt.QtCore import run_in_thread
+from ...core.Qt.QtWidgets import show_exception, show_info
 from ..data import *
 from ..operations import query_organisms, create_cascade
 
@@ -214,6 +213,9 @@ class CascadesViewer(QWidget):
         if result is None:
             return
 
+        if not result.endswith(".sqlite"):
+            result += ".sqlite"
+
         shutil.copy(self.__db_path, result)
         show_info(
             self,
@@ -235,7 +237,7 @@ class CascadesViewer(QWidget):
             widget.setVisible(visible)
 
         for widget in self.__action_widgets:
-            widget.setEnabled(visible)
+            widget.setEnabled(not visible)
 
     def __create_cascade(self, args : CreateCascadeDatabaseArgs):
 
@@ -311,12 +313,14 @@ class CascadesViewer(QWidget):
 
             return True
 
-        filtered_rows = (
+        filtered_rows = set(
             row
             for (row, organism_entry) in self.__model.enumerate_organisms_rows()
             if not accept_organism(organism_entry)
         )
 
-        for row in filtered_rows:
-            self.__ui.organismsTable.hideRow(row)
-
+        for row,_ in self.__model.enumerate_organisms_rows():
+            if row in filtered_rows:
+                self.__ui.organismsTable.hideRow(row)
+            else:
+                self.__ui.organismsTable.showRow(row)
