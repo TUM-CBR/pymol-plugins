@@ -13,6 +13,7 @@ class CreateCascadeDatabaseArgs(NamedTuple):
     target_identity : float
     email : str
     steps : List[CascadeStepArgs]
+    domain : str
 
     def get_spec_json(self) -> List[dict]:
         return [

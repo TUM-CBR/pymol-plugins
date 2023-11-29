@@ -14,10 +14,7 @@
    <string>Form</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="1" column="0" colspan="4">
-    <widget class="QTableView" name="organismsTable"/>
-   </item>
-   <item row="0" column="0" colspan="3">
+   <item row="0" column="0">
     <widget class="QLabel" name="label">
      <property name="styleSheet">
       <string notr="true">font-size: 24px;
@@ -28,20 +25,7 @@ font-weight: bold;</string>
      </property>
     </widget>
    </item>
-   <item row="4" column="3">
-    <widget class="QPushButton" name="saveResultsButton">
-     <property name="maximumSize">
-      <size>
-       <width>150</width>
-       <height>16777215</height>
-      </size>
-     </property>
-     <property name="text">
-      <string>Save Results</string>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="3">
+   <item row="3" column="1">
     <widget class="QPushButton" name="queryButton">
      <property name="maximumSize">
       <size>
@@ -54,22 +38,24 @@ font-weight: bold;</string>
      </property>
     </widget>
    </item>
-   <item row="4" column="0" colspan="3">
-    <widget class="QProgressBar" name="queryProgressBar">
-     <property name="maximum">
-      <number>0</number>
+   <item row="4" column="1">
+    <widget class="QPushButton" name="saveResultsButton">
+     <property name="maximumSize">
+      <size>
+       <width>150</width>
+       <height>16777215</height>
+      </size>
      </property>
-     <property name="value">
-      <number>-1</number>
+     <property name="text">
+      <string>Save Results</string>
      </property>
     </widget>
    </item>
-   <item row="3" column="0" colspan="3">
-    <widget class="QLabel" name="blastLabel">
-     <property name="text">
-      <string>BLASTing away, but there is a lot to blast so it will take a few hours.</string>
-     </property>
-    </widget>
+   <item row="3" column="0" rowspan="2">
+    <widget class="QWidget" name="progressWidget" native="true"/>
+   </item>
+   <item row="1" column="0" colspan="2">
+    <widget class="QTableView" name="organismsTable"/>
    </item>
   </layout>
  </widget>

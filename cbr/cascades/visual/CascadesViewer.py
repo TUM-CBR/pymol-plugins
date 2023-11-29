@@ -1,5 +1,4 @@
 from Bio import SeqIO
-from concurrent.futures import Future
 from os import path
 from PyQt5.QtCore import QAbstractTableModel, QModelIndex, QProcess, Qt, pyqtSlot
 from PyQt5.QtGui import QColor
@@ -9,13 +8,13 @@ import tempfile
 from typing import Any, Callable, Dict, Iterable, Optional, Tuple, TypeVar
 
 from ...core import color
-from ...core.Qt.QtCore import run_in_thread
-from ...core.Qt.QtWidgets import show_exception, show_info
+from ...core.Qt.QtWidgets import show_error, show_info, with_error_handler
 from ..data import *
 from ..operations import query_organisms, create_cascade
 
 from .CascadeFilterWidget import CascadeFilterWidget
 from .CascadeFilterWidget import CascadeFilterWidget, CascadeFilterOperator
+from .ProgressWidget import ProgressWidget
 from .Ui_CascadesViewer import Ui_CascadesViewer
 
 TOut = TypeVar('TOut')
@@ -174,11 +173,14 @@ class CascadesViewer(QWidget):
         self.__ui.setupUi(self)
         self.__model = OrganismsTableModel(QueryCascadeResult(organisms=[]))
         self.__policy_combos : Dict[int, CascadeFilterWidget] = {}
+        self.__cascade_process = None
+        self.__progress_widget = ProgressWidget()
 
-        self.__progress_widgets : List[QWidget] = [
-            self.__ui.queryProgressBar,
-            self.__ui.blastLabel
-        ]
+        self.layout().replaceWidget(
+            self.__ui.progressWidget,
+            self.__progress_widget
+        )
+
         self.__action_widgets : List[QWidget] = [
             self.__ui.queryButton,
             self.__ui.saveResultsButton
@@ -233,24 +235,31 @@ class CascadesViewer(QWidget):
 
     def __toggle_working_widgets(self, visible : bool):
 
-        for widget in self.__progress_widgets:
-            widget.setVisible(visible)
-
         for widget in self.__action_widgets:
             widget.setEnabled(not visible)
 
     def __create_cascade(self, args : CreateCascadeDatabaseArgs):
 
         self.__toggle_working_widgets(True)
-        cascade_process = self.__run_create_cascade(args)
+        self.__cascade_process = cascade_process = self.__run_create_cascade(args)
         cascade_process.setParent(self)
-
         cascade_process.finished.connect(self.__on_create_cascade_complete)
+        self.__progress_widget.monitor_progress(cascade_process)
 
-    @pyqtSlot(int, QProcess.ExitStatus)
+    @pyqtSlot(int, QProcess.ExitStatus, name = "__on_create_cascade_complete")
+    @with_error_handler()
     def __on_create_cascade_complete(self, code, exit_status = QProcess.NormalExit):
 
-        self.__run_create_cascade_complete
+        process = self.__cascade_process
+        assert process is not None, "Bug in the code, process is None"
+
+        if process.exitCode() != 0:
+            process_output = process.readAllStandardError().data().decode('utf-8')
+            message = f"Error running BLAST: {process_output}"
+            show_error(self, "Error", message)
+
+        self.__toggle_working_widgets(False)
+        self.__create_initial_table()
 
     def __run_create_cascade(self, args : CreateCascadeDatabaseArgs):
 
@@ -267,18 +276,9 @@ class CascadesViewer(QWidget):
             spec_file,
             fasta_file,
             args.target_identity,
-            args.email
+            args.email,
+            args.domain
         )
-
-    def __run_create_cascade_complete(self, future : Future):
-
-        self.__toggle_working_widgets(False)
-
-        exn = future.exception()
-        if exn is not None:
-            show_exception(self, exn)
-
-        self.__create_initial_table()
 
     def __set_organisms(self, organisms : QueryCascadeResult):
         self.__model = model = OrganismsTableModel(organisms)

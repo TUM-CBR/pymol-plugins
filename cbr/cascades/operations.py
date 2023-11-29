@@ -1,9 +1,7 @@
 import json
 from typing import Optional
 
-from PyQt5.QtCore import QProcess
-
-from ..extra.main import run_cbr_tools, run_cbr_tools_interactive
+from ..extra.main import CbrExtraProcess, run_cbr_tools, run_cbr_tools_interactive
 from .data import *
 
 def query_organisms(
@@ -39,8 +37,9 @@ def create_cascade(
     spec_file : str,
     fasta_file : str,
     target_identity : float,
-    email : str
-) -> QProcess:
+    email : str,
+    domain : str,
+) -> CbrExtraProcess:
 
     return run_cbr_tools_interactive(
         [
@@ -50,6 +49,8 @@ def create_cascade(
             email,
             db_file,
             fasta_file,
-            spec_file
+            spec_file,
+            "--domain",
+            domain
         ]
     )
