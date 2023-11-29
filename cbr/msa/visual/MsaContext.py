@@ -23,6 +23,6 @@ class MsaContext:
     def get_structure_sequence(self) -> str:
 
         if self.selected_structure:
-            return structure.get_pdb_sequence(self.selected_structure)
+            return structure.get_pdb_sequence(self.selected_structure, include_non_bonded=True)
         else:
             raise Exception("A structure must be selected to get its sequence!")

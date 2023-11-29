@@ -150,7 +150,7 @@ class ColorByResidue(QWidget):
     def __on_results_context_menu(self, pos):
         open_copy_context_menu(self.__ui.resultsTable, pos)
 
-    def __get_structure_positions(self)  -> 'List[int | None]':
+    def __get_structure_positions(self)  -> List[int]:
         return msa_to_structure_position_map(
             self.__selected_structure_name,
             self.__sequences,
@@ -169,9 +169,8 @@ class ColorByResidue(QWidget):
         results_keys = set()
         offset = sequence_to_structure_position_map(selection)
 
-        for (i, ix) in filter(lambda x: x[1], enumerate(positions)):
+        for (i, ix) in enumerate(positions):
 
-            assert ix, "Bug in code, only positions that occur in the structure should be there"
             structure_residue = structure_sequence[ix].lower()
             conserved = {structure_residue: 1}
             for sequence in sequences:
@@ -185,7 +184,6 @@ class ColorByResidue(QWidget):
                 else:
                     conserved[aa] = 1
 
-            assert ix, "Bug in filtering criteria!"
             result[ix] = MsaConservationResult(offset[ix], i, structure_residue, conserved)
 
         return MsaConservationResults(results_keys, result)

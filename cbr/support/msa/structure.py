@@ -8,7 +8,7 @@ from ...core.pymol.structure import StructureSelection
 from ...clustal.Clustal import Clustal, get_clustal
 from ...support.msa import from_biopython, Msa
 
-MsaToStructureMap = List[Optional[int]]
+MsaToStructureMap = List[int]
 
 def msa_to_structure_position_map(
     sequence_name : str,    
