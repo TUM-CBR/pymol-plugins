@@ -1,7 +1,7 @@
 from Bio import SeqIO
 from concurrent.futures import Future
 from os import path
-from PyQt5.QtCore import QAbstractTableModel, QModelIndex, Qt, pyqtSlot
+from PyQt5.QtCore import QAbstractTableModel, QModelIndex, QProcess, Qt, pyqtSlot
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QFileDialog, QWidget
 import shutil
@@ -242,11 +242,16 @@ class CascadesViewer(QWidget):
     def __create_cascade(self, args : CreateCascadeDatabaseArgs):
 
         self.__toggle_working_widgets(True)
-        result : Future = self.__run_create_cascade(args)
+        cascade_process = self.__run_create_cascade(args)
+        cascade_process.setParent(self)
 
-        result.add_done_callback(self.__run_create_cascade_complete)
+        cascade_process.finished.connect(self.__on_create_cascade_complete)
 
-    @run_in_thread
+    @pyqtSlot(int, QProcess.ExitStatus)
+    def __on_create_cascade_complete(self, code, exit_status = QProcess.NormalExit):
+
+        self.__run_create_cascade_complete
+
     def __run_create_cascade(self, args : CreateCascadeDatabaseArgs):
 
         assert self.__tmp_dir, "Tmp file needed to create a cascade"
@@ -257,7 +262,7 @@ class CascadesViewer(QWidget):
         fasta_file = path.join(self.__tmp_dir.name, "sequences.fasta")
         SeqIO.write(args.sequences, fasta_file, "fasta")
 
-        create_cascade(
+        return create_cascade(
             self.__db_path,
             spec_file,
             fasta_file,

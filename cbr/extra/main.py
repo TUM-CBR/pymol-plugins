@@ -1,7 +1,9 @@
 from io import StringIO
+import json
+from PyQt5.QtCore import QIODevice, QProcess
 import os
 import subprocess
-from typing import Callable, List, Optional, TextIO, TypeVar
+from typing import Any, Callable, IO, List, Optional, TextIO, TypeVar
 
 NOT_FOUND_ERROR="""Only windows binaries are currently provided with 'cbr-tools'. The feature you
 are trying to use requires 'cbr-tools-extra'. Plese obtain a copy at https://github.com/TUM-CBR/cbr-tools-extra
@@ -26,6 +28,19 @@ def cbrtools_bin():
             raise Exception(NOT_FOUND_ERROR)
 
 T = TypeVar('T')
+
+
+def run_cbr_tools_interactive(
+    args : List[str]
+) -> QProcess:
+
+    process = QProcess()
+    process.setProgram(cbrtools_bin())
+    process.setArguments(args)
+
+    process.start(mode = QIODevice.ReadWrite | QIODevice.Text)
+
+    return process
 
 def run_cbr_tools(
     args : List[str],
