@@ -1,7 +1,7 @@
 from concurrent.futures import Future
 import csv
 from io import StringIO
-from typing import Any, Callable, Generic, Iterable, Optional, Set, TextIO, TypeVar, cast
+from typing import Any, Callable, Generic, Iterable, Set, TextIO, TypeVar, cast
 from PyQt5.QtCore import QTimer, pyqtSignal, pyqtSlot, QObject, Qt
 from PyQt5.QtWidgets import QAction, QApplication, QLabel, QMenu, QMessageBox, QProgressBar, QSlider, QTableWidget, QTableView, QWidget
 
