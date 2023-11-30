@@ -1,7 +1,7 @@
 import json
 from typing import Optional
 
-from ..extra.main import run_cbr_tools
+from ..extra.main import CbrExtraProcess, run_cbr_tools, run_cbr_tools_interactive
 from .data import *
 
 def query_organisms(
@@ -37,10 +37,11 @@ def create_cascade(
     spec_file : str,
     fasta_file : str,
     target_identity : float,
-    email : str
-):
+    email : str,
+    domain : str,
+) -> CbrExtraProcess:
 
-    run_cbr_tools(
+    return run_cbr_tools_interactive(
         [
             "cascades",
             "create",
@@ -48,6 +49,8 @@ def create_cascade(
             email,
             db_file,
             fasta_file,
-            spec_file
+            spec_file,
+            "--domain",
+            domain
         ]
     )

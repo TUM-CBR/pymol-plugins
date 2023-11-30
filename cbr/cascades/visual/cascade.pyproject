@@ -2,6 +2,7 @@
     "files": [
         "CascadeFilterWidget.ui",
         "CascadesMain.ui",
-        "CascadesViewer.ui"
+        "CascadesViewer.ui",
+        "ProgressWidget.ui"
     ]
 }

@@ -156,6 +156,11 @@ class CreateCascadeModel(QAbstractTableModel):
             return self.__check_state_role(index)
     
 
+DOMAINS = [
+    "Bacteria (taxid:2)",
+    "Archaea (taxid:2157)"
+]
+
 class CascadesMain(QWidget):
     """This is the main widget for the Cascade BLAST application. It allows creating
     a new result set or loading an existing result set."""
@@ -169,6 +174,8 @@ class CascadesMain(QWidget):
         self.__context = context
         self.__ui.setupUi(self)
         self.__model = None
+
+        self.__ui.domainCombo.insertItems(0, DOMAINS)
 
         self.__ui.loadExistingButton.clicked.connect(self.__on_select_db_file)
         self.__ui.selectFastaButton.clicked.connect(self.__select_fasta_file)
@@ -255,7 +262,8 @@ class CascadesMain(QWidget):
             sequences = self.__model.sequences,
             target_identity = identity,
             email = email,
-            steps = steps
+            steps = steps,
+            domain=self.__ui.domainCombo.currentText()
         )
 
         self.__context.run_widget(
