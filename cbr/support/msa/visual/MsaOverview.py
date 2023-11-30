@@ -1,39 +1,15 @@
 from typing import Optional, Tuple
 from Bio.Align import MultipleSeqAlignment
 from PyQt5.QtCore import QPoint, Qt, pyqtSignal
-from PyQt5.QtGui import QColor, QMouseEvent, QPaintDevice, QPainter, QPaintEvent, QPixmap, QTransform
+from PyQt5.QtGui import QColor, QMouseEvent, QPainter, QPaintEvent, QPixmap, QTransform
 from PyQt5.QtWidgets import QWidget
 
+from ....core.Qt.QtGui import paint
 from ....clustal import msa
 from .MsaMask import MsaMask, MaskPositionMode, RESIDUE_COLORS
 from .Ui_MsaOverview import Ui_MsaOverview
 
 MsaSelectedRange = Tuple[int, int]
-
-class QPainterContextManager:
-
-    def __init__(self, widget: QPaintDevice):
-        self.__painter = QPainter()
-        self.__widget = widget
-
-    @property
-    def widget(self):
-        return self.__widget
-
-    @property
-    def painter(self):
-        return self.__painter
-
-    def __enter__(self):
-        self.__painter.begin(self.__widget)
-
-        return self
-
-    def __exit__(self, *args, **kwargs):
-        self.__painter.end()
-
-def paint(widget : QPaintDevice) -> QPainterContextManager:
-    return QPainterContextManager(widget)
 
 class MsaOverviewCanvas(QWidget):
 

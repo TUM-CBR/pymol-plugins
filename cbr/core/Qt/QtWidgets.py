@@ -107,44 +107,74 @@ TResult = TypeVar('TResult')
 
 TErrorHandler = TypeVar('TErrorHandler')
 
-def throttle(time : int) -> Callable[[TErrorHandler], TErrorHandler]:
+class ThrottleHandler(QObject):
 
-    class ThrottleHandler(QObject):
+    def __init__(
+        self,
+        time : int,
+        widget : QObject,
+        action
+    ):
+        super().__init__()
+        self.__action = action
+        self.__last_args = []
+        self.__last_kwargs = {}
+        self.__widget = widget
+        timer = self.__timer = QTimer()
+        timer.setInterval(time)
+        timer.setSingleShot(True)
+        timer.timeout.connect(self.__on_timeout)
 
-        def __init__(self, action):
-            super().__init__()
-            self.__action = action
-            self.__last_args = []
-            self.__last_kwargs = {}
-            self.__timer = QTimer()
-            self.__timer.setSingleShot(True)
-            self.__timer.timeout.connect(self.__on_timeout)
-            self.__widget : Optional[QObject] = None
+    def __init_timer__needed(self):
 
-        def __call__(self, widget : QObject, *args, **kwargs):
+        if self.__timer.isActive():
+            return
 
-            if not self.__timer.isActive():
-                self.__timer.start(time)
+        self.__timer.start()
 
-            self.__last_args = args
-            self.__last_kwargs = kwargs
-            self.__widget = widget
+    def __call__(self, *args, **kwargs):
 
-        @pyqtSlot()
-        def __on_timeout(self):
-            self.__action(self.__widget, *self.__last_args, **self.__last_kwargs)
+        self.__init_timer__needed()
+        self.__last_args = args
+        self.__last_kwargs = kwargs
 
-    def factory(fn : TErrorHandler) -> TErrorHandler:
+    @pyqtSlot()
+    def __on_timeout(self):
+        self.__action(self.__widget, *self.__last_args, **self.__last_kwargs)
 
-        throttle = ThrottleHandler(fn)
 
-        def __run_handler__(widget : QObject, *args, **kwargs):
-            nonlocal throttle
-            throttle(widget, *args, **kwargs)
-        return cast(TErrorHandler, __run_handler__)
+class ThrottleFactory:
 
-    return factory
-        
+    def __init__(self, time, fn):
+        self.__time = time
+        self.__fn = fn
+        self.__handlers = {}
+
+    @pyqtSlot(QObject)
+    def __on_widget_destroyed(self, widget: QWidget):
+        self.__handlers.pop(widget)
+
+    def __call__(self, widget, *args, **kwargs):
+
+        handler = self.__handlers.get(widget)
+
+        if handler is None:
+            handler = self.__handlers[widget] = ThrottleHandler(self.__time, widget, self.__fn)
+            #widget.destroyed.connect(self.__on_widget_destroyed)
+
+        return handler(*args, **kwargs)
+
+def throttle(time : int):
+
+    def handler(fn : TErrorHandler) -> TErrorHandler:
+
+        factory = ThrottleFactory(time, fn)
+
+        def run(widget, *args, **kwargs):
+            factory(widget, *args, **kwargs)
+        return cast(TErrorHandler, run)
+
+    return handler
 
 def with_error_handler(*args, **kwargs):
 

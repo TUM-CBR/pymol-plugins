@@ -6,36 +6,29 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>468</width>
-    <height>172</height>
+    <width>466</width>
+    <height>162</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="2" column="0">
-    <widget class="QLabel" name="label_3">
-     <property name="text">
-      <string>Maximum Length</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="0">
+   <item row="3" column="0">
     <widget class="QLabel" name="label_2">
      <property name="text">
       <string>Minimum Length</string>
      </property>
     </widget>
    </item>
-   <item row="2" column="1">
-    <widget class="QSlider" name="maxSlider">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
+   <item row="4" column="0">
+    <widget class="QLabel" name="label_3">
+     <property name="text">
+      <string>Maximum Length</string>
      </property>
     </widget>
    </item>
-   <item row="3" column="1">
+   <item row="5" column="1">
     <spacer name="verticalSpacer">
      <property name="orientation">
       <enum>Qt::Vertical</enum>
@@ -48,13 +41,6 @@
      </property>
     </spacer>
    </item>
-   <item row="1" column="1">
-    <widget class="QSlider" name="minSlider">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-    </widget>
-   </item>
    <item row="0" column="0" colspan="2">
     <widget class="QLabel" name="descriptionLabel">
      <property name="text">
@@ -62,7 +48,7 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="2">
+   <item row="3" column="2">
     <widget class="QLabel" name="minLengthLabel">
      <property name="minimumSize">
       <size>
@@ -75,7 +61,21 @@
      </property>
     </widget>
    </item>
-   <item row="2" column="2">
+   <item row="4" column="1">
+    <widget class="QSlider" name="maxSlider">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QSlider" name="minSlider">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="2">
     <widget class="QLabel" name="maxLenghtLabel">
      <property name="minimumSize">
       <size>
@@ -85,6 +85,16 @@
      </property>
      <property name="text">
       <string/>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QWidget" name="frequencyWidget" native="true">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>50</height>
+      </size>
      </property>
     </widget>
    </item>

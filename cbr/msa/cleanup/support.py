@@ -10,6 +10,19 @@ def normalized(values : List[float]) -> List[float]:
 
     return [(value - min_v)/spread for value in values]
 
+def ranked(values : List[float]) -> List[int]:
+    sorted_ranks =  sorted(
+        enumerate(values),
+        key=lambda kv: kv[1]
+    )
+
+    result = [0 for _ in range(0, len(values))]
+
+    for score,(index,_) in enumerate(sorted_ranks):
+        result[index] = score
+
+    return result
+
 def score_contigous(
     values : Iterable[bool],
     min_segment_size = 1

@@ -1,11 +1,11 @@
 from Bio.Align import MultipleSeqAlignment
 from PyQt5.QtCore import pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QWidget
-from typing import Tuple
+from typing import cast, Tuple
 
 from ...core.Qt.QtCore import block_signals
 from ...core.Qt.QtWidgets import slider_with_label, throttle
-from ..cleanup.support import normalized
+from ..cleanup.support import normalized, ranked
 from .MsaCleanerResult import MsaCleanerBase, MsaCleanerResult
 from .Ui_ScoreWithScope import Ui_ScoreWithScope
 
@@ -119,10 +119,12 @@ class ScoreWithScope(MsaCleanerBase):
         scope_start = self.__scope_start.value - 1
         scope_end = self.__scope_end.value
 
-        return normalized([
+        result =  ranked([
             sum(score[scope_start:scope_end])
             for score in scores
         ])
+
+        return normalized(cast(List[float], result))
 
     @pyqtSlot(name="__on_scope_changed")
     @throttle(1000)
