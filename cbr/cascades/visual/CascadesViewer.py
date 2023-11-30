@@ -5,7 +5,7 @@ from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QFileDialog, QWidget
 import shutil
 import tempfile
-from typing import Any, Callable, Dict, Iterable, Optional, Tuple, TypeVar
+from typing import Any, Callable, cast, Dict, Iterable, Optional, Tuple, TypeVar
 
 from ...core import color
 from ...core.Qt.QtWidgets import show_error, show_info, with_error_handler
@@ -176,7 +176,7 @@ class CascadesViewer(QWidget):
         self.__cascade_process = None
         self.__progress_widget = ProgressWidget()
 
-        self.layout().replaceWidget(
+        cast(QWidget, self.__ui.progressWidget.parent()).layout().replaceWidget(
             self.__ui.progressWidget,
             self.__progress_widget
         )
