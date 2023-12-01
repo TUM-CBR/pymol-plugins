@@ -229,7 +229,7 @@ class CascadesMain(QWidget):
 
     def __open_db(self, db_file: str):
         self.__context.run_widget(
-            lambda _: CascadesViewer(db_file)
+            lambda ctx: CascadesViewer(ctx, db_file)
         ).show()
 
     @pyqtSlot(name="__on_create_button_clicked")
@@ -267,7 +267,8 @@ class CascadesMain(QWidget):
         )
 
         self.__context.run_widget(
-            lambda _: CascadesViewer(
+            lambda ctx: CascadesViewer(
+                ctx,
                 create_cascade_args=args
             )
         ).show()

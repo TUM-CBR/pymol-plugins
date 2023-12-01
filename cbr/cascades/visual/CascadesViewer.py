@@ -8,6 +8,7 @@ import tempfile
 from typing import Any, Callable, cast, Dict, Iterable, Optional, Tuple, TypeVar
 
 from ...core import color
+from ...core.Context import Context
 from ...core.Qt.QtWidgets import show_error, show_info, with_error_handler
 from ..data import *
 from ..operations import query_organisms, create_cascade
@@ -25,6 +26,11 @@ identity_color_spread = color.color_spread(
 )
 
 white = QColor(255,255,255)
+
+OPEN_COPY_MSG = """A copy with the current incomplete results will be opened
+in a new window. THIS COPY WILL NOT BE UPDATED ANY FURTHER. If you want to see
+further updates, return to this window and open a new copy.
+"""
 
 class OrganismsTableModel(QAbstractTableModel):
 
@@ -164,11 +170,14 @@ class CascadesViewer(QWidget):
 
     def __init__(
         self,
+        context: Context,
         db_path : Optional[str] = None,
-        create_cascade_args : Optional[CreateCascadeDatabaseArgs] = None
+        create_cascade_args : Optional[CreateCascadeDatabaseArgs] = None,
+        make_copy = False
     ):
         super().__init__()
 
+        self.__context = context
         self.__ui = Ui_CascadesViewer()
         self.__ui.setupUi(self)
         self.__model = OrganismsTableModel(QueryCascadeResult(organisms=[]))
@@ -186,13 +195,18 @@ class CascadesViewer(QWidget):
             self.__ui.saveResultsButton
         ]
 
-        self.__toggle_working_widgets(False)
         self.__ui.queryButton.clicked.connect(self.__filter_results)
         self.__ui.saveResultsButton.clicked.connect(self.__save_database)
+        self.__ui.openCopyButton.clicked.connect(self.__open_copy)
 
+        self.__toggle_working_widgets(False)
         if db_path is None:
             self.__tmp_dir = tempfile.TemporaryDirectory()
             self.__db_path = path.join(self.__tmp_dir.name, "cascades.sqlite")
+        elif make_copy:
+            self.__tmp_dir = tempfile.TemporaryDirectory()
+            self.__db_path = path.join(self.__tmp_dir.name, "cascades.sqlite")
+            shutil.copy(db_path, self.__db_path)
         else:
             self.__tmp_dir = None
             self.__db_path = db_path
@@ -201,6 +215,24 @@ class CascadesViewer(QWidget):
             self.__create_cascade(create_cascade_args)
         else:
             self.__create_initial_table()
+
+    @pyqtSlot()
+    def __open_copy(self):
+
+        show_info(
+            self,
+            "Open Copy",
+            OPEN_COPY_MSG
+        )
+
+        self.__context.run_widget(
+            lambda ctx: CascadesViewer(
+                ctx,
+                self.__db_path,
+                create_cascade_args=None,
+                make_copy=True
+            )
+        ).show()
 
     @pyqtSlot()
     def __save_database(self):
@@ -237,6 +269,8 @@ class CascadesViewer(QWidget):
 
         for widget in self.__action_widgets:
             widget.setEnabled(not visible)
+
+        self.__ui.openCopyButton.setVisible(visible)
 
     def __create_cascade(self, args : CreateCascadeDatabaseArgs):
 
