@@ -46,7 +46,7 @@ jobs:
       - run: mv devops/tmp/pdb2pqr.windows cbr/apbs/resources/
 
       # Add the cbrextra executable
-      - run: wget -O devops/tmp/cbrextra.win64.zip https://github.com/TUM-CBR/cbr-tools-extra/releases/download/nightly-20231201/cbr-tools-extra-20231201-win64.zip
+      - run: wget -O devops/tmp/cbrextra.win64.zip https://github.com/TUM-CBR/cbr-tools-extra/releases/download/nightly-20231204/cbr-tools-extra-20231204-win64.zip
       - run: unzip -d cbr/extra/resources/ devops/tmp/cbrextra.win64.zip
 
       - name: Archive Release
