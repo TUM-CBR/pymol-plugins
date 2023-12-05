@@ -11,6 +11,7 @@ from .. import apbs as Apbs
 from ..cascades import main as Cascades
 from ..chimeras import Applications as Chimeras
 from ..coevolution import main as Coevolution
+from ..dssp import main as Dssp
 from ..msa import Applications as Msa
 from ..primer import Applications as Primer
 from ..schema import Applications as Schema
@@ -66,6 +67,11 @@ APP_DEFINITIONS = [
         icon = "cascades.png",
         text = "Cascade BLAST",
         init = Cascades.cascades_main
+    ),
+    AppDefinition(
+        icon = "dssp-logo.svg",
+        text = "DSSP",
+        init = Dssp.dssp_runner
     )
 ]
 
