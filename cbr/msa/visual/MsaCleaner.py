@@ -3,7 +3,7 @@ from enum import Enum
 from PyQt5.QtCore import pyqtSlot, QAbstractTableModel, QModelIndex, Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QFileDialog, QWidget
-from typing import Any, Iterable, Optional, cast, List, NamedTuple, Tuple
+from typing import Any, Callable, Dict, Iterable, Optional, cast, List, NamedTuple, Tuple
 
 from ...core.Context import (Context)
 from ...core.Qt.QtCore import DictionaryModel
@@ -72,17 +72,34 @@ class SequenceScoresModel(QAbstractTableModel):
     def __init__(
         self,
         alignment : MultipleSeqAlignment,
-        scores : List[ScoreEntry]
+        scores : List[ScoreEntry],
+        meta_override: Optional[Callable[[int, ScoreMeta], ScoreMeta]] = None
     ):
         super().__init__()
 
         self.__alignment = alignment
         self.__scores = scores
-        self.__score_meta = [ScoreMeta(override=ScoreOverride.NoOverride) for _ in range(0, len(alignment))]
+
+        meta_override = meta_override if meta_override is not None else lambda _,score: score
+
+        self.__score_meta = [
+            meta_override(i, ScoreMeta(override=ScoreOverride.NoOverride))
+            for i in range(0, len(alignment))
+        ]
 
     @property
     def scores(self) -> List[ScoreEntry]:
         return self.__scores
+
+    @property
+    def meta(self) -> List[ScoreMeta]:
+        return self.__score_meta
+
+    def get_index_by_name(self) -> Dict[str, int]:
+        return dict(
+            (seq.id, i)
+            for (i, seq) in enumerate(self.__alignment)
+        )
 
     @property
     def alignment(self) -> MultipleSeqAlignment:
@@ -310,14 +327,30 @@ class MsaCleaner(QWidget):
 
     def __update_alignment(self, alignment: MultipleSeqAlignment):
 
+        model = self.__scores_model
+        scores = [
+            ScoreEntry.from_result(name, result)
+            for name, cleaner in self.__cleaners
+            for result in [cleaner.score_alignment(alignment)] 
+        ]
+
+        if model is not None:
+            prev_index = model.get_index_by_name()
+            prev_meta = model.meta
+            overrides = [
+                index is not None and prev_meta[index]
+                for seq in alignment
+                for index in [prev_index.get(seq.id)]
+            ]
+            meta_override = lambda i,meta: overrides[i] or meta
+        else:
+            meta_override = None
+
         self.__update_table(
             SequenceScoresModel(
                 alignment,
-                [
-                    ScoreEntry.from_result(name, result)
-                    for name, cleaner in self.__cleaners
-                    for result in [cleaner.score_alignment(alignment)] 
-                ]
+                scores,
+                meta_override
             )
         )
 
