@@ -10,6 +10,7 @@ class ChimeraFragment(QWidget):
 
     IX_NAME = 0
     IX_SEQ = 1
+    ROWS = 20
 
     def __init__(self):
         super(ChimeraFragment, self).__init__()
@@ -51,13 +52,27 @@ class ChimeraFragment(QWidget):
         clipboard = QApplication.clipboard()
         clipboard_text = clipboard.text()
 
-        rows = clipboard_text.split('\n')
+        selected = tableWidget.selectedIndexes()
+
+        if len(selected) == 1:
+            item = selected[0]
+            row_offset = item.row()
+            col_offset = item.column()
+        else:
+            row_offset = 0
+            col_offset = 0
+
+        row_count = tableWidget.rowCount() - row_offset
+        col_count = tableWidget.columnCount() - col_offset
+
+        rows = clipboard_text.split('\n')[:row_count]
         for row_index, row in enumerate(rows):
-            columns = row.split('\t')  # Assuming tab-separated values
-            tableWidget.insertRow(tableWidget.rowCount())
+            columns = row.split('\t')[:col_count]  # Assuming tab-separated values
             for col_index, col_data in enumerate(columns):
+                if col_data.strip() == "":
+                    continue
                 item = QTableWidgetItem(col_data)
-                tableWidget.setItem(row_index, col_index, item)
+                tableWidget.setItem(row_index + row_offset, col_index + col_offset, item)
 
     @property
     def fragment(self):
