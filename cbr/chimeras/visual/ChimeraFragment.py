@@ -8,6 +8,9 @@ from .Ui_ChimeraFragment import Ui_ChimeraFragment
 
 class ChimeraFragment(QWidget):
 
+    IX_NAME = 0
+    IX_SEQ = 1
+
     def __init__(self):
         super(ChimeraFragment, self).__init__()
         self.__ui = Ui_ChimeraFragment()
@@ -16,12 +19,16 @@ class ChimeraFragment(QWidget):
         self.__ui.fragmentTable.adjustSize()
         self.__ui.fragmentTable.itemChanged.connect(self.__on_item_changed)
         
-        self.__fragment = Fragment([])
+        self.__fragment = Fragment(options={})
 
-        for _ in range(20):
+        for row in range(20):
             self.__ui.fragmentTable.insertRow(0)
+            self.__ui.fragmentTable.setItem(0, self.IX_NAME, QTableWidgetItem(str(20 - row)))
 
-        self.__ui.fragmentTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        header = self.__ui.fragmentTable.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Stretch)
+        header.setSectionResizeMode(self.IX_NAME, QHeaderView.Fixed)
+        header.resizeSection(self.IX_NAME, 50)
 
         self.__ui.pasteButton.clicked.connect(self.paste_from_clipboard)
 
@@ -29,11 +36,12 @@ class ChimeraFragment(QWidget):
 
         table = self.__ui.fragmentTable
         self.__fragment = Fragment(
-            options = list(
-                text.upper()
+            options = dict(
+                (name, text.upper())
                 for i in range(self.__ui.fragmentTable.rowCount())
-                for item in [table.item(i,0)] if item is not None
-                for text in [re.sub("\\s", "", item.text())] if len(text) > 0
+                for (i_name, i_text) in [(table.item(i, self.IX_NAME), table.item(i, self.IX_SEQ))] \
+                    if i_name is not None and i_text is not None
+                for (name, text) in [(i_name.text(), re.sub("\\s", "", i_text.text()))] if len(text) > 0
             )
         )
 

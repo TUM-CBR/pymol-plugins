@@ -1,4 +1,4 @@
-from typing import List, NamedTuple
+from typing import Dict, NamedTuple
 
 class Fragment(NamedTuple):
-    options : List[str]
+    options : Dict[str, str]

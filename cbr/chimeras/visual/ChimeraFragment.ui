@@ -42,6 +42,11 @@
     <widget class="QTableWidget" name="fragmentTable">
      <column>
       <property name="text">
+       <string>Name</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
        <string>Sequence</string>
       </property>
      </column>

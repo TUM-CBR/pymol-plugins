@@ -28,6 +28,7 @@ class ChimerasGenerator(QWidget):
         self.__ui.overhangsTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.__ui.overhangsTable.setRowCount(20)
         self.__ui.overhangLenght.setValidator(QIntValidator(0,10))
+        self.__ui.overhangLenght.setText("0")
 
     @pyqtSlot(QListWidgetItem)
     def __selected_item(self, item : QListWidgetItem):

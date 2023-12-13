@@ -1,5 +1,5 @@
 import itertools
-from typing import Iterable, List, NamedTuple, Tuple
+from typing import Dict, Iterable, List, NamedTuple, Tuple
 from PyQt5.QtCore import QPoint, Qt, pyqtSlot
 from PyQt5.QtWidgets import QHeaderView, QTableWidgetItem, QWidget
 
@@ -24,7 +24,7 @@ class Chimera(NamedTuple):
     fragments : List[str]
 
 class ChimeraGeneratorPosition(NamedTuple):
-    sequences : List[str]
+    sequences : Dict[str, str]
 
 class ChimerasGeneratorArgs(NamedTuple):
     positions : List[ChimeraGeneratorPosition]
@@ -48,8 +48,8 @@ class ChimerasGeneratorArgs(NamedTuple):
 
         return seq_a + [seq_b[self.overhang_length:]]
 
-    def __make_chimera(self, sequences : List[Tuple[int, str]]):
-        chimera = "".join(str(i) for i,_ in sequences)
+    def __make_chimera(self, sequences : List[Tuple[str, str]]):
+        chimera = "".join(i for i,_ in sequences)
 
         result = [sequences[0][1]]
         for (_, sequence) in sequences[1:]:
@@ -62,7 +62,7 @@ class ChimerasGeneratorArgs(NamedTuple):
 
     def __generate_chimeras(self):
         catalogue = [
-            [(i + 1,self.__clean_sequence(sequence)) for i,sequence in enumerate(position.sequences)]
+            [(i,self.__clean_sequence(sequence)) for i,sequence in position.sequences.items()]
             for position in self.positions
         ]
         return [
