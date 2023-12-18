@@ -1,4 +1,4 @@
-from typing import Dict, Iterable, Optional, Generic, TypeVar
+from typing import Dict, Iterable, Optional, Generic, Tuple, TypeVar
 
 TVIter = TypeVar("TVIter")
 
@@ -42,3 +42,15 @@ class UpdateContextManager(Generic[TValue]):
             self.__collection[self.__key] = self.value
 
 update_key = UpdateContextManager
+
+T = TypeVar('T')
+
+#itertools.pairwise not in python 3.7
+def pairwise(iter: Iterable[T]) -> Iterable[Tuple[T,T]]:
+    last = None
+
+    for item in iter:
+        if last is not None:
+            yield (last, item)
+
+        last = item
