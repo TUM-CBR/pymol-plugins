@@ -1,7 +1,7 @@
 from concurrent.futures import Future
 import csv
 from io import StringIO
-from typing import Any, Callable, Generic, Iterable, Set, TextIO, TypeVar, cast
+from typing import Any, Callable, Generic, Iterable, Optional, Set, TextIO, TypeVar, cast
 from PyQt5.QtCore import QTimer, pyqtSignal, pyqtSlot, QObject, Qt
 from PyQt5.QtWidgets import QAction, QApplication, QLabel, QMenu, QMessageBox, QProgressBar, QSlider, QTableWidget, QTableView, QWidget
 
@@ -66,7 +66,7 @@ def copy_qtable_to_clipboard(table_widget : QTableWidget):
         clipboard.setText(copied_data)
 
 def show_info(
-    parent : QWidget,
+    parent : Optional[QWidget],
     title : str,
     description : str = '',
     window_title : str = 'Information'
@@ -80,7 +80,7 @@ def show_info(
     dialog.exec_()
 
 def show_error(
-    parent : QWidget,
+    parent : Optional[QWidget],
     title : str,
     description : str = '',
     window_title : str = 'Error'
