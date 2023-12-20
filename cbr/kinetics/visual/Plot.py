@@ -3,21 +3,23 @@ from matplotlib.figure import Figure
 from PyQt5.QtWidgets import QVBoxLayout, QWidget 
 from typing import List, NamedTuple
 
-class Point2d(NamedTuple):
-    x : float
-    y : float
+from ..data import *
 
-class Series(NamedTuple):
+class PlotMeta(NamedTuple):
     name : str
-    values : List[Point2d]
+
+class SeriesSet(NamedTuple):
+    series : List['Series[PlotMeta]'] = []
+    x_label : str = "x"
+    y_label : str = "y"
 
 class Plot(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.__series = []
+        self.__series = SeriesSet()
 
-    def set_series(self, series: List[Series]):
+    def set_series(self, series: SeriesSet):
         self.__series = series
         self.__render_series()
 
@@ -25,16 +27,17 @@ class Plot(QWidget):
         figure = Figure()
         canvas = FigureCanvas(figure)
         ax = figure.add_subplot(111)
+        series_set = self.__series
 
-        for series in self.__series:
+        for series in series_set.series:
             ax.plot(
                 [point.x for point in series.values],
                 [point.y for point in series.values],
-                label=series.name
+                label=series.metadata.name
             )
 
-        ax.set_xlabel('time')
-        ax.set_ylabel('abs')
+        ax.set_xlabel(series_set.x_label)
+        ax.set_ylabel(series_set.y_label)
         ax.legend()
         layout = QVBoxLayout(self)
         layout.addWidget(canvas)

@@ -23,7 +23,7 @@ class KineticsInput(QWidget):
 
         self.__globals_editor = namedtuple_eidtor(
             self.__ui.runGlobalsTable,
-            GlobalAttributes(6220, 1, 10)
+            GlobalAttributes(3125, 1, 10, 0.001)
         )
 
         self.__runs_metadata_editor = namedtuple_eidtor(

@@ -8,8 +8,8 @@ ParseValue = Callable[[str], Any]
 
 EDITABLE_TYPES = {
     str: lambda s: s,
-    int: lambda s: int(s),
-    float: lambda s: float(s)
+    float: lambda s: float(s),
+    int: lambda s: int(s)
 }
 
 EDITABLE_TYPES_TUPLE = tuple(EDITABLE_TYPES.keys())
@@ -21,19 +21,30 @@ def can_edit(v: Any) -> bool:
 
     return issubclass(v, EDITABLE_TYPES_TUPLE)
 
-def parser_for(value: Any) -> ParseValue:
+def parser_for(value: Type) -> ParseValue:
 
     for ty, parser in EDITABLE_TYPES.items():
-        if isinstance(value, ty):
+        if issubclass(value, ty):
             return parser
 
     raise Exception(f"There is no editor for value {value}")
+
+OVERRIDES_FIELD = '__editor_field_overrides__'
+
+class MetaFieldOverrides(NamedTuple):
+    readonly : bool = False
+    display : Optional[str] = None
+
+class Field(NamedTuple):
+    overrides : MetaFieldOverrides
+    name : str
+    parse: Callable[[str], Any]
 
 def editable_fields(
     tuple_class : Type[NamedTuple],
     values : List[Optional[NamedTuple]],
     default_item: Optional[NamedTuple]
-):
+) -> List[Field]:
 
     # Rules:
     # values can have None if default_item is not None
@@ -46,8 +57,14 @@ def editable_fields(
     if default_item is not None and not isinstance(default_item, tuple_class):
         raise ValueError(f"The default item {default_item} must be an instance of {tuple_class}")
 
+    overrides = getattr(tuple_class, OVERRIDES_FIELD, {})
+
     return [
-        field
+        Field(
+            name = field,
+            parse=parser_for(ty),
+            overrides=overrides.get(field, MetaFieldOverrides())
+        )
         for field, ty in tuple_class.__annotations__.items()
             if can_edit(ty)
     ]
@@ -81,12 +98,21 @@ class NamedTupleEditorModel(QAbstractTableModel):
         if role == Qt.DisplayRole and orientation == Qt.Horizontal:
             return f"{section + 1}"
         elif role == Qt.DisplayRole and orientation == Qt.Vertical:
-            return self.__fields[section]
+            return self.__get_field_display(section)
 
         return super().headerData(section, orientation, role)
 
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:
-        return super().flags(index) | Qt.ItemIsEditable
+
+        if self.__is_value_editable(index):
+            return super().flags(index) | Qt.ItemIsEditable
+
+        return super().flags(index)
+
+    def __get_field_display(self, index: int) -> str:
+        field = self.__fields[index]
+
+        return field.overrides.display or field.name
 
     def __display_role_data(self, index: QModelIndex):
         field = self.__get_field(index)
@@ -94,14 +120,23 @@ class NamedTupleEditorModel(QAbstractTableModel):
 
         return item and getattr(item, field)
 
+    def __is_value_editable(self, index: QModelIndex):
+        return not self.__get_field_definition(index).overrides.readonly
+
     def __get_item(self, index: QModelIndex) -> Optional[NamedTuple]:
         return self.__values[index.column()]
 
     def __set_item(self, index: QModelIndex, item: Optional[NamedTuple]):
         self.__values[index.column()] = item
 
-    def __get_field(self, index: QModelIndex) -> str:
+    def __get_field_definition(self, index: QModelIndex) -> Field:
         return self.__fields[index.row()]
+
+    def __get_field(self, index: QModelIndex) -> str:
+        return self.__get_field_definition(index).name
+
+    def __get_parser(self, index: QModelIndex) -> Callable[[str], Any]:
+        return self.__get_field_definition(index).parse
 
     def setData(self, index: QModelIndex, value, role = Qt.EditRole) -> bool:
 
@@ -113,7 +148,7 @@ class NamedTupleEditorModel(QAbstractTableModel):
 
         assert item is not None, "Error! Control flow should not reach this point with item being None"
         current = getattr(item, field)
-        converter = parser_for(current)
+        converter = self.__get_parser(index)
 
         try:
             self.__set_item(index, item._replace(**{field: converter(value)}))

@@ -1,6 +1,7 @@
 {
     "files": [
         "KineticsInput.ui",
-        "KineticsOptimizer.ui"
+        "KineticsOptimizer.ui",
+        "LinearFitWidget.ui"
     ]
 }
