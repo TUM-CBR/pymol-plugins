@@ -176,6 +176,7 @@ class NamedTupleEditorModel(QAbstractTableModel, Generic[TTuple]):
 
         try:
             self.__set_item(index, item._replace(**{field: converter(value)}))
+            self.dataChanged.emit(index, index)
         except Exception as e:
             self.__panic(e)
             return False

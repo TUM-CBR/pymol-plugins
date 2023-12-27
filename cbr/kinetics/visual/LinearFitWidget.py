@@ -1,19 +1,17 @@
 from PyQt5.QtCore import QModelIndex, pyqtSlot
 from PyQt5.QtWidgets import QWidget
-from typing import Callable, NamedTuple, Optional
+from typing import NamedTuple, Optional
 
 from ...core.Qt.visual.NamedTupleEditor import MetaFieldOverrides, MetaFieldOverridesDict, namedtuple_eidtor
 from ..data import Series
 from ..math import *
 
-from .Plot import Plot
+from .Plot import Plot, PlotMeta, SeriesSet
 from .Ui_LinearFitWidget import Ui_LinearFitWidget
 
 class LinearFitMeta(NamedTuple):
     slope_name : str = "m"
-    slop_mapping : Callable[[float], float] = lambda x: x
     intercept_name : str = "b"
-    intercept_mapping : Callable[[float], float] = lambda b: b
     x_axis_name : str = "x"
     y_axis_name : str = "y"
 
@@ -96,12 +94,18 @@ class LinearFitWidget(QWidget):
         self.__series = None
         self.__model = None
         self.__value = None
-        self.__overrides = fit_meta and linear_fit_values_overrides(fit_meta)
+        self.__fit_meta = fit_meta or LinearFitMeta()
+        self.__overrides = linear_fit_values_overrides(self.__fit_meta)
 
         self.__ui = Ui_LinearFitWidget()
         self.__ui.setupUi(self)
 
         self.__plot = Plot()
+
+        self.layout().replaceWidget(
+            self.__ui.plotWidget,
+            self.__plot
+        )
 
     @pyqtSlot(QModelIndex, QModelIndex)
     def __on_data_changed(self, start: QModelIndex, end: QModelIndex):
@@ -119,7 +123,7 @@ class LinearFitWidget(QWidget):
             value
         )
 
-    def set_series(self, series : Series):
+    def set_series(self, series : 'Series[PlotMeta]'):
         self.__series = series
 
         if self.__model is not None:
@@ -133,6 +137,14 @@ class LinearFitWidget(QWidget):
                 series
             ),
             tuple_field_overrides=self.__overrides
+        )
+
+        self.__plot.set_series(
+            SeriesSet(
+                series=[series],
+                x_label=self.__fit_meta.x_axis_name,
+                y_label=self.__fit_meta.y_axis_name
+            )
         )
 
         self.__model.dataChanged.connect(self.__on_data_changed)

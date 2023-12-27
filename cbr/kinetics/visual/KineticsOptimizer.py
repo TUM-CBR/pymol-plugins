@@ -2,43 +2,11 @@ from PyQt5.QtWidgets import QWidget
 from typing import Iterable, Tuple
 
 from ..data import *
-from .LinearFitWidget import LinearFitWidget
+from ..kinetics import *
+from .LinearFitWidget import LinearFitMeta, LinearFitWidget
 from .Plot import Plot, PlotMeta, Point2d, Series, SeriesSet
 from .Ui_KineticsOptimizer import Ui_KineticsOptimizer
 
-def is_baseline_run(run : KineticsRun) -> bool:
-    return int(run.run_metadata.concentration * 1000) == 0
-
-def run_to_vel_vs_conc(
-    global_attributes : GlobalAttributes,
-    run : KineticsRun,
-    baseline : float = 0
-) -> Iterable[Point2d]:
-    conc_units = global_attributes.concentration_units
-    intervals = global_attributes.measurement_interval
-    conc = run.run_metadata.concentration
-    molar_extinction = global_attributes.molar_extinction
-    distance = global_attributes.distance
-    prev_product_conc = 0
-
-    for value in run.data:
-
-        # Remove the baseline noise
-        value -= baseline
-
-        # abs = conc * molar_extinction * distance
-        # => conc = abs / (molar_extinction * distance)
-        product_conc = (value / (molar_extinction * distance)) / conc_units
-
-        current_vel = abs(prev_product_conc - product_conc) / intervals
-        prev_product_conc = product_conc
-
-        # We assume that for every molecule of the product
-        # we consume a molecule of the substrate
-        yield Point2d(
-            x = conc - product_conc,
-            y = current_vel# / conc
-        )
 
 # km should be the concentration at which we have half v_max
 # v_max := 1/v vs 1/s, km = v_max * m, v_max = 1/y-intercept
@@ -105,21 +73,6 @@ def vel_vs_conc_theory(runs: List[List[Point2d]]) -> List[Point2d]:
         for point in series
     ]
 
-def as_vel_vs_conc_series(runs: KineticsRuns) -> List['Series[RunMetadata]']:
-
-    baseline_run = next(
-        (run.data for run in runs.runs if is_baseline_run(run)),
-        [0.0]
-    )
-    baseline = avg(baseline_run)
-
-    return [
-        Series(
-            metadata = run.run_metadata,
-            values = list(run_to_vel_vs_conc(runs.global_attributes, run, baseline))
-        )
-        for run in runs.runs if not is_baseline_run(run)
-    ]
 
 def as_vmax_vs_km(runs : 'List[Series[RunMetadata]]') -> 'Series[PlotMeta]':
     return Series(
@@ -133,6 +86,9 @@ def as_vmax_vs_km(runs : 'List[Series[RunMetadata]]') -> 'Series[PlotMeta]':
             for series in runs
         ]
     )
+
+K_TAB_1 = "Vmax and Km"
+K_TAB_2 = "Beta and Ki"
 
 class KineticsOptimizer(QWidget):
 
@@ -151,16 +107,24 @@ class KineticsOptimizer(QWidget):
             self.__plot_widget
         )
 
-        self.__vmax_widget = Plot()
-        self.layout().replaceWidget(
-            self.__ui.vmaxPlotWidget,
-            self.__vmax_widget
+        self.__vmax_widget = LinearFitWidget(
+            LinearFitMeta(
+                x_axis_name="1/[S]",
+                y_axis_name="1/v"
+            )
+        )
+        self.__ui.initalValuesWidget.insertTab(
+            0,
+            self.__vmax_widget,
+            K_TAB_1
         )
 
-        self.__beta_widget = Plot()
-        self.layout().replaceWidget(
-            self.__ui.betaWidget,
-            self.__beta_widget
+        self.__beta_widget = LinearFitWidget()
+
+        self.__ui.initalValuesWidget.insertTab(
+            1,
+            self.__beta_widget,
+            K_TAB_2
         )
 
         self.__runs = runs
@@ -169,12 +133,21 @@ class KineticsOptimizer(QWidget):
         self.__render_plots()
 
     def __render_vmax_vs_km(self):
-        vmax_vs_km = as_vmax_vs_km(self.__velocity_vs_conc)
+
+        values = [
+            Point2d(
+                x = 1/point.x,
+                y = 1/point.y
+            )
+            for series in self.__velocity_vs_conc
+            for point in series.values
+        ]
+
+        values.sort(key=lambda point: point.x)
         self.__vmax_widget.set_series(
-            SeriesSet(
-                series=[vmax_vs_km],
-                x_label="1/[S]",
-                y_label="1/v"
+            Series(
+                PlotMeta(name=K_TAB_1),
+                values
             )
         )
 

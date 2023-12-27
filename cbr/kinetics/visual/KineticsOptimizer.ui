@@ -6,34 +6,18 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>854</width>
-    <height>611</height>
+    <width>773</width>
+    <height>522</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout" rowstretch="0,0,1,0,0,1,0,1,0" rowminimumheight="0,0,0,0,0,0,0,0,0">
-   <item row="7" column="0">
-    <widget class="QWidget" name="plotWidget" native="true"/>
-   </item>
-   <item row="5" column="0">
-    <widget class="QWidget" name="betaWidget" native="true"/>
-   </item>
-   <item row="2" column="0">
-    <widget class="QWidget" name="vmaxPlotWidget" native="true"/>
-   </item>
+  <layout class="QGridLayout" name="gridLayout" rowstretch="0,1,0,0,1" columnstretch="1,0">
    <item row="3" column="0">
-    <widget class="QLabel" name="label_3">
+    <widget class="QLabel" name="label_4">
      <property name="text">
-      <string>Beta and Ki</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="0">
-    <widget class="QLabel" name="label_2">
-     <property name="text">
-      <string>Vmax and Km</string>
+      <string>Result</string>
      </property>
     </widget>
    </item>
@@ -48,12 +32,18 @@ font-weight: bold;</string>
      </property>
     </widget>
    </item>
-   <item row="6" column="0">
-    <widget class="QLabel" name="label_4">
-     <property name="text">
-      <string>Result</string>
+   <item row="1" column="1">
+    <widget class="QTableView" name="tableView"/>
+   </item>
+   <item row="1" column="0">
+    <widget class="QTabWidget" name="initalValuesWidget">
+     <property name="currentIndex">
+      <number>-1</number>
      </property>
     </widget>
+   </item>
+   <item row="4" column="0" colspan="2">
+    <widget class="QWidget" name="plotWidget" native="true"/>
    </item>
   </layout>
  </widget>
