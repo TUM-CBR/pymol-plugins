@@ -1,7 +1,8 @@
+from PyQt5.QtCore import QModelIndex, pyqtSlot
 from PyQt5.QtWidgets import QWidget
 from typing import Callable, NamedTuple, Optional
 
-from ...core.Qt.visual.NamedTupleEditor import NamedTupleEditorModel
+from ...core.Qt.visual.NamedTupleEditor import MetaFieldOverrides, MetaFieldOverridesDict, namedtuple_eidtor
 from ..data import Series
 from ..math import *
 
@@ -37,19 +38,101 @@ class LinearFitValues(NamedTuple):
     slope : float
     b : float
 
-class LinearFitModel(NamedTupleEditorModel):
-    pass
+    @staticmethod
+    def update_values(
+        series: Series,
+        current: Optional['LinearFitValues'] = None
+    ):
+
+        points = series.values
+
+        if current is None:
+            x_min = min(point.x for point in points)
+            x_max = max(point.x for point in points)
+        else:
+            x_min = current.x_min
+            x_max = current.x_max
+
+        points = [
+            point
+            for point in points
+                if point.x >= x_min and point.x <= x_max
+        ]
+        slope, b = lse(
+            [point.x for point in points],
+            [point.y for point in points]
+        )
+
+        return LinearFitValues(
+            x_min = x_min,
+            x_max = x_max,
+            slope = slope,
+            b = b
+        )
+
+def linear_fit_values_overrides(meta: LinearFitMeta) -> MetaFieldOverridesDict:
+
+    return {
+            'x_min': MetaFieldOverrides(
+                display=f"min ({meta.x_axis_name})"
+            ),
+            'x_max': MetaFieldOverrides(
+                display=f"max ({meta.x_axis_name})"
+            ),
+            'slope': MetaFieldOverrides(
+                display=meta.slope_name,
+                readonly=True
+            ),
+            'b': MetaFieldOverrides(
+                display=meta.intercept_name,
+                readonly=True
+            )
+        }
 
 class LinearFitWidget(QWidget):
 
     def __init__(self, fit_meta: Optional[LinearFitMeta] = None):
         super().__init__()
         self.__series = None
+        self.__model = None
+        self.__value = None
+        self.__overrides = fit_meta and linear_fit_values_overrides(fit_meta)
 
         self.__ui = Ui_LinearFitWidget()
         self.__ui.setupUi(self)
 
         self.__plot = Plot()
 
+    @pyqtSlot(QModelIndex, QModelIndex)
+    def __on_data_changed(self, start: QModelIndex, end: QModelIndex):
+
+        assert self.__model is not None, "Bug in the code. Model should not be None"
+        assert self.__series is not None, "Bug in the code. Series cannot be None"
+
+        value = self.__model[0]
+
+        if value == self.__value:
+            return
+
+        self.__value = self.__model[0] = LinearFitValues.update_values(
+            self.__series,
+            value
+        )
+
     def set_series(self, series : Series):
         self.__series = series
+
+        if self.__model is not None:
+            self.__model.dataChanged.disconnect(
+                self.__on_data_changed
+            )
+
+        self.__model = namedtuple_eidtor(
+            self.__ui.statsTable,
+            LinearFitValues.update_values(
+                series
+            ),
+            tuple_field_overrides=self.__overrides
+        )
+
+        self.__model.dataChanged.connect(self.__on_data_changed)

@@ -1,6 +1,6 @@
 from PyQt5.QtCore import QAbstractTableModel, QModelIndex, Qt
 from PyQt5.QtWidgets import QTableView
-from typing import Any, Callable, cast, List, NamedTuple, Optional, Type
+from typing import Any, Callable, cast, Dict, List, Generic, NamedTuple, Optional, Type, TypeVar
 
 from ..QtWidgets import show_exception
 
@@ -35,15 +35,20 @@ class MetaFieldOverrides(NamedTuple):
     readonly : bool = False
     display : Optional[str] = None
 
+MetaFieldOverridesDict = Dict[str, MetaFieldOverrides]
+
 class Field(NamedTuple):
     overrides : MetaFieldOverrides
     name : str
     parse: Callable[[str], Any]
 
+TTuple = TypeVar('TTuple', bound=NamedTuple)
+
 def editable_fields(
-    tuple_class : Type[NamedTuple],
-    values : List[Optional[NamedTuple]],
-    default_item: Optional[NamedTuple]
+    tuple_class : Type[TTuple],
+    tuple_fields_overrides : Optional[MetaFieldOverridesDict],
+    values : List[Optional[TTuple]],
+    default_item: Optional[TTuple],
 ) -> List[Field]:
 
     # Rules:
@@ -57,7 +62,7 @@ def editable_fields(
     if default_item is not None and not isinstance(default_item, tuple_class):
         raise ValueError(f"The default item {default_item} must be an instance of {tuple_class}")
 
-    overrides = getattr(tuple_class, OVERRIDES_FIELD, {})
+    overrides = tuple_fields_overrides or {}
 
     return [
         Field(
@@ -69,18 +74,24 @@ def editable_fields(
             if can_edit(ty)
     ]
 
-class NamedTupleEditorModel(QAbstractTableModel):
+class NamedTupleEditorModel(QAbstractTableModel, Generic[TTuple]):
 
     def __init__(
         self,
-        tuple_class : Type[NamedTuple],
-        values : List[Optional[NamedTuple]],
+        tuple_class : Type[TTuple],
+        tuple_class_overrides : Optional[MetaFieldOverridesDict],
+        values : List[Optional[TTuple]],
         panic: Callable[[Exception], None],
-        default_item: Optional[NamedTuple] = None
+        default_item: Optional[TTuple] = None
     ) -> None:
         super().__init__()
         self.__values = values
-        self.__fields = editable_fields(tuple_class, values, default_item)
+        self.__fields = editable_fields(
+            tuple_class,
+            tuple_class_overrides,
+            values,
+            default_item
+        )
         self.__panic = panic
         self.__default_item = default_item
 
@@ -123,10 +134,10 @@ class NamedTupleEditorModel(QAbstractTableModel):
     def __is_value_editable(self, index: QModelIndex):
         return not self.__get_field_definition(index).overrides.readonly
 
-    def __get_item(self, index: QModelIndex) -> Optional[NamedTuple]:
+    def __get_item(self, index: QModelIndex) -> Optional[TTuple]:
         return self.__values[index.column()]
 
-    def __set_item(self, index: QModelIndex, item: Optional[NamedTuple]):
+    def __set_item(self, index: QModelIndex, item: Optional[TTuple]):
         self.__values[index.column()] = item
 
     def __get_field_definition(self, index: QModelIndex) -> Field:
@@ -138,6 +149,20 @@ class NamedTupleEditorModel(QAbstractTableModel):
     def __get_parser(self, index: QModelIndex) -> Callable[[str], Any]:
         return self.__get_field_definition(index).parse
 
+    def __getitem__(self, ix: int) -> Optional[TTuple]:
+        return self.__get_item(self.index(0, ix))
+
+    def __setitem__(self, ix: int, value: Optional[TTuple]) -> None:
+        self.__set_item(
+            self.index(0, ix),
+            value
+        )
+
+        self.dataChanged.emit(
+            self.index(0, ix),
+            self.index(self.rowCount() -1, ix)
+        )
+
     def setData(self, index: QModelIndex, value, role = Qt.EditRole) -> bool:
 
         if role != Qt.EditRole:
@@ -147,7 +172,6 @@ class NamedTupleEditorModel(QAbstractTableModel):
         item = self.__get_item(index) or self.__default_item
 
         assert item is not None, "Error! Control flow should not reach this point with item being None"
-        current = getattr(item, field)
         converter = self.__get_parser(index)
 
         try:
@@ -185,22 +209,26 @@ class NamedTupleEditorModel(QAbstractTableModel):
     
 def namedtuple_eidtor(
     table: QTableView,
-    *values: Optional[NamedTuple],
-    tuple_type : Optional[Type[NamedTuple]] = None,
-    default_item : Optional[NamedTuple] = None
-    ) -> NamedTupleEditorModel:
+    *values: Optional[TTuple],
+    tuple_type : Optional[Type[TTuple]] = None,
+    tuple_field_overrides: Optional[MetaFieldOverridesDict] = None,
+    default_item : Optional[TTuple] = None
+    ) -> NamedTupleEditorModel[TTuple]:
 
     def panic(e: Exception):
         show_exception(table, e)
 
     tuple_type = tuple_type or \
         cast(
-            Type[NamedTuple],
+            Type[TTuple],
             next(value for value in values if value is not None).__class__
         )
+    
+    overrides = tuple_field_overrides or getattr(tuple_type, OVERRIDES_FIELD, None)
 
     editor = NamedTupleEditorModel(
         tuple_type,
+        overrides,
         list(values),
         panic,
         default_item

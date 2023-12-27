@@ -1,8 +1,8 @@
-import numpy as np
 from PyQt5.QtWidgets import QWidget
 from typing import Iterable, Tuple
 
 from ..data import *
+from .LinearFitWidget import LinearFitWidget
 from .Plot import Plot, PlotMeta, Point2d, Series, SeriesSet
 from .Ui_KineticsOptimizer import Ui_KineticsOptimizer
 
