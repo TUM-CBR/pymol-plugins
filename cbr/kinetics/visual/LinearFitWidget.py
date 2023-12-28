@@ -1,9 +1,9 @@
-from PyQt5.QtCore import QModelIndex, pyqtSlot
+from PyQt5.QtCore import QModelIndex, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QWidget
-from typing import NamedTuple, Optional
+from typing import Callable, NamedTuple, Optional, TypeVar
 
 from ...core.Qt.visual.NamedTupleEditor import MetaFieldOverrides, MetaFieldOverridesDict, namedtuple_eidtor
-from ..data import Series
+from ..data import Point2d, Series
 from ..math import *
 
 from .Plot import Plot, PlotMeta, SeriesSet
@@ -36,6 +36,9 @@ class LinearFitValues(NamedTuple):
     slope : float
     b : float
 
+    def apply(self, x: float) -> float:
+        return x*self.slope + self.b
+
     @staticmethod
     def update_values(
         series: Series,
@@ -64,8 +67,8 @@ class LinearFitValues(NamedTuple):
         return LinearFitValues(
             x_min = x_min,
             x_max = x_max,
-            slope = slope,
-            b = b
+            slope = float(slope),
+            b = float(b)
         )
 
 def linear_fit_values_overrides(meta: LinearFitMeta) -> MetaFieldOverridesDict:
@@ -89,11 +92,13 @@ def linear_fit_values_overrides(meta: LinearFitMeta) -> MetaFieldOverridesDict:
 
 class LinearFitWidget(QWidget):
 
+    lse_model_changed = pyqtSignal()
+
     def __init__(self, fit_meta: Optional[LinearFitMeta] = None):
         super().__init__()
         self.__series = None
         self.__model = None
-        self.__value = None
+        self.__lse_model = None
         self.__fit_meta = fit_meta or LinearFitMeta()
         self.__overrides = linear_fit_values_overrides(self.__fit_meta)
 
@@ -107,6 +112,20 @@ class LinearFitWidget(QWidget):
             self.__plot
         )
 
+    def lse_model(self) -> Optional[LinearFitValues]:
+        return self.__lse_model
+
+    def set_x_min(self, x_min: float):
+        model = self.__model
+
+        assert model is not None, "Series is not set"
+        
+        value = model[0]
+
+        assert value is not None, "Series is not set"
+
+        model[0] = value._replace(x_min = x_min)
+
     @pyqtSlot(QModelIndex, QModelIndex)
     def __on_data_changed(self, start: QModelIndex, end: QModelIndex):
 
@@ -115,12 +134,47 @@ class LinearFitWidget(QWidget):
 
         value = self.__model[0]
 
-        if value == self.__value:
+        if value == self.__lse_model:
             return
 
-        self.__value = self.__model[0] = LinearFitValues.update_values(
+        self.__lse_model = self.__model[0] = LinearFitValues.update_values(
             self.__series,
             value
+        )
+
+        self.__plot_series()
+        self.lse_model_changed.emit()
+
+    def __plot_series(self):
+
+        series = self.__series
+        lse_model = self.__lse_model
+
+        if series is None or lse_model is None:
+            return self.__plot.set_series(SeriesSet())
+
+        assert lse_model is not None, "There should always be one model"
+
+        line = [
+            Point2d(
+                x = point.x,
+                y = lse_model.apply(point.x)
+            )
+            for point in series.values
+        ]
+
+        self.__plot.set_series(
+            SeriesSet(
+                series=[
+                    series,
+                    Series(
+                        metadata=PlotMeta("LSE"),
+                        values=line
+                    )
+                ],
+                x_label=self.__fit_meta.x_axis_name,
+                y_label=self.__fit_meta.y_axis_name
+            )
         )
 
     def set_series(self, series : 'Series[PlotMeta]'):
@@ -131,20 +185,14 @@ class LinearFitWidget(QWidget):
                 self.__on_data_changed
             )
 
+        self.__lse_model = LinearFitValues.update_values(series)
         self.__model = namedtuple_eidtor(
             self.__ui.statsTable,
-            LinearFitValues.update_values(
-                series
-            ),
+            self.__lse_model,
             tuple_field_overrides=self.__overrides
         )
 
-        self.__plot.set_series(
-            SeriesSet(
-                series=[series],
-                x_label=self.__fit_meta.x_axis_name,
-                y_label=self.__fit_meta.y_axis_name
-            )
-        )
-
         self.__model.dataChanged.connect(self.__on_data_changed)
+
+        self.__plot_series()
+        self.lse_model_changed.emit()

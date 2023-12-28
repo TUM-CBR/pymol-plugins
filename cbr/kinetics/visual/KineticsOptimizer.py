@@ -1,6 +1,8 @@
+from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QWidget
 from typing import Iterable, Tuple
 
+from ...core.Qt.visual.NamedTupleEditor import namedtuple_eidtor
 from ..data import *
 from ..kinetics import *
 from .LinearFitWidget import LinearFitMeta, LinearFitWidget
@@ -98,8 +100,14 @@ class KineticsOptimizer(QWidget):
     ) -> None:
         super().__init__()
 
+        self.__fit_parameters = FitParameters()
         self.__ui = Ui_KineticsOptimizer()
         self.__ui.setupUi(self)
+
+        self.__model_params = namedtuple_eidtor(
+            self.__ui.parametersTable,
+            self.__fit_parameters
+        )
 
         self.__plot_widget = Plot()
         self.layout().replaceWidget(
@@ -113,13 +121,19 @@ class KineticsOptimizer(QWidget):
                 y_axis_name="1/v"
             )
         )
+        self.__vmax_widget.lse_model_changed.connect(self.__on_vmax_changed)
         self.__ui.initalValuesWidget.insertTab(
             0,
             self.__vmax_widget,
             K_TAB_1
         )
 
-        self.__beta_widget = LinearFitWidget()
+        self.__beta_widget = LinearFitWidget(
+            LinearFitMeta(
+                x_axis_name="1/[S]",
+                y_axis_name="v/(Vmax - v)"
+            )
+        )
 
         self.__ui.initalValuesWidget.insertTab(
             1,
@@ -131,6 +145,51 @@ class KineticsOptimizer(QWidget):
         self.__velocity_vs_conc = as_vel_vs_conc_series(runs)
 
         self.__render_plots()
+
+    @pyqtSlot()
+    def __on_vmax_changed(self):
+
+        model = self.__vmax_widget.lse_model()
+        params = self.__model_params[0]
+
+        assert params is not None, "Params should have default values"
+        
+        if model is None:
+            self.__model_params[0] = params._replace(
+                v_max = 0,
+                km = 0
+            )
+            return
+
+        self.__model_params[0] = params._replace(
+            v_max = 1/model.b,
+            km = model.slope/model.b
+        )
+
+        self.__update_beta_and_ksi()
+
+    def __update_beta_and_ksi(self):
+        params = self.__model_params[0]
+
+        assert params, "Params should have default values"
+
+        values = [
+            Point2d(
+                x = 1/point.x,
+                y = point.y/(params.v_max - point.y)
+            )
+            for series in self.__velocity_vs_conc
+            for point in series.values
+        ]
+
+        values.sort(key=lambda point: point.x)
+
+        self.__beta_widget.set_series(
+            Series(
+                PlotMeta(name=K_TAB_2),
+                values
+            )
+        )
 
     def __render_vmax_vs_km(self):
 
@@ -150,6 +209,9 @@ class KineticsOptimizer(QWidget):
                 values
             )
         )
+
+        if len(values) > 0:
+            self.__vmax_widget.set_x_min(values[-1].x * 0.75)
 
     def __render_plots(self):
 

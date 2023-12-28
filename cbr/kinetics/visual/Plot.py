@@ -18,6 +18,10 @@ class Plot(QWidget):
     def __init__(self):
         super().__init__()
         self.__series = SeriesSet()
+        self.__plot_canvas = QWidget()
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.__plot_canvas)
+        self.setLayout(layout)
 
     def set_series(self, series: SeriesSet):
         self.__series = series
@@ -39,7 +43,9 @@ class Plot(QWidget):
         ax.set_xlabel(series_set.x_label)
         ax.set_ylabel(series_set.y_label)
         ax.legend()
-        layout = QVBoxLayout(self)
-        layout.addWidget(canvas)
 
-        self.setLayout(layout)
+        self.layout().replaceWidget(
+            self.__plot_canvas,
+            canvas
+        )
+        self.__plot_canvas = canvas

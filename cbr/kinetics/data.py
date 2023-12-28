@@ -26,3 +26,7 @@ class KineticsRun(NamedTuple):
 class KineticsRuns(NamedTuple):
     global_attributes : GlobalAttributes
     runs: List[KineticsRun]
+
+class FitParameters(NamedTuple):
+    v_max : float = 0
+    km : float = 0

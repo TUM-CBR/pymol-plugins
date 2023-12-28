@@ -129,7 +129,8 @@ class NamedTupleEditorModel(QAbstractTableModel, Generic[TTuple]):
         field = self.__get_field(index)
         item = self.__get_item(index)
 
-        return item and getattr(item, field)
+        value = item is not None and getattr(item, field)
+        return value
 
     def __is_value_editable(self, index: QModelIndex):
         return not self.__get_field_definition(index).overrides.readonly
