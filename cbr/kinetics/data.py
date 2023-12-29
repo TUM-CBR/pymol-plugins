@@ -37,3 +37,9 @@ class FitParameters(NamedTuple):
     km : float = 0
     ksi : float = 0
     beta : float = 0
+
+    def apply(self, s : float):
+        num = (1 + self.beta*s/self.ksi)*s*self.v_max
+        den = (1+s/self.ksi)*s + self.km
+
+        return num / den
