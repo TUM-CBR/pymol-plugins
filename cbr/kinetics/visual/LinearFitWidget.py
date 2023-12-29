@@ -1,6 +1,6 @@
 from PyQt5.QtCore import QModelIndex, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QWidget
-from typing import Callable, NamedTuple, Optional, TypeVar
+from typing import NamedTuple, Optional
 
 from ...core.Qt.visual.NamedTupleEditor import MetaFieldOverrides, MetaFieldOverridesDict, namedtuple_eidtor
 from ..data import Point2d, Series
@@ -33,6 +33,7 @@ class LinearFitValues(NamedTuple):
 
     x_min : float
     x_max : float
+    show_excluded : bool
     slope : float
     b : float
 
@@ -50,9 +51,11 @@ class LinearFitValues(NamedTuple):
         if current is None:
             x_min = min(point.x for point in points)
             x_max = max(point.x for point in points)
+            show_excluded = True
         else:
             x_min = current.x_min
             x_max = current.x_max
+            show_excluded = current.show_excluded
 
         points = [
             point
@@ -67,6 +70,7 @@ class LinearFitValues(NamedTuple):
         return LinearFitValues(
             x_min = x_min,
             x_max = x_max,
+            show_excluded=show_excluded,
             slope = float(slope),
             b = float(b)
         )
@@ -87,6 +91,9 @@ def linear_fit_values_overrides(meta: LinearFitMeta) -> MetaFieldOverridesDict:
             'b': MetaFieldOverrides(
                 display=meta.intercept_name,
                 readonly=True
+            ),
+            'show_excluded': MetaFieldOverrides(
+                display="Show excluded"
             )
         }
 
@@ -154,6 +161,16 @@ class LinearFitWidget(QWidget):
             return self.__plot.set_series(SeriesSet())
 
         assert lse_model is not None, "There should always be one model"
+        show_excluded = lse_model.show_excluded
+        x_min = lse_model.x_min
+        x_max = lse_model.x_max
+
+        def included(point: Point2d) -> bool:
+            return show_excluded \
+                or (
+                    point.x >= x_min and \
+                    point.x <= x_max
+                )
 
         line = [
             Point2d(
@@ -161,12 +178,13 @@ class LinearFitWidget(QWidget):
                 y = lse_model.apply(point.x)
             )
             for point in series.values
+                if included(point)
         ]
 
         self.__plot.set_series(
             SeriesSet(
                 series=[
-                    series,
+                    series.filter(included),
                     Series(
                         metadata=PlotMeta("LSE"),
                         values=line

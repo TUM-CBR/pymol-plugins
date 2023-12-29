@@ -9,8 +9,11 @@ ParseValue = Callable[[str], Any]
 EDITABLE_TYPES = {
     str: lambda s: s,
     float: lambda s: float(s),
-    int: lambda s: int(s)
+    int: lambda s: int(s),
+    bool: lambda s: bool(s)
 }
+
+CHECKABLE_TYPES_TUPLE = (bool,)
 
 EDITABLE_TYPES_TUPLE = tuple(EDITABLE_TYPES.keys())
 
@@ -41,6 +44,7 @@ class Field(NamedTuple):
     overrides : MetaFieldOverrides
     name : str
     parse: Callable[[str], Any]
+    field_type: Type
 
 TTuple = TypeVar('TTuple', bound=NamedTuple)
 
@@ -67,8 +71,9 @@ def editable_fields(
     return [
         Field(
             name = field,
-            parse=parser_for(ty),
-            overrides=overrides.get(field, MetaFieldOverrides())
+            parse = parser_for(ty),
+            overrides = overrides.get(field, MetaFieldOverrides()),
+            field_type = ty
         )
         for field, ty in tuple_class.__annotations__.items()
             if can_edit(ty)
@@ -115,6 +120,9 @@ class NamedTupleEditorModel(QAbstractTableModel, Generic[TTuple]):
 
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:
 
+        if self.__is_value_checkable(index):
+            return super().flags(index) | Qt.ItemIsUserCheckable
+
         if self.__is_value_editable(index):
             return super().flags(index) | Qt.ItemIsEditable
 
@@ -125,15 +133,26 @@ class NamedTupleEditorModel(QAbstractTableModel, Generic[TTuple]):
 
         return field.overrides.display or field.name
 
-    def __display_role_data(self, index: QModelIndex):
+    def __get_value(self, index: QModelIndex) -> Optional[Any]:
         field = self.__get_field(index)
         item = self.__get_item(index)
 
-        value = item is not None and getattr(item, field)
-        return value
+        if item is None:
+            return None
+
+        return getattr(item, field)
+
+    def __display_role_data(self, index: QModelIndex):
+        return self.__get_value(index)
 
     def __is_value_editable(self, index: QModelIndex):
         return not self.__get_field_definition(index).overrides.readonly
+
+    def __is_value_checkable(self, index: QModelIndex):
+        return issubclass(
+            self.__get_field_definition(index).field_type,
+            CHECKABLE_TYPES_TUPLE
+        )
 
     def __get_item(self, index: QModelIndex) -> Optional[TTuple]:
         return self.__values[index.column()]
@@ -166,9 +185,24 @@ class NamedTupleEditorModel(QAbstractTableModel, Generic[TTuple]):
 
     def setData(self, index: QModelIndex, value, role = Qt.EditRole) -> bool:
 
-        if role != Qt.EditRole:
-            return False
+        if role == Qt.EditRole:
+            return self.__set_edit_data(index, value)
+        if role == Qt.CheckStateRole:
+            return self.__set_checked_sate(index, value)
+        return False
 
+    def __set_checked_sate(self, index: QModelIndex, value):
+        field = self.__get_field(index)
+        item = self.__get_item(index) or self.__default_item
+
+        assert item is not None, "Error! Control flow should not reach this point with item being None"
+
+        new_value = True if value == Qt.Checked else False
+        self.__set_item(index, item._replace(**{field: new_value}))
+        self.dataChanged.emit(index, index)
+        return True
+
+    def __set_edit_data(self, index: QModelIndex, value):
         field = self.__get_field(index)
         item = self.__get_item(index) or self.__default_item
 
@@ -199,6 +233,18 @@ class NamedTupleEditorModel(QAbstractTableModel, Generic[TTuple]):
 
         self.modelReset.emit()
 
+    def __checked_state_data(self, index: QModelIndex):
+
+        if not self.__is_value_checkable(index):
+            return None
+
+        value = self.__get_value(index)
+
+        if value:
+            return Qt.Checked
+        else:
+            return Qt.Unchecked
+
     def data(self, index: QModelIndex, role = Qt.DisplayRole):
 
         if not index.isValid():
@@ -206,6 +252,8 @@ class NamedTupleEditorModel(QAbstractTableModel, Generic[TTuple]):
 
         if role == Qt.DisplayRole:
             return self.__display_role_data(index)
+        elif role == Qt.CheckStateRole:
+            return self.__checked_state_data(index)
 
         return None
     

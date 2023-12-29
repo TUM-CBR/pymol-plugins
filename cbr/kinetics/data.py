@@ -1,4 +1,4 @@
-from typing import Generic, NamedTuple, List, TypeVar
+from typing import Callable, Generic, NamedTuple, List, TypeVar
 
 class Point2d(NamedTuple):
     x : float
@@ -9,6 +9,11 @@ TMeta = TypeVar('TMeta')
 class Series(NamedTuple, Generic[TMeta]):
     metadata : TMeta
     values : List[Point2d]
+
+    def filter(self, fn: Callable[[Point2d], bool]) -> 'Series[TMeta]':
+        return self._replace(
+            values = list(filter(fn, self.values))
+        )
 
 class GlobalAttributes(NamedTuple):
     molar_extinction: float
@@ -30,3 +35,5 @@ class KineticsRuns(NamedTuple):
 class FitParameters(NamedTuple):
     v_max : float = 0
     km : float = 0
+    ksi : float = 0
+    beta : float = 0

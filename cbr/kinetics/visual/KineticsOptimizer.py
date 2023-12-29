@@ -1,12 +1,12 @@
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QWidget
-from typing import Iterable, Tuple
+from typing import Optional, Tuple
 
 from ...core.Qt.visual.NamedTupleEditor import namedtuple_eidtor
 from ..data import *
 from ..kinetics import *
 from .LinearFitWidget import LinearFitMeta, LinearFitWidget
-from .Plot import Plot, PlotMeta, Point2d, Series, SeriesSet
+from .Plot import Plot, PlotMeta, Point2d, Series
 from .Ui_KineticsOptimizer import Ui_KineticsOptimizer
 
 
@@ -100,13 +100,12 @@ class KineticsOptimizer(QWidget):
     ) -> None:
         super().__init__()
 
-        self.__fit_parameters = FitParameters()
         self.__ui = Ui_KineticsOptimizer()
         self.__ui.setupUi(self)
 
-        self.__model_params = namedtuple_eidtor(
+        self.__fit_parameters_model = namedtuple_eidtor(
             self.__ui.parametersTable,
-            self.__fit_parameters
+            FitParameters()
         )
 
         self.__plot_widget = Plot()
@@ -134,6 +133,7 @@ class KineticsOptimizer(QWidget):
                 y_axis_name="v/(Vmax - v)"
             )
         )
+        self.__beta_widget.lse_model_changed.connect(self.__on_beta_changed)
 
         self.__ui.initalValuesWidget.insertTab(
             1,
@@ -146,30 +146,54 @@ class KineticsOptimizer(QWidget):
 
         self.__render_plots()
 
+    def __fit_parameters(self) -> Optional[FitParameters]:
+        return self.__fit_parameters_model[0]
+
+    def __set_fit_parameters(self, params: FitParameters):
+        self.__fit_parameters_model[0] = params
+
+    @pyqtSlot()
+    def __on_beta_changed(self):
+        model = self.__beta_widget.lse_model()
+        params = self.__fit_parameters()
+
+        assert params is not None, "Params should have default values"
+
+        if model is None:
+            params = params._replace(ksi = 0, beta = 0)
+        else:
+            beta = model.b / (1 + model.b)
+            ksi = model.slope - model.slope*beta
+            params = params._replace(
+                beta = beta,
+                ksi = ksi
+            )
+        self.__set_fit_parameters(params)
+
     @pyqtSlot()
     def __on_vmax_changed(self):
 
         model = self.__vmax_widget.lse_model()
-        params = self.__model_params[0]
+        params = self.__fit_parameters()
 
         assert params is not None, "Params should have default values"
         
         if model is None:
-            self.__model_params[0] = params._replace(
+            params = params._replace(
                 v_max = 0,
                 km = 0
             )
-            return
+        else:
+            params = params._replace(
+                v_max = 1/model.b,
+                km = model.slope/model.b
+            )
 
-        self.__model_params[0] = params._replace(
-            v_max = 1/model.b,
-            km = model.slope/model.b
-        )
-
+        self.__set_fit_parameters(params)
         self.__update_beta_and_ksi()
 
     def __update_beta_and_ksi(self):
-        params = self.__model_params[0]
+        params = self.__fit_parameters()
 
         assert params, "Params should have default values"
 
