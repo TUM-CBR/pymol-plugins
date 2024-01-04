@@ -1,9 +1,13 @@
 from PyQt5.QtCore import pyqtSlot, QModelIndex
 from PyQt5.QtWidgets import QWidget
-from typing import Tuple
+from typing import Any, Optional, Tuple
 
+from ...core.atomic import AtomicCounter
 from ...core.Qt.visual.NamedTupleEditor import namedtuple_eidtor
+from ...core.Qt.QtWidgets import show_exception
+from ..compute import ComputeHandler
 from ..data import *
+from ...extra.main import CbrExtraProcess
 from ..kinetics import *
 from .LinearFitWidget import LinearFitMeta, LinearFitWidget
 from .Plot import Plot, PlotMeta, Point2d, Series, SeriesSet
@@ -94,18 +98,25 @@ K_TAB_2 = "Beta and Ki"
 
 class KineticsOptimizer(QWidget):
 
+    MESSAGE_COUNTER = AtomicCounter()
+
     def __init__(
         self,
-        runs: KineticsRuns
+        runs: KineticsRuns,
+        cbr_extra : CbrExtraProcess
     ) -> None:
         super().__init__()
 
         self.__ui = Ui_KineticsOptimizer()
         self.__ui.setupUi(self)
 
+        self.__compute = ComputeHandler(cbr_extra)
+        self.__compute.on_error.connect(self.__on_compute_error)
+        self.__compute.on_model_eval_signal.connect(self.__on_compute_result)
+
         self.__fit_parameters_model = namedtuple_eidtor(
             self.__ui.parametersTable,
-            FitParameters()
+            SubstrateInhibitionModel()
         )
         self.__fit_parameters_model.dataChanged.connect(self.__on_fit_parameters_changed)
 
@@ -147,17 +158,32 @@ class KineticsOptimizer(QWidget):
 
         self.__render_plots()
 
-    def __fit_parameters(self) -> FitParameters:
+    @pyqtSlot(object)
+    def __on_compute_error(self, error: Exception):
+        show_exception(self, error)
+
+    def __fit_parameters(self) -> SubstrateInhibitionModel:
         params = self.__fit_parameters_model[0]
         assert params is not None, "Params should have default values"
         return params
 
-    def __set_fit_parameters(self, params: FitParameters):
+    def __set_fit_parameters(self, params: SubstrateInhibitionModel):
         self.__fit_parameters_model[0] = params
 
     @pyqtSlot(QModelIndex, QModelIndex)
     def __on_fit_parameters_changed(self, start, end):
-        self.__render_model()
+        self.__render_model(model_series=None)
+        self.__compute.request_model_eval(
+            self.__fit_parameters(),
+            [
+                point.x
+                for point in self.__combined_velocity_vs_conc()
+            ]
+        )
+
+    @pyqtSlot(object)
+    def __on_compute_result(self, result: 'Series[EvalModelMetadata]'):
+        self.__render_model(model_series=result)
 
     @pyqtSlot()
     def __on_beta_changed(self):
@@ -244,30 +270,24 @@ class KineticsOptimizer(QWidget):
         if len(values) > 0:
             self.__vmax_widget.set_x_min(values[-1].x * 0.75)
 
-    def __render_model(self):
-        parameters = self.__fit_parameters()
+    def __render_model(
+        self,
+        model_series: 'Optional[Series[Any]]'
+    ):
         exp_values = self.__combined_velocity_vs_conc()
         exp_series = Series(
             metadata = PlotMeta("Experimental"),
             values = exp_values
         )
 
-        try:
-            fit_values = [
-                Point2d(
-                    x = point.x,
-                    y = parameters.apply(point.x)
-                )
-                for point in exp_values
-            ]
+        if model_series is not None:
             series = [
                 exp_series,
-                Series(
-                    metadata = PlotMeta("Fit"),
-                    values = fit_values
+                model_series.update_meta(
+                    PlotMeta("Fit (TF)")
                 )
             ]
-        except ZeroDivisionError:
+        else:
             series = [exp_series]
 
         self.__plot_widget.set_series(

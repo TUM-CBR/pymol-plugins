@@ -1,10 +1,12 @@
-from typing import Callable, Generic, NamedTuple, List, TypeVar
+from typing import Callable, cast, Generic, NamedTuple, List, TypeVar
 
 class Point2d(NamedTuple):
     x : float
     y : float
 
 TMeta = TypeVar('TMeta')
+
+TNewMeta = TypeVar('TNewMeta')
 
 class Series(NamedTuple, Generic[TMeta]):
     metadata : TMeta
@@ -13,6 +15,14 @@ class Series(NamedTuple, Generic[TMeta]):
     def filter(self, fn: Callable[[Point2d], bool]) -> 'Series[TMeta]':
         return self._replace(
             values = list(filter(fn, self.values))
+        )
+
+    def update_meta(self, meta: TNewMeta) -> 'Series[TNewMeta]':
+        return cast(
+            'Series[TNewMeta]',
+            self._replace(
+                metadata = meta
+            )
         )
 
 class GlobalAttributes(NamedTuple):
@@ -32,7 +42,7 @@ class KineticsRuns(NamedTuple):
     global_attributes : GlobalAttributes
     runs: List[KineticsRun]
 
-class FitParameters(NamedTuple):
+class SubstrateInhibitionModel(NamedTuple):
     v_max : float = 0
     km : float = 0
     ksi : float = 0
@@ -43,3 +53,6 @@ class FitParameters(NamedTuple):
         den = (1+s/self.ksi)*s + self.km
 
         return num / den
+
+class EvalModelMetadata(NamedTuple):
+    model_name: str

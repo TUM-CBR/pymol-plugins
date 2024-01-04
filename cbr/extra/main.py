@@ -29,6 +29,9 @@ def cbrtools_bin():
 
 T = TypeVar('T')
 
+class CbrToolsProcessException(Exception):
+    pass
+
 class CbrExtraProcess(QProcess):
 
     message_signal = pyqtSignal(object)
@@ -48,6 +51,17 @@ class CbrExtraProcess(QProcess):
     def run_cbr_process(self, args : List[str]):
         self.setArguments(args)
         self.start(QIODevice.ReadWrite | QIODevice.Text)
+
+    def write_json_dict(self, value: dict):
+        bs = f"{json.dumps(value)}\n".encode('utf-8')
+        self.write(bs)
+
+    def close(self):
+        self.write_json_dict({
+            'uid': -1,
+            'entity_type': 'stop'
+        })
+        super().close()
 
     @pyqtSlot()
     def __on_data_ready(self):
@@ -121,7 +135,7 @@ def run_cbr_tools(
         if process.wait() != 0:
             error_stream.seek(0)
             error_str = error_stream.read()
-            raise Exception(error_str)
+            raise CbrToolsProcessException(error_str)
 
         if out_handler is not None:
             out_stream.seek(0)

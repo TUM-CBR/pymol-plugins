@@ -8,6 +8,7 @@ from ...core.Context import Context
 from ...core.Qt.QtWidgets import with_error_handler
 from ...core.Qt.visual.NamedTupleEditor import namedtuple_eidtor
 
+from ..compute import init_compute
 from ..data import *
 from .Ui_KineticsInput import Ui_KineticsInput
 
@@ -88,5 +89,5 @@ class KineticsInput(QWidget):
     def __on_proceed_clicked(self):
         runs = self.__get_runs()
         self.__context.run_widget(
-            lambda _: KineticsOptimizer(runs)
+            lambda _: KineticsOptimizer(runs, init_compute())
         ).show()
