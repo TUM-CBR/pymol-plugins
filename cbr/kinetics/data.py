@@ -56,3 +56,6 @@ class SubstrateInhibitionModel(NamedTuple):
 
 class EvalModelMetadata(NamedTuple):
     model_name: str
+
+class FitModelResult(NamedTuple):
+    model : SubstrateInhibitionModel

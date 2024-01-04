@@ -113,6 +113,12 @@ class KineticsOptimizer(QWidget):
         self.__compute = ComputeHandler(cbr_extra)
         self.__compute.on_error.connect(self.__on_compute_error)
         self.__compute.on_model_eval_signal.connect(self.__on_compute_result)
+        self.__compute.on_model_fit_singal.connect(self.__on_fit_signal)
+
+        self.__set_busy(False)
+        self.__compute.on_busy_changed.connect(self.__on_busy_changed)
+
+        self.__ui.fitModelButton.clicked.connect(self.__fit_model)
 
         self.__fit_parameters_model = namedtuple_eidtor(
             self.__ui.parametersTable,
@@ -158,6 +164,21 @@ class KineticsOptimizer(QWidget):
 
         self.__render_plots()
 
+    def __set_busy(self, busy: bool):
+        self.__ui.fitProgressBar.setVisible(busy)
+        self.__ui.fitModelButton.setEnabled(not busy)
+
+    @pyqtSlot()
+    def __fit_model(self):
+        self.__compute.request_model_fit(
+            self.__fit_parameters(),
+            self.__combined_velocity_vs_conc()
+        )
+
+    @pyqtSlot()
+    def __on_busy_changed(self):
+        self.__set_busy(self.__compute.is_busy())
+
     @pyqtSlot(object)
     def __on_compute_error(self, error: Exception):
         show_exception(self, error)
@@ -169,6 +190,10 @@ class KineticsOptimizer(QWidget):
 
     def __set_fit_parameters(self, params: SubstrateInhibitionModel):
         self.__fit_parameters_model[0] = params
+
+    @pyqtSlot(object)
+    def __on_fit_signal(self, result: FitModelResult):
+        self.__set_fit_parameters(result.model)
 
     @pyqtSlot(QModelIndex, QModelIndex)
     def __on_fit_parameters_changed(self, start, end):
@@ -284,7 +309,7 @@ class KineticsOptimizer(QWidget):
             series = [
                 exp_series,
                 model_series.update_meta(
-                    PlotMeta("Fit (TF)")
+                    PlotMeta("Fit")
                 )
             ]
         else:
