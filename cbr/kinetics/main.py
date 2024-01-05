@@ -1,5 +1,3 @@
-from .visual.KineticsInput import KineticsInput
-
 from ..core.Context import Context
 from ..core.Qt.QtWidgets import show_error, show_info
 
@@ -14,7 +12,6 @@ def install_deps():
     show_info(
         None,
         "App Requirements",
-        "To use this ",
         REQ_MESSAGE
     )
 
@@ -43,6 +40,7 @@ def enzyme_kinetics(ctx: Context):
         if not install_deps():
             return
 
+    from .visual.KineticsInput import KineticsInput
     ctx.run_widget(
         KineticsInput
     ).show()

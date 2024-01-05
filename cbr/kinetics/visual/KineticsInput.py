@@ -2,14 +2,13 @@ from PyQt5.QtCore import pyqtSlot, Qt
 from PyQt5.QtWidgets import QApplication, QTableWidgetItem, QWidget
 from typing import Iterable, cast
 
-from cbr.kinetics.visual.KineticsOptimizer import KineticsOptimizer
-
 from ...core.Context import Context
 from ...core.Qt.QtWidgets import with_error_handler
 from ...core.Qt.visual.NamedTupleEditor import namedtuple_eidtor
 
 from ..compute import init_compute
 from ..data import *
+from .KineticsOptimizer import KineticsOptimizer
 from .Ui_KineticsInput import Ui_KineticsInput
 
 NUM_SERIES = 50
