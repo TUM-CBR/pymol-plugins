@@ -2,6 +2,7 @@
     "files": [
         "KineticsInput.ui",
         "KineticsOptimizer.ui",
-        "LinearFitWidget.ui"
+        "LinearFitWidget.ui",
+        "ParametersWizard.ui"
     ]
 }

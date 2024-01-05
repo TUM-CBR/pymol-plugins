@@ -1,5 +1,5 @@
 from PyQt5.QtCore import pyqtSlot, QModelIndex
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtWidgets import QDialog, QWidget
 from typing import Any, Optional, Tuple
 
 from ...core.atomic import AtomicCounter
@@ -9,7 +9,7 @@ from ..compute import ComputeHandler
 from ..data import *
 from ...extra.main import CbrExtraProcess
 from ..kinetics import *
-from .LinearFitWidget import LinearFitMeta, LinearFitWidget
+from .KineticsParamtersWizard import KineticsParametersWizard
 from .Plot import Plot, PlotMeta, Point2d, Series, SeriesSet
 from .Ui_KineticsOptimizer import Ui_KineticsOptimizer
 
@@ -93,9 +93,6 @@ def as_vmax_vs_km(runs : 'List[Series[RunMetadata]]') -> 'Series[PlotMeta]':
         ]
     )
 
-K_TAB_1 = "Vmax and Km"
-K_TAB_2 = "Beta and Ki"
-
 class KineticsOptimizer(QWidget):
 
     MESSAGE_COUNTER = AtomicCounter()
@@ -107,6 +104,7 @@ class KineticsOptimizer(QWidget):
     ) -> None:
         super().__init__()
 
+        self.__velocity_vs_conc = as_vel_vs_conc_series(runs)
         self.__ui = Ui_KineticsOptimizer()
         self.__ui.setupUi(self)
 
@@ -120,11 +118,13 @@ class KineticsOptimizer(QWidget):
 
         self.__ui.fitModelButton.clicked.connect(self.__fit_model)
 
+        self.__parameters_wizard = KineticsParametersWizard(self.__combined_velocity_vs_conc())
         self.__fit_parameters_model = namedtuple_eidtor(
             self.__ui.parametersTable,
-            SubstrateInhibitionModel()
+            self.__parameters_wizard.fit_parameters()
         )
         self.__fit_parameters_model.dataChanged.connect(self.__on_fit_parameters_changed)
+        self.__ui.wizardButton.clicked.connect(self.__on_wizard_clicked)
 
         self.__plot_widget = Plot()
         self.layout().replaceWidget(
@@ -132,37 +132,18 @@ class KineticsOptimizer(QWidget):
             self.__plot_widget
         )
 
-        self.__vmax_widget = LinearFitWidget(
-            LinearFitMeta(
-                x_axis_name="1/[S]",
-                y_axis_name="1/v"
-            )
-        )
-        self.__vmax_widget.lse_model_changed.connect(self.__on_vmax_changed)
-        self.__ui.initalValuesWidget.insertTab(
-            0,
-            self.__vmax_widget,
-            K_TAB_1
-        )
-
-        self.__beta_widget = LinearFitWidget(
-            LinearFitMeta(
-                x_axis_name="1/[S]",
-                y_axis_name="v/(Vmax - v)"
-            )
-        )
-        self.__beta_widget.lse_model_changed.connect(self.__on_beta_changed)
-
-        self.__ui.initalValuesWidget.insertTab(
-            1,
-            self.__beta_widget,
-            K_TAB_2
-        )
-
         self.__runs = runs
-        self.__velocity_vs_conc = as_vel_vs_conc_series(runs)
+        self.__eval_model()
 
-        self.__render_plots()
+    @pyqtSlot()
+    def __on_wizard_clicked(self):
+
+        self.__parameters_wizard.set_fit_parameters(self.__fit_parameters())
+
+        if self.__parameters_wizard.exec() == QDialog.Rejected:
+            return
+
+        self.__set_fit_parameters(self.__parameters_wizard.fit_parameters())
 
     def __set_busy(self, busy: bool):
         self.__ui.fitProgressBar.setVisible(busy)
@@ -197,6 +178,9 @@ class KineticsOptimizer(QWidget):
 
     @pyqtSlot(QModelIndex, QModelIndex)
     def __on_fit_parameters_changed(self, start, end):
+        self.__eval_model()
+
+    def __eval_model(self):
         self.__render_model(model_series=None)
         self.__compute.request_model_eval(
             self.__fit_parameters(),
@@ -210,90 +194,14 @@ class KineticsOptimizer(QWidget):
     def __on_compute_result(self, result: 'Series[EvalModelMetadata]'):
         self.__render_model(model_series=result)
 
-    @pyqtSlot()
-    def __on_beta_changed(self):
-        model = self.__beta_widget.lse_model()
-        params = self.__fit_parameters()
-
-        if model is None:
-            params = params._replace(ksi = 0, beta = 0)
-        else:
-            beta = model.b / (1 + model.b)
-            ksi = model.slope - model.slope*beta
-            params = params._replace(
-                beta = beta,
-                ksi = ksi
-            )
-        self.__set_fit_parameters(params)
-
-    @pyqtSlot()
-    def __on_vmax_changed(self):
-
-        model = self.__vmax_widget.lse_model()
-        params = self.__fit_parameters()
-        
-        if model is None:
-            params = params._replace(
-                v_max = 0,
-                km = 0
-            )
-        else:
-            params = params._replace(
-                v_max = 1/model.b,
-                km = model.slope/model.b
-            )
-
-        self.__set_fit_parameters(params)
-        self.__update_beta_and_ksi()
-
-    def __combined_velocity_vs_conc(self):
+    def __combined_velocity_vs_conc(self) -> List[Point2d]:
         result = [
             point
             for series in self.__velocity_vs_conc
             for point in series.values
         ]
-        result.sort(key=lambda point: point.x)
+        result.sort(key=lambda point: point.x, reverse=True)
         return result
-
-    def __update_beta_and_ksi(self):
-        params = self.__fit_parameters()
-
-        assert params, "Params should have default values"
-
-        values = [
-            Point2d(
-                x = 1/point.x,
-                y = point.y/(params.v_max - point.y)
-            )
-            for point in self.__combined_velocity_vs_conc()
-        ]
-
-        self.__beta_widget.set_series(
-            Series(
-                PlotMeta(name=K_TAB_2),
-                values
-            )
-        )
-
-    def __render_vmax_vs_km(self):
-
-        values = [
-            Point2d(
-                x = 1/point.x,
-                y = 1/point.y
-            )
-            for point in self.__combined_velocity_vs_conc()
-        ]
-
-        self.__vmax_widget.set_series(
-            Series(
-                PlotMeta(name=K_TAB_1),
-                values
-            )
-        )
-
-        if len(values) > 0:
-            self.__vmax_widget.set_x_min(values[-1].x * 0.75)
 
     def __render_model(
         self,
@@ -322,9 +230,3 @@ class KineticsOptimizer(QWidget):
                 y_label = "v",
             )
         )
-
-    def __render_plots(self):
-
-        self.__render_vmax_vs_km()
-        #exp = as_vel_vs_conc_series(self.__runs)
-        #self.__plot_widget.set_series(exp)

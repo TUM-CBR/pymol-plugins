@@ -67,28 +67,27 @@ class CbrExtraProcess(QProcess):
     def __on_data_ready(self):
 
         assert self.readChannel() == QProcess.StandardOutput, "Read channel should be stdin"
-        if  not self.canReadLine():
-            return
 
-        line_bytes : Any = self.readLine()
+        while self.canReadLine():
+            line_bytes : Any = self.readLine()
 
-        try:
-            # The typing claims that line_bytes should already
-            # be bytes but experience shows that it is a
-            # QByteArray, which should never be exposed to
-            # python. LOoks like a PyQt5 bug, so we try both
-            # and defend ourselves
-            # Remember that with Python, types usually lie
-            line = line_bytes.data().decode("utf-8")
-        except AttributeError:
-            line = line_bytes.decode("utf-8")
+            try:
+                # The typing claims that line_bytes should already
+                # be bytes but experience shows that it is a
+                # QByteArray, which should never be exposed to
+                # python. LOoks like a PyQt5 bug, so we try both
+                # and defend ourselves
+                # Remember that with Python, types usually lie
+                line = line_bytes.data().decode("utf-8")
+            except AttributeError:
+                line = line_bytes.decode("utf-8")
 
-        try:
-            value = json.loads(line)
-        except json.JSONDecodeError:
-            return
+            try:
+                value = json.loads(line)
+            except json.JSONDecodeError:
+                return
 
-        self.message_signal.emit(value)
+            self.message_signal.emit(value)
 
 def run_cbr_tools_interactive(
     args : List[str]

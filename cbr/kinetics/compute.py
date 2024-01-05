@@ -103,8 +103,8 @@ class ComputeHandler(QObject):
 
         count = len(self.__pending_messages)
 
-        if len(uids) > 0:
-            self.__pending_messages.clear()
+        for uid in uids:
+            self.__pending_messages.remove(uid)
 
         if len(self.__pending_messages) == 0 and count > 0:
             self.on_busy_changed.emit()
