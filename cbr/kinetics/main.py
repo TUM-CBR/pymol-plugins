@@ -44,3 +44,4 @@ def enzyme_kinetics(ctx: Context):
     ctx.run_widget(
         KineticsInput
     ).show()
+    
