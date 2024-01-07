@@ -11,6 +11,7 @@ from ...extra.main import CbrExtraProcess
 from ..kinetics import *
 from .KineticsParamtersWizard import KineticsParametersWizard
 from .Plot import Plot, PlotMeta, Point2d, Series, SeriesSet
+from .SeriesModel import SeriesModel
 from .Ui_KineticsOptimizer import Ui_KineticsOptimizer
 
 
@@ -127,9 +128,17 @@ class KineticsOptimizer(QWidget):
         self.__ui.wizardButton.clicked.connect(self.__on_wizard_clicked)
 
         self.__plot_widget = Plot()
-        self.layout().replaceWidget(
+        plotLayout = self.__ui.plotWidgetLayout.layout()
+        plotLayout.replaceWidget(
             self.__ui.plotWidget,
             self.__plot_widget
+        )
+
+        self.__ui.rawDataTable.setModel(
+            SeriesModel(
+                self.__velocity_vs_conc,
+                lambda _,c: f"[{c.metadata.concentration}]"
+            )
         )
 
         self.__runs = runs
