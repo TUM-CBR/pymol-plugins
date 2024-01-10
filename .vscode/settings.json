@@ -2,5 +2,7 @@
     "python.linting.enabled": true,
     "python.analysis.extraPaths": [
         "${workspaceFolder}\\devops\\PyMol\\PyMOL\\Lib\\site-packages"
-      ]
+      ],
+      "python.analysis.autoImportCompletions": true,
+      "python.analysis.typeCheckingMode": "basic"
 }

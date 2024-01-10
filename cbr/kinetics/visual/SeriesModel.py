@@ -36,10 +36,10 @@ class SeriesModel(QAbstractTableModel, Generic[TMeta]):
         self,
         section: int,
         orientation: Qt.Orientation,
-        role: int = Qt.DisplayRole
+        role: int = Qt.ItemDataRole.DisplayRole
     ) ->Any:
 
-        if orientation == Qt.Horizontal:
+        if orientation == Qt.Orientation.Horizontal:
             return self.__column_headers[section]
 
         return super().headerData(section, orientation, role)
@@ -48,10 +48,10 @@ class SeriesModel(QAbstractTableModel, Generic[TMeta]):
 
         return self.__series[index.column()].values[index.row()].y
 
-    def data(self, index: QModelIndex, role: int = Qt.DisplayRole) -> Any:
+    def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
 
         if not index.isValid():
             return None
 
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
             return self.__display_role_data(index)

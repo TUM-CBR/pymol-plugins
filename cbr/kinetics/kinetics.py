@@ -35,6 +35,9 @@ def run_to_vel_vs_conc(
             y = current_vel# / conc
         )
 
+def as_conc_vs_time_series(runs: KineticsRuns) -> List['Series[RunMetadata]']:
+    raise ValueError("Not implemented")
+
 def as_vel_vs_conc_series(runs: KineticsRuns) -> List['Series[RunMetadata]']:
 
     baseline_run = next(

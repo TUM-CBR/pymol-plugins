@@ -3,6 +3,8 @@
         "KineticsInput.ui",
         "KineticsOptimizer.ui",
         "LinearFitWidget.ui",
-        "ParametersWizard.ui"
+        "ParametersWizard.ui",
+        "PlotWidget.ui",
+        "VelocityFitWidget.ui"
     ]
 }

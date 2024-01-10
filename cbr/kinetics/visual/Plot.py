@@ -44,7 +44,11 @@ class Plot(QWidget):
         ax.set_ylabel(series_set.y_label)
         ax.legend()
 
-        self.layout().replaceWidget(
+        layout = self.layout()
+
+        assert layout is not None, "Bug in the code! Layout must be created at this point."
+
+        layout.replaceWidget(
             self.__plot_canvas,
             canvas
         )
