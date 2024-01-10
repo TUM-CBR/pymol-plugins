@@ -1,4 +1,4 @@
-from typing import Callable, cast, Generic, NamedTuple, List, TypeVar
+from typing import Callable, cast, NamedTuple, List, TypeVar
 
 class Point2d(NamedTuple):
     x : float
@@ -8,7 +8,7 @@ TMeta = TypeVar('TMeta')
 
 TNewMeta = TypeVar('TNewMeta')
 
-class Series(NamedTuple, Generic[TMeta]):
+class Series(NamedTuple):
     metadata : TMeta
     values : List[Point2d]
 

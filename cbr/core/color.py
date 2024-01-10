@@ -14,11 +14,13 @@ def generate_colors(n : int) -> List[RgbColor]:
     for i in range(n):
         hue = i / float(n)
         lightness = 0.5
-        saturation = 0.8
+        saturation = 1
         colors.append(hls_to_rgb_int(hue, lightness, saturation))
     return colors
 
 distinct_colors_15 : List[RgbColor] = generate_colors(15)
+
+distinct_colors_5 : List[RgbColor] = generate_colors(5)
 
 residue_letter_colors = dict(
     zip(
