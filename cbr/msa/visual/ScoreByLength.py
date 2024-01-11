@@ -1,13 +1,11 @@
 from Bio.Align import MultipleSeqAlignment
-from PyQt5.QtCore import QRect, pyqtSlot
+from PyQt5.QtCore import QRect, Qt, pyqtSlot
 from typing import List, Optional, Tuple
 
-from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPaintEvent, QPixmap
 from PyQt5.QtWidgets import QWidget
 
 from ...core.Qt.QtGui import paint
-from ...core.Qt.QtWidgets import throttle
 from ..cleanup import score_length
 from .MsaCleanerResult import MsaCleanerBase, MsaCleanerResult
 from .Ui_ScoreByLength import Ui_ScoreByLength
@@ -23,7 +21,7 @@ class FreqCanvas(QWidget):
         self.__pixmap = pixmap
         self.repaint()
 
-    def paintEvent(self, a0: QPaintEvent) -> None:
+    def paintEvent(self, a0: Optional[QPaintEvent]) -> None:
         super().paintEvent(a0)
 
         if self.__pixmap is not None:
@@ -40,10 +38,17 @@ class ScoreByLength(MsaCleanerBase):
         self.__ui = Ui_ScoreByLength()
         self.__ui.setupUi(self)
         self.__ui.minSlider.valueChanged.connect(self.__on_slider_value_changed)
+        self.__ui.minSlider.sliderReleased.connect(self.on_score_changed)
         self.__ui.maxSlider.valueChanged.connect(self.__on_slider_value_changed)
+        self.__ui.maxSlider.sliderReleased.connect(self.on_score_changed)
         self.__score : Optional[MsaCleanerResult] = None
         self.__freq_canvas = FreqCanvas()
-        self.layout().replaceWidget(
+
+        layout = self.layout()
+
+        assert layout is not None, "The UI of this widget is expected to have a layout"
+
+        layout.replaceWidget(
             self.__ui.frequencyWidget,
             self.__freq_canvas
         )
@@ -63,7 +68,6 @@ class ScoreByLength(MsaCleanerBase):
             label.setText(str(slider.value()))
 
         self.__score = self.__score._replace(treshold = self.__treshold)
-        self.__on_min_value_changed()
 
     @property
     def __treshold(self) -> Tuple[int, int]:
@@ -71,10 +75,6 @@ class ScoreByLength(MsaCleanerBase):
             self.__ui.minSlider.value(),
             self.__ui.maxSlider.value()
         )
-
-    @throttle(1000)
-    def __on_min_value_changed(self):
-        self.on_score_changed.emit()
 
     @property
     def score(self) -> Optional[MsaCleanerResult]:

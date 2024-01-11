@@ -7,7 +7,7 @@ from typing import Any, Callable, Dict, Iterable, Optional, cast, List, NamedTup
 
 from ...core.Context import (Context)
 from ...core.Qt.QtCore import DictionaryModel
-from ...core.Qt.QtWidgets import show_info, with_error_handler
+from ...core.Qt.QtWidgets import show_info, throttle, with_error_handler
 from ...support import msa
 from ...support.msa.io import save_msa
 from ...support.msa.visual.MsaViewer import MsaViewer
@@ -171,7 +171,7 @@ class SequenceScoresModel(QAbstractTableModel):
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:
 
         if index.column() in self.OVERRIDE_COLUMNS:
-            return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsUserCheckable
+            return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsUserCheckable
         else:
             return super().flags(index)
 
@@ -239,7 +239,11 @@ class MsaCleaner(QWidget):
         self.__ui.pruneButton.clicked.connect(self.__prune)
         self.__msa_viewer = MsaViewer()
 
-        self.__ui.msaViewerContainerWidget.layout().replaceWidget(
+        msa_viewer_layout = self.__ui.msaViewerContainerWidget.layout()
+
+        assert msa_viewer_layout is not None, "The UI file has no layout for the msa viewer"
+
+        msa_viewer_layout.replaceWidget(
             self.__ui.msaViewerWidget,
             self.__msa_viewer
         )
@@ -264,7 +268,7 @@ class MsaCleaner(QWidget):
 
     @pyqtSlot(QModelIndex, QModelIndex, 'QVector<int>')
     def __on_sequence_score_clicked(self, start : QModelIndex, stop: QModelIndex, roles : List[Qt.ItemDataRole] = []):
-        if self.__scores_model is None or Qt.CheckStateRole not in roles:
+        if self.__scores_model is None or Qt.ItemDataRole.CheckStateRole not in roles:
             return
 
         self.__mask_msa_sequences()
@@ -286,6 +290,7 @@ class MsaCleaner(QWidget):
         self.__msa_viewer.mask_sequences(self.__list_unwanted())
 
     @pyqtSlot(name="__on_score_changed")
+    @throttle(1000)
     def __on_score_changed(self):
         if self.__scores_model is None:
             return
