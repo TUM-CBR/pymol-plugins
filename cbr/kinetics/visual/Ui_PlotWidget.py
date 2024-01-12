@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_PlotWidget(object):
     def setupUi(self, PlotWidget):
         PlotWidget.setObjectName("PlotWidget")
-        PlotWidget.resize(947, 661)
+        PlotWidget.resize(947, 660)
         self.horizontalLayout = QtWidgets.QHBoxLayout(PlotWidget)
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.splitter = QtWidgets.QSplitter(PlotWidget)

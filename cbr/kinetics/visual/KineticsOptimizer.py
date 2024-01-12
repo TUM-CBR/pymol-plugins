@@ -3,15 +3,17 @@ from PyQt5.QtWidgets import QDialog, QWidget
 from typing import Any, Optional, Tuple
 
 from ...core.atomic import AtomicCounter
+from ...core.Context import Context
 from ...core.Qt.visual.NamedTupleEditor import namedtuple_eidtor
 from ...core.Qt.QtWidgets import show_exception
-from ..compute import ComputeHandler
+from ..compute import ComputeHandler, init_compute
 from ..data import *
-from ...extra.main import CbrExtraProcess
 from ..kinetics import *
 from .KineticsParamtersWizard import KineticsParametersWizard
+from .KineticsInput import KineticsInput
 from .Plot import Plot, PlotMeta, Point2d, Series, SeriesSet
 from .SeriesModel import SeriesModel
+from .VelocityFitWidget import VelocityFitWidget
 from .Ui_KineticsOptimizer import Ui_KineticsOptimizer
 
 
@@ -100,22 +102,38 @@ class KineticsOptimizer(QWidget):
 
     def __init__(
         self,
-        runs: KineticsRuns,
-        cbr_extra : CbrExtraProcess
+        context: Context,
     ) -> None:
         super().__init__()
 
-        self.__velocity_vs_conc = as_vel_vs_conc_series(runs)
         self.__ui = Ui_KineticsOptimizer()
         self.__ui.setupUi(self)
 
-        self.__compute = ComputeHandler(cbr_extra)
+        self.__compute = ComputeHandler(init_compute())
         self.__compute.on_error.connect(self.__on_compute_error)
         self.__compute.on_model_eval_signal.connect(self.__on_compute_result)
         self.__compute.on_model_fit_singal.connect(self.__on_fit_signal)
 
         self.__set_busy(False)
         self.__compute.on_busy_changed.connect(self.__on_busy_changed)
+
+        # Create the widget for data input
+        self.__data_input_widget = KineticsInput()
+        data_container_layout = self.__ui.dataContainer.layout()
+        assert data_container_layout is not None, "UI file does not provide a layout for dataContainer"
+        data_container_layout.replaceWidget(
+            self.__ui.dataContainer,
+            self.__data_input_widget
+        )
+
+        # Create the widget to fit by rate
+        self.__velocity_widget = VelocityFitWidget(self.__compute)
+        velocity_layout = self.__ui.fitContainer.layout()
+        assert velocity_layout is not None, "UI file does not provide a layout for the velocity widget"
+        velocity_layout.replaceWidget(
+            self.__ui.fitWidget,
+            self.__velocity_widget
+        )
 
         self.__ui.fitModelButton.clicked.connect(self.__fit_model)
 
@@ -143,6 +161,9 @@ class KineticsOptimizer(QWidget):
 
         self.__runs = runs
         self.__eval_model()
+
+    def __on_runs_updated(self, runs: KineticsRuns):
+        self.__velocity_widget.on_runs_updated(runs)
 
     @pyqtSlot()
     def __on_wizard_clicked(self):

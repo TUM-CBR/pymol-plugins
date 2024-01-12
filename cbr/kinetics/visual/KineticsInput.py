@@ -1,14 +1,9 @@
-from PyQt5.QtCore import pyqtSlot, Qt
+from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt
 from PyQt5.QtWidgets import QApplication, QTableWidgetItem, QWidget
 from typing import Iterable, cast
 
-from cbr.kinetics.visual.KineticsOptimizer import KineticsOptimizer
-
-from ...core.Context import Context
-from ...core.Qt.QtWidgets import with_error_handler
 from ...core.Qt.visual.NamedTupleEditor import namedtuple_eidtor
 
-from ..compute import init_compute
 from ..data import *
 from .Ui_KineticsInput import Ui_KineticsInput
 
@@ -16,9 +11,10 @@ NUM_SERIES = 50
 
 class KineticsInput(QWidget):
 
-    def __init__(self, context: Context) -> None:
+    runs_selected = pyqtSignal()
+
+    def __init__(self) -> None:
         super().__init__()
-        self.__context = context
         self.__ui = Ui_KineticsInput()
         self.__ui.setupUi(self)
 
@@ -39,16 +35,22 @@ class KineticsInput(QWidget):
 
         self.__ui.pasteParametersButton.clicked.connect(self.__on_paste_parameters)
         self.__ui.pasteDataButton.clicked.connect(self.__on_paste_data)
-        self.__ui.proceedButton.clicked.connect(self.__on_proceed_clicked)
+        self.__ui.proceedButton.clicked.connect(self.runs_selected)
 
     @pyqtSlot()
     def __on_paste_parameters(self):
         clipboard = QApplication.clipboard()
+
+        assert clipboard is not None, "This operation requires a GUI"
+
         self.__runs_metadata_editor.write_string(clipboard.text())
 
     @pyqtSlot()
     def __on_paste_data(self):
         clipboard = QApplication.clipboard()
+
+        assert clipboard is not None, "This operation requires a GUI"
+
         for row, line in enumerate(clipboard.text().splitlines()):
             for col, data in enumerate(line.split('\t')):
                 self.__ui.runDataTable.setItem(
@@ -66,7 +68,7 @@ class KineticsInput(QWidget):
                 break
 
             data = [
-                float(value.data(Qt.DisplayRole))
+                float(value.data(Qt.ItemDataRole.DisplayRole))
                 for j in range(0, self.__ui.runDataTable.rowCount())
                 for value in [self.__ui.runDataTable.item(j, i)] if value is not None
             ]
@@ -76,18 +78,10 @@ class KineticsInput(QWidget):
                 data = data
             )
 
-    def __get_runs(self):
+    def get_runs(self) -> KineticsRuns:
         global_attributes = self.__globals_editor.current_values[0]
 
         return KineticsRuns(
             global_attributes = cast(GlobalAttributes, global_attributes),
             runs = list(self.__get_series())
         )
-
-    @pyqtSlot(name="__on_proceed_clicked")
-    @with_error_handler()
-    def __on_proceed_clicked(self):
-        runs = self.__get_runs()
-        self.__context.run_widget(
-            lambda _: KineticsOptimizer(runs, init_compute())
-        ).show()
