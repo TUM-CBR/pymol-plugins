@@ -37,9 +37,9 @@ class SeriesModel(QAbstractTableModel, Generic[TMeta]):
         section: int,
         orientation: Qt.Orientation,
         role: int = Qt.ItemDataRole.DisplayRole
-    ) ->Any:
+    ) -> Any:
 
-        if orientation == Qt.Orientation.Horizontal:
+        if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
             return self.__column_headers[section]
 
         return super().headerData(section, orientation, role)
