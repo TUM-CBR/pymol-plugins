@@ -1,5 +1,5 @@
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, QObject
-from typing import List, Optional, Set
+from typing import Dict, List, Optional, Set
 
 from ..core.atomic import AtomicCounter
 from ..extra.main import CbrExtraProcess, run_cbr_tools_interactive
@@ -27,6 +27,14 @@ K_SIMULATION_RESULT = "results"
 
 # Interactive Output keys
 K_SIMULATE_RESULT = "simulate_result"
+
+# Fit simulation args
+K_FIT_SIMULATION_MODEL = "model"
+K_FIT_SIMULATION_SPEC = "simulation_spec"
+K_FIT_SIMULATION_DATA = "data"
+
+# Interactive input keys
+K_FIT_SIMULATION = "fit_simulation"
 
 class ComputeHandler(QObject):
 
@@ -210,6 +218,16 @@ class ComputeHandler(QObject):
             }
         }
     
+    def __to_simulation_spec(
+        self,
+        interval: int,
+        periods : int
+    ):
+        return {
+            K_INTERVAL: interval,
+            K_PERIODS: periods
+        }
+    
     def __to_simulate_message(
         self,
         model: SubstrateInhibitionModel,
@@ -220,11 +238,23 @@ class ComputeHandler(QObject):
         return {
             "simulate_model": {
                 "model": self.__to_model_spec(model),
-                K_SIMULATION_SPEC: {
-                    K_INTERVAL: interval,
-                    K_PERIODS: periods
-                },
+                K_SIMULATION_SPEC: self.__to_simulation_spec(interval, periods),
                 "initial_concentrations": initial_concentrations
+            }
+        }
+    
+    def __to_fit_simulation_message(
+            self,
+            model: SubstrateInhibitionModel,
+            interval: int,
+            periods: int,
+            data: Dict[float, List[float]]
+    ):
+        return {
+            K_FIT_SIMULATION: {
+                K_FIT_SIMULATION_MODEL: self.__to_model_spec(model),
+                K_FIT_SIMULATION_SPEC: self.__to_simulation_spec(interval, periods),
+                K_FIT_SIMULATION_DATA: data
             }
         }
 
@@ -275,7 +305,23 @@ class ComputeHandler(QObject):
             )
         )
         self.__write_json_message(message)
-        
+
+    def request_fit_by_simulation(
+        self,
+        model: SubstrateInhibitionModel,
+        interval: int,
+        periods: int,
+        data : Dict[float, List[float]]
+    ):
+        message = self.__to_input(
+            self.__to_fit_simulation_message(
+                model,
+                interval,
+                periods,
+                data
+            )
+        )
+        self.__write_json_message(message)        
 
 def init_compute():
     return run_cbr_tools_interactive(["kinetics", "interactive"])

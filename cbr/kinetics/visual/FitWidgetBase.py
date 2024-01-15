@@ -1,6 +1,6 @@
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QWidget
-from typing import List
+from typing import Dict, List
 
 from ..compute import ComputeHandler
 from ..data import *
@@ -85,5 +85,19 @@ class FitWidgetBase(QWidget):
     ):
         self.__compute.request_model_fit(
             model,
+            data
+        )
+
+    def __fit__simulation__(
+        self,
+        model: SubstrateInhibitionModel,
+        interval: int,
+        periods: int,
+        data: Dict[float, List[float]]
+    ):
+        self.__compute.request_fit_by_simulation(
+            model,
+            interval,
+            periods,
             data
         )

@@ -1,7 +1,7 @@
+from PyQt5.QtCore import pyqtSlot
 from typing import List, Optional
 
-from cbr.kinetics.data import List, Series, SimulateModelMetadata
-
+from ...core.Qt.QtWidgets import show_error
 from ..compute import ComputeHandler
 from ..data import *
 from ..kinetics import as_conc_vs_time_series
@@ -31,6 +31,38 @@ class SimulateWidget(FitWidgetBase):
             self.__ui.plotWidget,
             self.__plot
         )
+
+        self.__ui.fitButton.clicked.connect(self.__on_fit_simulation)
+
+    @pyqtSlot()
+    def __on_fit_simulation(self):
+
+        runs = self.__runs
+        model = self.__model
+
+        if runs is None or model is None:
+            show_error(
+                self,
+                "Error",
+                "Data must selected before using this feature"
+            )
+            return
+
+        self.__fit__simulation__(
+            model,
+            runs.global_attributes.measurement_interval,
+            runs.periods(),
+            dict(
+                (
+                    series.metadata.concentration,
+                    [point.y for point in series.values]
+                )
+                for series in  as_conc_vs_time_series(runs)
+            )
+        )
+
+    def __update_busy_state__(self, is_busy: bool):
+        self.__ui.fitButton.setEnabled(not is_busy)
 
     def __on_model_updated__(self, model: SubstrateInhibitionModel):
         self.__model = model
