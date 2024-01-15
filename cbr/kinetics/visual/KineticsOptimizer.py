@@ -1,6 +1,6 @@
 from PyQt5.QtCore import pyqtSlot, QModelIndex
 from PyQt5.QtWidgets import QDialog, QWidget
-from typing import Any, Optional, Tuple
+from typing import Tuple
 
 from ...core.atomic import AtomicCounter
 from ...core.Context import Context
@@ -11,7 +11,7 @@ from ..data import *
 from ..kinetics import *
 from .KineticsParamtersWizard import KineticsParametersWizard
 from .KineticsInput import KineticsInput
-from .Plot import PlotMeta, Point2d, Series, SeriesSet
+from .Plot import PlotMeta, Point2d, Series
 from .VelocityFitWidget import VelocityFitWidget
 from .Ui_KineticsOptimizer import Ui_KineticsOptimizer
 
