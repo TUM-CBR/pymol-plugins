@@ -5,6 +5,7 @@
         "LinearFitWidget.ui",
         "ParametersWizard.ui",
         "PlotWidget.ui",
+        "SimulateWidget.ui",
         "VelocityFitWidget.ui"
     ]
 }

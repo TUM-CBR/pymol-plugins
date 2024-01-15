@@ -49,7 +49,7 @@ else:
 class GlobalAttributes(NamedTuple):
     molar_extinction: float
     distance: float
-    measurement_interval: float
+    measurement_interval: int
     concentration_units: float
 
 class RunMetadata(NamedTuple):
@@ -62,6 +62,18 @@ class KineticsRun(NamedTuple):
 class KineticsRuns(NamedTuple):
     global_attributes : GlobalAttributes
     runs: List[KineticsRun]
+
+    def periods(self):
+        return min(
+                len(run.data)
+                for run in self.runs
+        )
+    
+    def concentrations(self):
+        return [
+            self.global_attributes.concentration_units*run.run_metadata.concentration
+            for run in self.runs
+        ]
 
 class SubstrateInhibitionModel(NamedTuple):
     v_max : float = 0
@@ -77,6 +89,22 @@ class SubstrateInhibitionModel(NamedTuple):
 
 class EvalModelMetadata(NamedTuple):
     model_name: str
+
+class SimulationSpec(NamedTuple):
+    periods : int # Number of times the measurement is repeated
+    interval : int # Seconds between measurement
+
+    def times(self):
+        return range(
+            0,
+            self.periods * self.interval,
+            self.interval
+        )
+
+class SimulateModelMetadata(NamedTuple):
+    model_name: str
+    initial_concentration: float
+    spec : SimulationSpec
 
 class FitModelResult(NamedTuple):
     model : SubstrateInhibitionModel

@@ -32,15 +32,40 @@ T = TypeVar('T')
 class CbrToolsProcessException(Exception):
     pass
 
+def decode_bytes(bs):
+    try:
+        # The typing claims that line_bytes should already
+        # be bytes but experience shows that it is a
+        # QByteArray, which should never be exposed to
+        # python. LOoks like a PyQt5 bug, so we try both
+        # and defend ourselves
+        # Remember that with Python, types usually lie
+        return bs.data().decode("utf-8")
+    except AttributeError:
+        return bs.decode("utf-8")
+
 class CbrExtraProcess(QProcess):
 
     message_signal = pyqtSignal(object)
+    error_signal = pyqtSignal(object)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.setProgram(cbrtools_bin())
         self.readyReadStandardOutput.connect(self.__on_data_ready)
+        self.finished.connect(self.__on_process_finish)
+
+        self.__log_values = os.environ.get('LOG_CBR_EXTRA')
+
+    @pyqtSlot(int, QProcess.ExitStatus)
+    def __on_process_finish(self, exit_code, exit_status):
+
+        if exit_code == 0:
+            return
+        self.setCurrentReadChannel(QProcess.ProcessChannel.StandardError)
+        result = decode_bytes(self.readAll())
+        self.error_signal.emit(Exception(result))
 
     def setProcessChannelMode(self, mode: int) -> None:
         raise Exception("The read channel should not be changed by the user")
@@ -66,24 +91,16 @@ class CbrExtraProcess(QProcess):
     @pyqtSlot()
     def __on_data_ready(self):
 
-        assert self.readChannel() == QProcess.StandardOutput, "Read channel should be stdin"
+        assert self.readChannel() == QProcess.ProcessChannel.StandardOutput, "Read channel should be stdin"
 
         while self.canReadLine():
             line_bytes : Any = self.readLine()
 
-            try:
-                # The typing claims that line_bytes should already
-                # be bytes but experience shows that it is a
-                # QByteArray, which should never be exposed to
-                # python. LOoks like a PyQt5 bug, so we try both
-                # and defend ourselves
-                # Remember that with Python, types usually lie
-                line = line_bytes.data().decode("utf-8")
-            except AttributeError:
-                line = line_bytes.decode("utf-8")
+            if self.__log_values:
+                print(line_bytes)
 
             try:
-                value = json.loads(line)
+                value = json.loads(decode_bytes(line_bytes))
             except json.JSONDecodeError:
                 continue
 

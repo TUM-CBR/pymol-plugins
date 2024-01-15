@@ -3,7 +3,7 @@ from typing import List, Optional, Set
 
 from ..core.atomic import AtomicCounter
 from ..extra.main import CbrExtraProcess, run_cbr_tools_interactive
-from .data import EvalModelMetadata, FitModelResult, Point2d, Series, SubstrateInhibitionModel
+from .data import EvalModelMetadata, FitModelResult, Point2d, Series, SimulateModelMetadata, SimulationSpec, SubstrateInhibitionModel
 
 K_UID = "uid"
 K_KSI = "ksi"
@@ -17,10 +17,22 @@ K_MODEL_PARAMETERS = "model_parameters"
 K_MODEL_NAME = "model_name"
 K_PARTIAL_INHIBITION = "partial_inhibition"
 
+# Simulation spec keys
+K_PERIODS = "periods"
+K_INTERVAL = "interval"
+
+# Simulation Result keys
+K_SIMULATION_SPEC = "simulation_spec"
+K_SIMULATION_RESULT = "results"
+
+# Interactive Output keys
+K_SIMULATE_RESULT = "simulate_result"
+
 class ComputeHandler(QObject):
 
     MESSAGE_ID_COUNTER = AtomicCounter()
     on_model_eval_signal = pyqtSignal(object)
+    on_model_eval_simulation_signal = pyqtSignal(object)
     on_model_fit_singal = pyqtSignal(object)
     on_error = pyqtSignal(object)
     on_busy_changed = pyqtSignal()
@@ -33,6 +45,7 @@ class ComputeHandler(QObject):
 
         self.__process = process
         self.__process.message_signal.connect(self.__on_process_message)
+        self.__process.error_signal.connect(self.on_error)
         self.__pending_messages : Set[int] = set()
 
     def is_busy(self) -> bool:
@@ -73,6 +86,31 @@ class ComputeHandler(QObject):
         except IndexError:
             self.on_error.emit(ValueError("Message is not valid results"))
 
+    def __on_simulate_result(self, result: dict):
+        try:
+            spec_dict = result[K_SIMULATION_SPEC]
+            spec = SimulationSpec(
+                periods=spec_dict[K_PERIODS],
+                interval=spec_dict[K_INTERVAL]
+            )
+            results = [
+                Series(
+                    metadata = SimulateModelMetadata(
+                        model_name="partial_inhibition",
+                        initial_concentration=conc,
+                        spec = spec
+                    ),
+                    values = [
+                        Point2d(time, value)
+                        for time,value in zip(spec.times(), values)
+                    ]
+                )
+                for (conc, values) in result[K_SIMULATION_RESULT].items()
+            ]
+            self.on_model_eval_simulation_signal.emit(results)
+        except IndexError:
+            self.on_error.emit(ValueError("Message is not valid results"))
+
     def __on_value(self, value: dict):
         payload = value.get('payload')
 
@@ -88,6 +126,11 @@ class ComputeHandler(QObject):
         fit_result = payload.get('fit_result')
         if fit_result is not None:
             self.__on_fit_result(fit_result)
+            return
+        
+        simulate_result = payload.get(K_SIMULATE_RESULT)
+        if simulate_result is not None:
+            self.__on_simulate_result(simulate_result)
             return
 
     def __track_pending_ack(self, msg: dict):
@@ -166,6 +209,24 @@ class ComputeHandler(QObject):
                 "data": data
             }
         }
+    
+    def __to_simulate_message(
+        self,
+        model: SubstrateInhibitionModel,
+        interval: int,
+        periods: int,
+        initial_concentrations : List[float]
+    ):
+        return {
+            "simulate_model": {
+                "model": self.__to_model_spec(model),
+                K_SIMULATION_SPEC: {
+                    K_INTERVAL: interval,
+                    K_PERIODS: periods
+                },
+                "initial_concentrations": initial_concentrations
+            }
+        }
 
     def __to_input(
         self,
@@ -197,6 +258,24 @@ class ComputeHandler(QObject):
     ):
         message = self.__to_input(self.__to_fit_message(model, data))
         self.__write_json_message(message)
+
+    def request_model_simulate(
+            self,
+            model: SubstrateInhibitionModel,
+            intervals: int,
+            periods: int,
+            initial_concentrations : List[float]
+    ):
+        message = self.__to_input(
+            self.__to_simulate_message(
+                model,
+                intervals,
+                periods,
+                initial_concentrations
+            )
+        )
+        self.__write_json_message(message)
+        
 
 def init_compute():
     return run_cbr_tools_interactive(["kinetics", "interactive"])

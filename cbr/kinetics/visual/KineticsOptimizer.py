@@ -12,6 +12,7 @@ from ..kinetics import *
 from .KineticsParamtersWizard import KineticsParametersWizard
 from .KineticsInput import KineticsInput
 from .Plot import PlotMeta, Point2d, Series
+from .SimulateWidget import SimulateWidget
 from .VelocityFitWidget import VelocityFitWidget
 from .Ui_KineticsOptimizer import Ui_KineticsOptimizer
 
@@ -134,6 +135,15 @@ class KineticsOptimizer(QWidget):
             self.__velocity_widget
         )
 
+        # Create the widget to fit by simulation
+        self.__simulation_widget = SimulateWidget(self.__compute)
+        simulation_layout = self.__ui.simulateContainer.layout()
+        assert simulation_layout is not None, "UI file does not provide a layout for the simulation widget"
+        simulation_layout.replaceWidget(
+            self.__ui.simulateWidget,
+            self.__simulation_widget
+        )
+
         self.__parameters_wizard = KineticsParametersWizard()
         self.__fit_parameters_model = namedtuple_eidtor(
             self.__ui.parametersTable,
@@ -148,6 +158,7 @@ class KineticsOptimizer(QWidget):
 
         self.__parameters_wizard.on_runs_updated(runs)
         self.__velocity_widget.on_runs_updated(runs)
+        self.__simulation_widget.on_runs_updated(runs)
 
         self.__set_fit_parameters(self.__parameters_wizard.fit_parameters())
 
@@ -200,3 +211,4 @@ class KineticsOptimizer(QWidget):
 
         assert model is not None, "The model editor should have at least one model"
         self.__velocity_widget.on_model_updated(model)
+        self.__simulation_widget.on_model_updated(model)

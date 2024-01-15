@@ -35,8 +35,52 @@ def run_to_vel_vs_conc(
             y = current_vel# / conc
         )
 
+def run_to_conc_vs_time(
+        global_attributes : GlobalAttributes,
+        run: KineticsRun,
+        baseline : float = 0
+    ) -> Iterable[Point2d]:
+    conc_units = global_attributes.concentration_units
+    intervals = global_attributes.measurement_interval
+    molar_extinction = global_attributes.molar_extinction
+    distance = global_attributes.distance
+    simulation_spec = SimulationSpec(
+        periods = len(run.data),
+        interval = intervals
+    )
+
+    for time, value in zip(simulation_spec.times(), run.data):
+
+        # Remove the baseline noise
+        value -= baseline
+
+        # abs = conc * molar_extinction * distance
+        # => conc = abs / (molar_extinction * distance)
+        product_conc = (value / (molar_extinction * distance)) / conc_units
+
+        # We assume that for every molecule of the product
+        # we consume a molecule of the substrate
+        yield Point2d(
+            x = time,
+            y = product_conc
+        )
+
+
 def as_conc_vs_time_series(runs: KineticsRuns) -> List['Series[RunMetadata]']:
-    raise ValueError("Not implemented")
+
+    baseline_run = next(
+        (run.data for run in runs.runs if is_baseline_run(run)),
+        [0.0]
+    )
+    baseline = avg(baseline_run)
+
+    return [
+        Series(
+            metadata = run.run_metadata,
+            values = list(run_to_conc_vs_time(runs.global_attributes, run, baseline))
+        )
+        for run in runs.runs
+    ]
 
 def as_vel_vs_conc_series(runs: KineticsRuns) -> List['Series[RunMetadata]']:
 

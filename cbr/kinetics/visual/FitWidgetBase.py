@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QWidget
 from typing import List
 
 from ..compute import ComputeHandler
-from ..data import EvalModelMetadata, KineticsRuns, Point2d, Series, SubstrateInhibitionModel
+from ..data import *
 
 class FitWidgetBase(QWidget):
 
@@ -12,6 +12,7 @@ class FitWidgetBase(QWidget):
         self.__compute = compute
         self.__compute.on_busy_changed.connect(self.__on_busy_changed)
         self.__compute.on_model_eval_signal.connect(self.__on_model_eval)
+        self.__compute.on_model_eval_simulation_signal.connect(self.__on_model_eval_simulation)
 
     def __compute__(self):
         return self.__compute
@@ -33,8 +34,15 @@ class FitWidgetBase(QWidget):
     def __on_model_updated__(self, model: SubstrateInhibitionModel):
         pass
 
+    def __on_model_eval_simulation__(self, result: 'List[Series[SimulateModelMetadata]]'):
+        pass
+
     def on_model_updated(self, model: SubstrateInhibitionModel):
         self.__on_model_updated__(model)
+
+    @pyqtSlot(object)
+    def __on_model_eval_simulation(self, result: 'List[Series[SimulateModelMetadata]]'):
+        self.__on_model_eval_simulation__(result)
 
     @pyqtSlot(object)
     def __on_model_eval(self, result: 'Series[EvalModelMetadata]'):
@@ -45,7 +53,7 @@ class FitWidgetBase(QWidget):
 
     def __eval_model__(
             self,
-            model : SubstrateInhibitionModel,
+            model: SubstrateInhibitionModel,
             data: List[Point2d]
         ):
         self.__compute.request_model_eval(
@@ -54,6 +62,20 @@ class FitWidgetBase(QWidget):
                 point.x
                 for point in data
             ]
+        )
+
+    def __simulate_model__(
+            self,
+            model: SubstrateInhibitionModel,
+            interval: int,
+            periods: int,
+            initial_concentrations: List[float]
+    ):
+        self.__compute.request_model_simulate(
+            model,
+            interval,
+            periods,
+            initial_concentrations
         )
 
     def __fit_model__(
