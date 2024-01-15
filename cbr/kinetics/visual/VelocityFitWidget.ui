@@ -50,7 +50,7 @@
      </property>
     </spacer>
    </item>
-   <item row="0" column="0" colspan="2">
+   <item row="0" column="0" colspan="3">
     <widget class="QWidget" name="velocityPlot" native="true"/>
    </item>
   </layout>

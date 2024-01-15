@@ -1,6 +1,8 @@
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QDialog
 
+from cbr.kinetics.kinetics import as_vel_vs_conc_series, combined_velocity_vs_conc
+
 from ..data import *
 from ...core.Qt.visual.NamedTupleEditor import namedtuple_eidtor
 from .LinearFitWidget import LinearFitMeta, LinearFitWidget
@@ -13,12 +15,11 @@ K_TAB_2 = "Beta and Ki"
 class KineticsParametersWizard(QDialog):
 
     def __init__(
-        self,
-        velocity_vs_conc: List[Point2d]
+        self
     ) -> None:
         super().__init__()
 
-        self.__velocity_vs_conc = velocity_vs_conc
+        self.__combined_velocity_vs_conc = None
         self.__ui = Ui_ParametersWizard()
         self.__ui.setupUi(self)
 
@@ -53,10 +54,15 @@ class KineticsParametersWizard(QDialog):
             self.__beta_widget,
             K_TAB_2
         )
-        self.__render_vmax_vs_km()
 
         self.__ui.closeButtons.accepted.connect(self.__on_accepted)
         self.__ui.closeButtons.rejected.connect(self.__on_rejected)
+
+    def on_runs_updated(self, runs: KineticsRuns):
+        self.__combined_velocity_vs_conc = combined_velocity_vs_conc(
+            as_vel_vs_conc_series(runs)
+        )
+        self.__render_vmax_vs_km()
 
     @pyqtSlot()
     def __on_accepted(self):
@@ -65,9 +71,6 @@ class KineticsParametersWizard(QDialog):
     @pyqtSlot()
     def __on_rejected(self):
         self.reject()
-
-    def __combined_velocity_vs_conc(self) -> List[Point2d]:
-        return self.__velocity_vs_conc
 
     def set_fit_parameters(self, params: SubstrateInhibitionModel):
         self.__fit_parameters_model[0] = params
@@ -123,7 +126,7 @@ class KineticsParametersWizard(QDialog):
                 x = 1/point.x,
                 y = point.y/(params.v_max - point.y)
             )
-            for point in self.__combined_velocity_vs_conc()
+            for point in self.__combined_velocity_vs_conc or []
         ]
 
         self.__beta_widget.set_series(
@@ -140,7 +143,7 @@ class KineticsParametersWizard(QDialog):
                 x = 1/point.x,
                 y = 1/point.y
             )
-            for point in self.__combined_velocity_vs_conc()
+            for point in self.__combined_velocity_vs_conc or []
         ]
 
         self.__vmax_widget.set_series(

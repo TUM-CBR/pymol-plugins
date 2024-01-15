@@ -5,17 +5,15 @@ from typing import Any, Optional, Tuple
 from ...core.atomic import AtomicCounter
 from ...core.Context import Context
 from ...core.Qt.visual.NamedTupleEditor import namedtuple_eidtor
-from ...core.Qt.QtWidgets import show_exception
+from ...core.Qt.QtWidgets import show_error, show_exception
 from ..compute import ComputeHandler, init_compute
 from ..data import *
 from ..kinetics import *
 from .KineticsParamtersWizard import KineticsParametersWizard
 from .KineticsInput import KineticsInput
-from .Plot import Plot, PlotMeta, Point2d, Series, SeriesSet
-from .SeriesModel import SeriesModel
+from .Plot import PlotMeta, Point2d, Series, SeriesSet
 from .VelocityFitWidget import VelocityFitWidget
 from .Ui_KineticsOptimizer import Ui_KineticsOptimizer
-
 
 # km should be the concentration at which we have half v_max
 # v_max := 1/v vs 1/s, km = v_max * m, v_max = 1/y-intercept
@@ -109,9 +107,9 @@ class KineticsOptimizer(QWidget):
         self.__ui = Ui_KineticsOptimizer()
         self.__ui.setupUi(self)
 
+        self.__runs = None
         self.__compute = ComputeHandler(init_compute())
         self.__compute.on_error.connect(self.__on_compute_error)
-        self.__compute.on_model_eval_signal.connect(self.__on_compute_result)
         self.__compute.on_model_fit_singal.connect(self.__on_fit_signal)
 
         self.__set_busy(False)
@@ -122,9 +120,10 @@ class KineticsOptimizer(QWidget):
         data_container_layout = self.__ui.dataContainer.layout()
         assert data_container_layout is not None, "UI file does not provide a layout for dataContainer"
         data_container_layout.replaceWidget(
-            self.__ui.dataContainer,
+            self.__ui.dataWidget,
             self.__data_input_widget
         )
+        self.__data_input_widget.runs_selected.connect(self.__on_runs_updated)
 
         # Create the widget to fit by rate
         self.__velocity_widget = VelocityFitWidget(self.__compute)
@@ -135,9 +134,7 @@ class KineticsOptimizer(QWidget):
             self.__velocity_widget
         )
 
-        self.__ui.fitModelButton.clicked.connect(self.__fit_model)
-
-        self.__parameters_wizard = KineticsParametersWizard(self.__combined_velocity_vs_conc())
+        self.__parameters_wizard = KineticsParametersWizard()
         self.__fit_parameters_model = namedtuple_eidtor(
             self.__ui.parametersTable,
             self.__parameters_wizard.fit_parameters()
@@ -145,28 +142,27 @@ class KineticsOptimizer(QWidget):
         self.__fit_parameters_model.dataChanged.connect(self.__on_fit_parameters_changed)
         self.__ui.wizardButton.clicked.connect(self.__on_wizard_clicked)
 
-        self.__plot_widget = Plot()
-        plotLayout = self.__ui.plotWidgetLayout.layout()
-        plotLayout.replaceWidget(
-            self.__ui.plotWidget,
-            self.__plot_widget
-        )
+    @pyqtSlot()
+    def __on_runs_updated(self):
+        self.__runs = runs = self.__data_input_widget.get_runs()
 
-        self.__ui.rawDataTable.setModel(
-            SeriesModel(
-                self.__velocity_vs_conc,
-                lambda _,c: f"[{c.metadata.concentration}]"
-            )
-        )
-
-        self.__runs = runs
-        self.__eval_model()
-
-    def __on_runs_updated(self, runs: KineticsRuns):
+        self.__parameters_wizard.on_runs_updated(runs)
         self.__velocity_widget.on_runs_updated(runs)
+
+        self.__set_fit_parameters(self.__parameters_wizard.fit_parameters())
 
     @pyqtSlot()
     def __on_wizard_clicked(self):
+
+        runs = self.__runs
+
+        if runs is None:
+            show_error(
+                self,
+                "Input Error",
+                "Please input the run data before using this function."
+            )
+            return
 
         self.__parameters_wizard.set_fit_parameters(self.__fit_parameters())
 
@@ -177,14 +173,6 @@ class KineticsOptimizer(QWidget):
 
     def __set_busy(self, busy: bool):
         self.__ui.fitProgressBar.setVisible(busy)
-        self.__ui.fitModelButton.setEnabled(not busy)
-
-    @pyqtSlot()
-    def __fit_model(self):
-        self.__compute.request_model_fit(
-            self.__fit_parameters(),
-            self.__combined_velocity_vs_conc()
-        )
 
     @pyqtSlot()
     def __on_busy_changed(self):
@@ -208,55 +196,7 @@ class KineticsOptimizer(QWidget):
 
     @pyqtSlot(QModelIndex, QModelIndex)
     def __on_fit_parameters_changed(self, start, end):
-        self.__eval_model()
+        model = self.__fit_parameters_model[0]
 
-    def __eval_model(self):
-        self.__render_model(model_series=None)
-        self.__compute.request_model_eval(
-            self.__fit_parameters(),
-            [
-                point.x
-                for point in self.__combined_velocity_vs_conc()
-            ]
-        )
-
-    @pyqtSlot(object)
-    def __on_compute_result(self, result: 'Series[EvalModelMetadata]'):
-        self.__render_model(model_series=result)
-
-    def __combined_velocity_vs_conc(self) -> List[Point2d]:
-        result = [
-            point
-            for series in self.__velocity_vs_conc
-            for point in series.values
-        ]
-        result.sort(key=lambda point: point.x, reverse=True)
-        return result
-
-    def __render_model(
-        self,
-        model_series: 'Optional[Series[Any]]'
-    ):
-        exp_values = self.__combined_velocity_vs_conc()
-        exp_series = Series(
-            metadata = PlotMeta("Experimental"),
-            values = exp_values
-        )
-
-        if model_series is not None:
-            series = [
-                exp_series,
-                model_series.update_meta(
-                    PlotMeta("Fit")
-                )
-            ]
-        else:
-            series = [exp_series]
-
-        self.__plot_widget.set_series(
-            SeriesSet(
-                series = series,
-                x_label = "[S]",
-                y_label = "v",
-            )
-        )
+        assert model is not None, "The model editor should have at least one model"
+        self.__velocity_widget.on_model_updated(model)

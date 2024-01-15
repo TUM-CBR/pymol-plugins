@@ -1,4 +1,4 @@
-from .visual.KineticsInput import KineticsInput
+from .visual.KineticsOptimizer import KineticsOptimizer
 
 from ..core.Context import Context
 from ..core.Qt.QtWidgets import show_error, show_info
@@ -44,5 +44,5 @@ def enzyme_kinetics(ctx: Context):
             return
 
     ctx.run_widget(
-        KineticsInput
+        KineticsOptimizer
     ).show()

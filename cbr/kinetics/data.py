@@ -1,4 +1,4 @@
-from typing import Callable, cast, Generic, NamedTuple, List, TypeVar
+from typing import Callable, cast, Generic, NamedTuple, List, TypeVar, TYPE_CHECKING
 
 class Point2d(NamedTuple):
     x : float
@@ -8,22 +8,43 @@ TMeta = TypeVar('TMeta')
 
 TNewMeta = TypeVar('TNewMeta')
 
-class Series(NamedTuple, Generic[TMeta]):
-    metadata : TMeta
-    values : List[Point2d]
+# Python's type is a mess, therefore one can only have
+# generics in namedtuples during typechecking.
+if TYPE_CHECKING:
+    class Series(NamedTuple, Generic[TMeta]):
+        metadata : TMeta
+        values : List[Point2d]
 
-    def filter(self, fn: Callable[[Point2d], bool]) -> 'Series[TMeta]':
-        return self._replace(
-            values = list(filter(fn, self.values))
-        )
-
-    def update_meta(self, meta: TNewMeta) -> 'Series[TNewMeta]':
-        return cast(
-            'Series[TNewMeta]',
-            self._replace(
-                metadata = meta
+        def filter(self, fn: Callable[[Point2d], bool]) -> 'Series[TMeta]':
+            return self._replace(
+                values = list(filter(fn, self.values))
             )
-        )
+
+        def update_meta(self, meta: TNewMeta) -> 'Series[TNewMeta]':
+            return cast(
+                'Series[TNewMeta]',
+                self._replace(
+                    metadata = meta
+                )
+            )
+else:
+    from typing import Any
+    class Series(NamedTuple):
+        metadata : Any
+        values : List[Point2d]
+
+        def filter(self, fn: Callable[[Point2d], bool]) -> 'Series[TMeta]':
+            return self._replace(
+                values = list(filter(fn, self.values))
+            )
+
+        def update_meta(self, meta: TNewMeta) -> 'Series[TNewMeta]':
+            return cast(
+                'Series[TNewMeta]',
+                self._replace(
+                    metadata = meta
+                )
+            )
 
 class GlobalAttributes(NamedTuple):
     molar_extinction: float

@@ -53,3 +53,12 @@ def as_vel_vs_conc_series(runs: KineticsRuns) -> List['Series[RunMetadata]']:
         )
         for run in runs.runs if not is_baseline_run(run)
     ]
+
+def combined_velocity_vs_conc(velocity_vs_conc: List['Series[RunMetadata]']) -> List[Point2d]:
+    result = [
+        point
+        for series in velocity_vs_conc
+        for point in series.values
+    ]
+    result.sort(key=lambda point: point.x, reverse=True)
+    return result

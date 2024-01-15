@@ -29,7 +29,7 @@ class Ui_VelocityFitWidget(object):
         self.gridLayout.addItem(spacerItem1, 1, 0, 1, 1)
         self.velocityPlot = QtWidgets.QWidget(VelocityFitWidget)
         self.velocityPlot.setObjectName("velocityPlot")
-        self.gridLayout.addWidget(self.velocityPlot, 0, 0, 1, 2)
+        self.gridLayout.addWidget(self.velocityPlot, 0, 0, 1, 3)
         self.gridLayout.setColumnStretch(0, 1)
         self.gridLayout.setRowStretch(0, 1)
 
