@@ -85,7 +85,7 @@ class CbrExtraProcess(QProcess):
             try:
                 value = json.loads(line)
             except json.JSONDecodeError:
-                return
+                continue
 
             self.message_signal.emit(value)
 

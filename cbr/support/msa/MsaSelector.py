@@ -13,7 +13,7 @@ from .visual.FastaSequencesInput import FastaSequencesInput
 
 def to_msa_dict(alignment : MultipleSeqAlignment) -> Msa:
     return dict(
-        (record.id, record.seq)
+        (record.id, str(record.seq))
         for record in alignment
     )
 

@@ -1,7 +1,7 @@
 from concurrent.futures import Future
 import csv
 from io import StringIO
-from typing import Any, Callable, Generic, Iterable, Optional, Set, TextIO, TypeVar, cast
+from typing import Any, Callable, Iterable, Optional, Set, TextIO, TypeVar, cast
 from PyQt5.QtCore import QTimer, pyqtSignal, pyqtSlot, QObject, Qt
 from PyQt5.QtWidgets import QAction, QApplication, QLabel, QMenu, QMessageBox, QProgressBar, QSlider, QTableWidget, QTableView, QWidget
 
@@ -202,7 +202,7 @@ def with_error_handler(*args, **kwargs):
 
     return function_factory
 
-class ProgressManager(QObject, Generic[TResult]):
+class ProgressManager(QObject):
 
     on_result = pyqtSignal(object)
     on_exception = pyqtSignal(Exception)
@@ -233,7 +233,7 @@ class ProgressManager(QObject, Generic[TResult]):
         for widget in self.__disable:
             widget.setEnabled(False)
 
-    def __notify_future(self, future : 'Future[TResult]') -> bool:
+    def __notify_future(self, future : 'Future[Any]') -> bool:
 
         if not future.done():
             return False
@@ -246,12 +246,12 @@ class ProgressManager(QObject, Generic[TResult]):
 
         return True
 
-    def watch_progress(self, result : 'Future[TResult]'):
+    def watch_progress(self, result : 'Future[Any]'):
 
         if self.__notify_future(result):
             return
 
-        def __done__(_):
+        def __done__(_: Any):
             self.__set_ready()
             self.__notify_future(result)
 
@@ -302,6 +302,7 @@ def export_table_view_to_csv(table_view : QTableView, text_stream: TextIO) -> No
 class SliderWithLabel(QObject):
 
     value_changed = pyqtSignal()
+    slider_released = pyqtSignal()
 
     def __init__(
         self,
@@ -317,6 +318,7 @@ class SliderWithLabel(QObject):
         label.setText(self.__format(self.value))
 
         self.__slider.valueChanged.connect(self.__on_value_changed)
+        self.__slider.sliderReleased.connect(self.slider_released)
 
     @property
     def value(self):

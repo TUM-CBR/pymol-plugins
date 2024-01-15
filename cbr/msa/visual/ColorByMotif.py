@@ -54,17 +54,23 @@ class SequenceMatchEntry(NamedTuple):
 
         return len(match.matches)
 
+def get_color_rgb(index: int) -> color.RgbColor:
+    return color.get_color_rgb(index, options=color.distinct_colors_5)
+
+def get_qt_color(index: int) -> QColor:
+    return QColor(*color.get_qt_color(index, options=color.distinct_colors_5))
+
 class PatternEntry(NamedTuple):
     pattern : re.Pattern
     color_index : int
 
     @property
     def rgb_color(self) -> RgbColor:
-        return color.get_color_rgb(self.color_index)
+        return get_color_rgb(self.color_index)
 
     @property
     def qt_color(self) -> QColor:
-        return QColor(*color.get_qt_color(self.color_index))
+        return get_qt_color(self.color_index)
 
     def finditer(self, input : str) -> Iterator[re.Match]:
         return self.pattern.finditer(input)
@@ -125,7 +131,7 @@ class MotifsModel(QAbstractTableModel):
         elif role == MOTIF_ID_ROLE:
             return key
         elif role == Qt.BackgroundColorRole:
-            return QColor(*color.get_qt_color(index.row()))
+            return get_qt_color(index.row())
         else:
             return None
 
@@ -334,7 +340,7 @@ class ColorByMotif(QWidget):
         self.__add_custom_motif(custom_motif_name, custom_motif)
 
     def __add_custom_motif(self, name : str, pattern: str):
-        self.__set_motif(name, re.compile(pattern))
+        self.__set_motif(name, re.compile(pattern, re.IGNORECASE))
 
     def __remove_motifs(self, motifs: Iterable[str]):
         for motif in motifs:
@@ -436,16 +442,18 @@ class ColorByMotif(QWidget):
 
         min_score = min(r[motif] for r in results.by_msa_position_results.values())
         max_score = max(r[motif] for r in results.by_msa_position_results.values())
-        step = (max_color_factor - min_color_factor) / (max_score - min_score)
+        delta = max_score - min_score
+        step = 0 if delta == 0 else (max_color_factor - min_color_factor) / delta
         color_range = color.color_range_scale(results.motifs[motif].rgb_color)
 
         for k,v in results.by_msa_position_results.items():
             resi = msa_to_structure.get_pymol_structure_position(k)
+            value = v[motif]
 
-            if resi is None:
+            if resi is None or value == 0:
                 continue
 
-            scaled_score = (v[motif] * step) + min_color_factor
+            scaled_score = (value * step) + min_color_factor
             pymol_color = color.to_pymol_color(color_range.get_color(scaled_score))
             pymol.cmd.color(pymol_color, f"{selected_structure.selection} and resi {resi}")
 

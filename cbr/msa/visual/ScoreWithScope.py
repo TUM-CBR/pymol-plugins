@@ -46,19 +46,19 @@ class ScoreWithScope(MsaCleanerBase):
             self.__ui.tresholdLabel,
             1/100
         )
-        self.__treshold_slider.value_changed.connect(self.__on_treshold_changed)
+        self.__treshold_slider.slider_released.connect(self.__on_treshold_changed)
 
         self.__scope_start = slider_with_label(
             self.__ui.scopeStartSlider,
             self.__ui.scopeStartLabel,
         )
-        self.__scope_start.value_changed.connect(self.__on_scope_changed)
+        self.__scope_start.slider_released.connect(self.__on_scope_changed)
 
         self.__scope_end = slider_with_label(
             self.__ui.scopeEndSlider,
             self.__ui.scopeEndLabel,
         )
-        self.__scope_end.value_changed.connect(self.__on_scope_changed)
+        self.__scope_end.slider_released.connect(self.__on_scope_changed)
 
     def __update_score(self, score : Optional[MsaCleanerResult]):
         self.__score = score
@@ -107,7 +107,6 @@ class ScoreWithScope(MsaCleanerBase):
         return (0, self.__treshold_slider.value)
 
     @pyqtSlot(name="__on_treshold_changed")
-    @throttle(1000)
     def __on_treshold_changed(self):
 
         if self.__score is None:
@@ -127,7 +126,6 @@ class ScoreWithScope(MsaCleanerBase):
         return normalized(cast(List[float], result))
 
     @pyqtSlot(name="__on_scope_changed")
-    @throttle(1000)
     def __on_scope_changed(self):
 
         scores_by_position = self.__scores_by_positions
@@ -142,6 +140,7 @@ class ScoreWithScope(MsaCleanerBase):
     def set_scope(self, start: int, end: int):
         self.__ui.scopeStartSlider.setValue(start)
         self.__ui.scopeEndSlider.setValue(end)
+        self.__on_scope_changed()
 
     @property
     def score(self) -> Optional[MsaCleanerResult]:

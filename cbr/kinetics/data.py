@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 from typing import Callable, cast, Generic, NamedTuple, List, TypeVar, TYPE_CHECKING
+=======
+from typing import Callable, cast, NamedTuple, List, TypeVar
+>>>>>>> main
 
 class Point2d(NamedTuple):
     x : float

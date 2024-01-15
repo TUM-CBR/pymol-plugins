@@ -256,7 +256,7 @@ class PrimerDesign(QWidget):
         primer3_args : Primer3Args
     ) -> str:
 
-        sections = dna_re.match(raw_sequence)
+        sections = dna_re.match(raw_sequence.strip())
 
         if sections is None:
             raise ValueError(invalid_sequence_error)
