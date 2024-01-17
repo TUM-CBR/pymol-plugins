@@ -21,10 +21,11 @@
             "module": "IPython",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "python": "/home/ernesto/code/pymol-plugins/.virtualenv/bin/python",
+            "python": "${workspaceFolder}/.virtualenv/bin/python",
             "env": {
                 "QTHREAD_DEBUGGING": "True",
-                "PATH": "/home/ernesto/code/dssp/dssp/dist/bin:/home/ernesto/code/ACPSICOV/src/:/home/ernesto/code/cbr-tools-extra/dist/:$PATH"
+                "PATH": "/home/ernesto/code/dssp/dssp/dist/bin:/home/ernesto/code/ACPSICOV/src/:/home/ernesto/code/cbr-tools-extra/dist/:$PATH",
+                "LOG_CBR_EXTRA": "${workspaceFolder}/logs/cbrextra.log"
             }
         },
         {
@@ -38,7 +39,7 @@
             "python": "${workspaceFolder}\\.virtualenv\\Scripts\\python.exe",
             "env": {
                 "QTHREAD_DEBUGGING": "True",
-                "PATH": "${workspaceFolder}\\..\\pymol-open-source\\external\\dist\\bin" 
+                "PATH": "${workspaceFolder}\\..\\pymol-open-source\\external\\dist\\bin"
             }
         }
     ]

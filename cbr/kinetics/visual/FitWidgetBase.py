@@ -5,14 +5,22 @@ from typing import Dict, List
 from ..compute import ComputeHandler
 from ..data import *
 
+class FitWidgetArgsBase(NamedTuple):
+    compute: ComputeHandler
+    fit_range: SubstrateInhibitionModelFitRange
+
 class FitWidgetBase(QWidget):
 
-    def __init__(self, compute: ComputeHandler) -> None:
+    def __init__(
+        self,
+        args_base: FitWidgetArgsBase
+    ) -> None:
         super().__init__()
-        self.__compute = compute
+        self.__compute = args_base.compute
         self.__compute.on_busy_changed.connect(self.__on_busy_changed)
         self.__compute.on_model_eval_signal.connect(self.__on_model_eval)
         self.__compute.on_model_eval_simulation_signal.connect(self.__on_model_eval_simulation)
+        self.__fit_range = args_base.fit_range
 
     def __compute__(self):
         return self.__compute
@@ -39,6 +47,9 @@ class FitWidgetBase(QWidget):
 
     def on_model_updated(self, model: SubstrateInhibitionModel):
         self.__on_model_updated__(model)
+
+    def on_parameters_range_changed(self, fit_range: SubstrateInhibitionModelFitRange):
+        self.__fit_range = fit_range
 
     @pyqtSlot(object)
     def __on_model_eval_simulation(self, result: 'List[Series[SimulateModelMetadata]]'):
@@ -69,22 +80,27 @@ class FitWidgetBase(QWidget):
             model: SubstrateInhibitionModel,
             interval: int,
             periods: int,
+            steps_per_second: int,
             initial_concentrations: List[float]
     ):
         self.__compute.request_model_simulate(
             model,
             interval,
             periods,
+            steps_per_second,
             initial_concentrations
         )
 
     def __fit_model__(
             self,
             model: SubstrateInhibitionModel,
+            iterations: int,
             data: List[Point2d]
     ):
         self.__compute.request_model_fit(
             model,
+            self.__fit_range,
+            iterations,
             data
         )
 
@@ -93,11 +109,16 @@ class FitWidgetBase(QWidget):
         model: SubstrateInhibitionModel,
         interval: int,
         periods: int,
+        steps_per_second: int,
+        iterations: int,
         data: Dict[float, List[float]]
     ):
         self.__compute.request_fit_by_simulation(
             model,
+            self.__fit_range,
             interval,
             periods,
+            steps_per_second,
+            iterations,
             data
         )

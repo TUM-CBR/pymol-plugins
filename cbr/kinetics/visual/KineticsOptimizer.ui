@@ -13,30 +13,11 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout" rowstretch="0,0,0,1,0,0,0" columnstretch="0,0,0,0,0">
-   <item row="6" column="0" colspan="2">
-    <widget class="QProgressBar" name="fitProgressBar">
-     <property name="maximum">
-      <number>0</number>
-     </property>
-     <property name="value">
-      <number>-1</number>
-     </property>
-    </widget>
-   </item>
-   <item row="6" column="2">
-    <widget class="QWidget" name="widget" native="true">
-     <property name="minimumSize">
-      <size>
-       <width>0</width>
-       <height>20</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>0</width>
-       <height>16777215</height>
-      </size>
+  <layout class="QGridLayout" name="gridLayout" rowstretch="0,0,0,1,0,0,1,0,0" columnstretch="0,0,0,0,0">
+   <item row="7" column="0">
+    <widget class="QPushButton" name="wizardButton">
+     <property name="text">
+      <string>Parameters Wizard</string>
      </property>
     </widget>
    </item>
@@ -51,18 +32,31 @@ font-size: 16px;</string>
      </property>
     </widget>
    </item>
-   <item row="0" column="0" colspan="5">
-    <widget class="QLabel" name="label">
+   <item row="5" column="0">
+    <widget class="QLabel" name="label_2">
      <property name="styleSheet">
-      <string notr="true">font-size: 24px;
-font-weight: bold;</string>
+      <string notr="true">font-weight: bold;
+font-size: 16px;</string>
      </property>
      <property name="text">
-      <string>Kinetics Optimizer</string>
+      <string>Model Fit Ranges</string>
      </property>
     </widget>
    </item>
-   <item row="3" column="3" rowspan="4">
+   <item row="7" column="1" colspan="2">
+    <spacer name="horizontalSpacer">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>40</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="1" column="3" rowspan="8">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
       <number>0</number>
@@ -99,28 +93,48 @@ font-weight: bold;</string>
      </widget>
     </widget>
    </item>
-   <item row="5" column="0">
-    <widget class="QPushButton" name="wizardButton">
-     <property name="text">
-      <string>Parameters Wizard</string>
+   <item row="8" column="0" colspan="2">
+    <widget class="QProgressBar" name="fitProgressBar">
+     <property name="maximum">
+      <number>0</number>
+     </property>
+     <property name="value">
+      <number>-1</number>
      </property>
     </widget>
    </item>
-   <item row="5" column="1" colspan="2">
-    <spacer name="horizontalSpacer">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
+   <item row="0" column="0" colspan="5">
+    <widget class="QLabel" name="label">
+     <property name="styleSheet">
+      <string notr="true">font-size: 24px;
+font-weight: bold;</string>
      </property>
-     <property name="sizeHint" stdset="0">
+     <property name="text">
+      <string>Kinetics Optimizer</string>
+     </property>
+    </widget>
+   </item>
+   <item row="8" column="2">
+    <widget class="QWidget" name="widget" native="true">
+     <property name="minimumSize">
       <size>
-       <width>40</width>
+       <width>0</width>
        <height>20</height>
       </size>
      </property>
-    </spacer>
+     <property name="maximumSize">
+      <size>
+       <width>0</width>
+       <height>16777215</height>
+      </size>
+     </property>
+    </widget>
    </item>
    <item row="3" column="0" rowspan="2" colspan="3">
     <widget class="QTableView" name="parametersTable"/>
+   </item>
+   <item row="6" column="0" colspan="3">
+    <widget class="QTableView" name="parametersRangeTable"/>
    </item>
   </layout>
  </widget>

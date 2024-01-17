@@ -4,5 +4,13 @@
         "${workspaceFolder}\\devops\\PyMol\\PyMOL\\Lib\\site-packages"
       ],
       "python.analysis.autoImportCompletions": true,
-      "python.analysis.typeCheckingMode": "basic"
+      "python.analysis.typeCheckingMode": "strict",
+      "python.analysis.exclude": [
+        "**/Ui_*.py"
+      ],
+      "python.analysis.diagnosticSeverityOverrides": {
+        "reportUnknownMemberType":"warning",
+        "reportUnknownVariableType": "warning",
+        "reportMissingTypeStubs": "warning"
+      }
 }

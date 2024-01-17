@@ -17,7 +17,10 @@ class SelectionState(NamedTuple):
 
 class SelectedSeriesModel(QAbstractTableModel):
 
-    def __init__(self, series_set: SeriesSet) -> None:
+    def __init__(
+        self,
+        series_set: SeriesSet
+    ) -> None:
         super().__init__()
 
         self.__series_set = series_set
@@ -26,10 +29,10 @@ class SelectedSeriesModel(QAbstractTableModel):
             for _ in range(0, len(series_set.series))
         ]
 
-    def rowCount(self, parent = None) -> int:
+    def rowCount(self, parent: Any = None) -> int:
         return len(self.__series_set.series)
     
-    def columnCount(self, parent = None) -> int:
+    def columnCount(self, parent: Any = None) -> int:
         return 1
     
     def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
@@ -63,6 +66,16 @@ class SelectedSeriesModel(QAbstractTableModel):
 
         return super().setData(index, value, role)
     
+    def set_all(self, is_selected: bool):
+        self.__selected_state = [
+            value._replace(is_selected = is_selected)
+            for value in self.__selected_state
+        ]
+        self.dataChanged.emit(
+            self.index(0,0),
+            self.index(len(self.__selected_state), 0)
+        )
+    
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
 
         if not index.isValid():
@@ -71,7 +84,7 @@ class SelectedSeriesModel(QAbstractTableModel):
         if role == Qt.ItemDataRole.CheckStateRole:
             return self.__get_item(index).checked_state()
 
-        return super().data(index, role)
+        return None
 
     def current_selection(self) -> SeriesSet:
         return self.__series_set._replace(
@@ -89,8 +102,13 @@ class PlotWidget(QWidget):
 
         self.__ui = Ui_PlotWidget()
         self.__ui.setupUi(self)
+        self.__x_scale = 1
+        self.__y_scale = 1
 
-        self.__plot = Plot()
+        self.__plot = Plot(
+            x_scale=self.__x_scale,
+            y_scale=self.__y_scale
+        )
         self.__selection_model = None
 
         plot_layout = self.__ui.plotContainer.layout()
@@ -103,6 +121,36 @@ class PlotWidget(QWidget):
         )
 
         self.__ui.updateButton.clicked.connect(self.__on_update_clicked)
+        self.__ui.allButton.clicked.connect(self.__set_all)
+        self.__ui.noneButton.clicked.connect(self.__set_none)
+
+    def set_scaling(self, x_scale: float = 1, y_scale: float = 1):
+        self.__x_scale = x_scale
+        self.__y_scale = y_scale
+        self.__plot.set_scaling(x_scale, y_scale)
+
+        model = self.__ui.dataTable.model()
+        if model is None:
+            return
+        
+        assert isinstance(model, SeriesModel), "The dataTable should have a SeriesModel"
+        model.set_scaling(x_scale, y_scale)
+
+    def __set_all(self):
+        model = self.__selection_model
+
+        if model is None:
+            return
+
+        model.set_all(True)
+
+    def __set_none(self):
+        model = self.__selection_model
+
+        if model is None:
+            return
+
+        model.set_all(False)
 
     def set_series(self, series: SeriesSet):
         self.__selection_model = SelectedSeriesModel(series)
@@ -125,7 +173,9 @@ class PlotWidget(QWidget):
         self.__ui.dataTable.setModel(
             SeriesModel(
                 series.series,
-                render_series_header=lambda i,s: s.metadata.name
+                render_series_header=lambda i,s: s.metadata.name,
+                x_scale=self.__x_scale,
+                y_scale=self.__y_scale
             )
         )
 

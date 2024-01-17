@@ -1,6 +1,7 @@
 from PyQt5.QtCore import pyqtSlot, QModelIndex
 from PyQt5.QtWidgets import QDialog, QWidget
 from typing import Tuple
+from cbr.kinetics.visual import FitWidgetBase
 
 from ...core.atomic import AtomicCounter
 from ...core.Context import Context
@@ -9,6 +10,7 @@ from ...core.Qt.QtWidgets import show_error, show_exception
 from ..compute import ComputeHandler, init_compute
 from ..data import *
 from ..kinetics import *
+from .FitWidgetBase import FitWidgetArgsBase, FitWidgetBase
 from .KineticsParamtersWizard import KineticsParametersWizard
 from .KineticsInput import KineticsInput
 from .Plot import PlotMeta, Point2d, Series
@@ -125,9 +127,12 @@ class KineticsOptimizer(QWidget):
             self.__data_input_widget
         )
         self.__data_input_widget.runs_selected.connect(self.__on_runs_updated)
+        initial_min = SubstrateInhibitionModel()
+        initial_max = SubstrateInhibitionModel(99,99,99,99)
+        args_base = FitWidgetArgsBase(self.__compute, (initial_min, initial_max))
 
         # Create the widget to fit by rate
-        self.__velocity_widget = VelocityFitWidget(self.__compute)
+        self.__velocity_widget = VelocityFitWidget(args_base)
         velocity_layout = self.__ui.fitContainer.layout()
         assert velocity_layout is not None, "UI file does not provide a layout for the velocity widget"
         velocity_layout.replaceWidget(
@@ -136,7 +141,7 @@ class KineticsOptimizer(QWidget):
         )
 
         # Create the widget to fit by simulation
-        self.__simulation_widget = SimulateWidget(self.__compute)
+        self.__simulation_widget = SimulateWidget(args_base)
         simulation_layout = self.__ui.simulateContainer.layout()
         assert simulation_layout is not None, "UI file does not provide a layout for the simulation widget"
         simulation_layout.replaceWidget(
@@ -152,13 +157,39 @@ class KineticsOptimizer(QWidget):
         self.__fit_parameters_model.dataChanged.connect(self.__on_fit_parameters_changed)
         self.__ui.wizardButton.clicked.connect(self.__on_wizard_clicked)
 
+        self.__fit_parameters_range = namedtuple_eidtor(
+            self.__ui.parametersRangeTable,
+            initial_min,
+            initial_max
+        )
+        self.__fit_parameters_range.dataChanged.connect(self.__on_ranges_changed)
+
+    def __get_fit_widgets(self) -> Iterable[FitWidgetBase]:
+        return [
+            self.__velocity_widget,
+            self.__simulation_widget
+        ]
+
+    @pyqtSlot()
+    def __on_ranges_changed(self):
+
+        current_values = self.__fit_parameters_range.current_values
+        min_range = current_values[0]
+        max_range = current_values[1]
+
+        assert min_range is not None and max_range is not None, "Ranges widget must have two items"
+
+        for widget in self.__get_fit_widgets():
+            widget.on_parameters_range_changed((min_range, max_range))
+
     @pyqtSlot()
     def __on_runs_updated(self):
         self.__runs = runs = self.__data_input_widget.get_runs()
 
         self.__parameters_wizard.on_runs_updated(runs)
-        self.__velocity_widget.on_runs_updated(runs)
-        self.__simulation_widget.on_runs_updated(runs)
+
+        for widget in self.__get_fit_widgets():
+            widget.on_runs_updated(runs)
 
         self.__set_fit_parameters(self.__parameters_wizard.fit_parameters())
 
@@ -206,7 +237,7 @@ class KineticsOptimizer(QWidget):
         self.__set_fit_parameters(result.model)
 
     @pyqtSlot(QModelIndex, QModelIndex)
-    def __on_fit_parameters_changed(self, start, end):
+    def __on_fit_parameters_changed(self, start: QModelIndex, end: QModelIndex):
         model = self.__fit_parameters_model[0]
 
         assert model is not None, "The model editor should have at least one model"

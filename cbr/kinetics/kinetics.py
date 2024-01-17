@@ -23,7 +23,7 @@ def run_to_vel_vs_conc(
 
         # abs = conc * molar_extinction * distance
         # => conc = abs / (molar_extinction * distance)
-        product_conc = (value / (molar_extinction * distance)) / conc_units
+        product_conc = (value / (molar_extinction * distance)) * conc_units
 
         current_vel = abs(prev_product_conc - product_conc) / intervals
         prev_product_conc = product_conc
@@ -56,7 +56,7 @@ def run_to_conc_vs_time(
 
         # abs = conc * molar_extinction * distance
         # => conc = abs / (molar_extinction * distance)
-        product_conc = (value / (molar_extinction * distance)) / conc_units
+        product_conc = (value / (molar_extinction * distance)) * conc_units
 
         # We assume that for every molecule of the product
         # we consume a molecule of the substrate
@@ -68,9 +68,9 @@ def run_to_conc_vs_time(
 
 def as_conc_vs_time_series(runs: KineticsRuns) -> List['Series[RunMetadata]']:
 
-    baseline_run = next(
-        (run.data for run in runs.runs if is_baseline_run(run)),
-        [0.0]
+    baseline_ix, baseline_run = next(
+        ((ix, run.data) for ix,run in enumerate(runs.runs) if is_baseline_run(run)),
+        (-1, [0.0])
     )
     baseline = avg(baseline_run)
 
@@ -79,30 +79,31 @@ def as_conc_vs_time_series(runs: KineticsRuns) -> List['Series[RunMetadata]']:
             metadata = run.run_metadata,
             values = list(run_to_conc_vs_time(runs.global_attributes, run, baseline))
         )
-        for run in runs.runs
+        for ix, run in enumerate(runs.runs) if baseline_ix != ix
     ]
 
-def as_vel_vs_conc_series(runs: KineticsRuns) -> List['Series[RunMetadata]']:
+def as_vel_vs_conc_series(
+        runs: KineticsRuns,
+        samples_to_consider: int
+    ) -> 'Series[RunVelocityMetadata]':
 
-    baseline_run = next(
-        (run.data for run in runs.runs if is_baseline_run(run)),
-        [0.0]
-    )
-    baseline = avg(baseline_run)
+    conc_vs_time = as_conc_vs_time_series(runs)
 
-    return [
-        Series(
-            metadata = run.run_metadata,
-            values = list(run_to_vel_vs_conc(runs.global_attributes, run, baseline))
+    def slope(input: 'Series[RunMetadata]'):
+        points = input.values[0:samples_to_consider]
+        m, _ = lse(
+            [point.x for point in points],
+            [point.y for point in points]
         )
-        for run in runs.runs if not is_baseline_run(run)
-    ]
+        return m
 
-def combined_velocity_vs_conc(velocity_vs_conc: List['Series[RunMetadata]']) -> List[Point2d]:
-    result = [
-        point
-        for series in velocity_vs_conc
-        for point in series.values
-    ]
-    result.sort(key=lambda point: point.x, reverse=True)
-    return result
+    return Series(
+        metadata = RunVelocityMetadata(),
+        values =  [
+            Point2d(
+                series.metadata.concentration * runs.global_attributes.concentration_units,
+                slope(series)
+            )
+            for series in conc_vs_time
+        ]
+    )

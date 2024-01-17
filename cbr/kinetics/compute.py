@@ -1,9 +1,9 @@
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, QObject
-from typing import Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from ..core.atomic import AtomicCounter
 from ..extra.main import CbrExtraProcess, run_cbr_tools_interactive
-from .data import EvalModelMetadata, FitModelResult, Point2d, Series, SimulateModelMetadata, SimulationSpec, SubstrateInhibitionModel
+from .data import *
 
 K_UID = "uid"
 K_KSI = "ksi"
@@ -17,9 +17,14 @@ K_MODEL_PARAMETERS = "model_parameters"
 K_MODEL_NAME = "model_name"
 K_PARTIAL_INHIBITION = "partial_inhibition"
 
+#FitArgs
+K_FIT_ITERATIONS = "iterations"
+K_FIT_RANGE = "fit_range"
+
 # Simulation spec keys
 K_PERIODS = "periods"
 K_INTERVAL = "interval"
+K_STEPS_PER_SECOND = "reps_per_unit"
 
 # Simulation Result keys
 K_SIMULATION_SPEC = "simulation_spec"
@@ -32,9 +37,16 @@ K_SIMULATE_RESULT = "simulate_result"
 K_FIT_SIMULATION_MODEL = "model"
 K_FIT_SIMULATION_SPEC = "simulation_spec"
 K_FIT_SIMULATION_DATA = "data"
+K_FIT_SIMULATION_ITERATIONS = "iterations"
 
 # Interactive input keys
 K_FIT_SIMULATION = "fit_simulation"
+
+# Fit Range
+K_RANGE_KSI = "ksi"
+K_RANGE_KM = "km"
+K_RANGE_VMAX = "vmax"
+K_RANGE_BETA = "beta"
 
 class ComputeHandler(QObject):
 
@@ -59,7 +71,7 @@ class ComputeHandler(QObject):
     def is_busy(self) -> bool:
         return len(self.__pending_messages) > 0
 
-    def __on_eval_result(self, result: dict):
+    def __on_eval_result(self, result: Dict[Any, Any]):
         try:
             series = Series(
                 metadata = EvalModelMetadata(model_name = "partial_inhibition"),
@@ -75,7 +87,7 @@ class ComputeHandler(QObject):
         except IndexError:
             self.on_error.emit(ValueError("Message is not valid results"))
 
-    def __on_fit_result(self, result: dict):
+    def __on_fit_result(self, result: Dict[Any, Any]):
         try:
             model = result['model']
             model_name = model[K_MODEL_NAME]
@@ -94,7 +106,7 @@ class ComputeHandler(QObject):
         except IndexError:
             self.on_error.emit(ValueError("Message is not valid results"))
 
-    def __on_simulate_result(self, result: dict):
+    def __on_simulate_result(self, result: Dict[Any, Any]):
         try:
             spec_dict = result[K_SIMULATION_SPEC]
             spec = SimulationSpec(
@@ -119,7 +131,7 @@ class ComputeHandler(QObject):
         except IndexError:
             self.on_error.emit(ValueError("Message is not valid results"))
 
-    def __on_value(self, value: dict):
+    def __on_value(self, value: Dict[Any, Any]):
         payload = value.get('payload')
 
         if payload is None:
@@ -141,9 +153,9 @@ class ComputeHandler(QObject):
             self.__on_simulate_result(simulate_result)
             return
 
-    def __track_pending_ack(self, msg: dict):
+    def __track_pending_ack(self, msg: Dict[Any, Any]):
 
-        uids = []
+        uids : List[int] = []
         value_msg = msg.get(K_VALUE)
         if value_msg is not None:
             uids = value_msg[K_INPUT_UIDS]
@@ -160,14 +172,14 @@ class ComputeHandler(QObject):
         if len(self.__pending_messages) == 0 and count > 0:
             self.on_busy_changed.emit()
 
-    def __track_pending_send(self, msg: dict):
+    def __track_pending_send(self, msg: Dict[Any, Any]):
         self.__pending_messages.add(msg[K_UID])
 
         if len(self.__pending_messages) == 1:
             self.on_busy_changed.emit()
 
     @pyqtSlot(object)
-    def __on_process_message(self, msg : dict):
+    def __on_process_message(self, msg : Dict[Any, Any]):
 
         self.__track_pending_ack(msg)
         value = msg.get(K_VALUE)
@@ -180,7 +192,7 @@ class ComputeHandler(QObject):
             self.on_error.emit(Exception(error))
             return
 
-    def __to_model_spec(self, model: SubstrateInhibitionModel) -> dict:
+    def __to_model_spec(self, model: SubstrateInhibitionModel) -> Dict[Any, Any]:
         return {
             "model_name": K_PARTIAL_INHIBITION,
             "model_parameters": {
@@ -190,10 +202,24 @@ class ComputeHandler(QObject):
                 K_BETA: model.beta
             }
         }
+    
+    def __to_fit_range(
+        self,
+        fit_range: SubstrateInhibitionModelFitRange,    
+    ) -> Dict[Any, Any]:
+        min_values, max_values = fit_range
+        return {
+            K_RANGE_KSI: [min_values.ksi, max_values.ksi],
+            K_RANGE_KM: [min_values.km, max_values.km],
+            K_RANGE_VMAX: [min_values.v_max, max_values.v_max],
+            K_RANGE_BETA: [min_values.beta, max_values.beta]
+        }
 
     def __to_fit_message(
         self,
         model : SubstrateInhibitionModel,
+        fit_range: SubstrateInhibitionModelFitRange,
+        iterations : int,
         data : List[Point2d]
     ):
         return {
@@ -202,7 +228,9 @@ class ComputeHandler(QObject):
                 "data": [
                     {"x": point.x, "y": point.y}
                     for point in data
-                ]
+                ],
+                K_FIT_ITERATIONS: iterations,
+                K_FIT_RANGE: self.__to_fit_range(fit_range)
             }
         }
 
@@ -210,7 +238,7 @@ class ComputeHandler(QObject):
         self,
         model : SubstrateInhibitionModel,
         data : List[float]
-    ) -> dict:
+    ) -> Dict[Any, Any]:
         return {
             "eval_model": {
                 "model": self.__to_model_spec(model),
@@ -221,11 +249,13 @@ class ComputeHandler(QObject):
     def __to_simulation_spec(
         self,
         interval: int,
-        periods : int
+        periods : int,
+        steps_per_second: int
     ):
         return {
             K_INTERVAL: interval,
-            K_PERIODS: periods
+            K_PERIODS: periods,
+            K_STEPS_PER_SECOND: steps_per_second
         }
     
     def __to_simulate_message(
@@ -233,12 +263,13 @@ class ComputeHandler(QObject):
         model: SubstrateInhibitionModel,
         interval: int,
         periods: int,
+        steps_per_second: int,
         initial_concentrations : List[float]
     ):
         return {
             "simulate_model": {
                 "model": self.__to_model_spec(model),
-                K_SIMULATION_SPEC: self.__to_simulation_spec(interval, periods),
+                K_SIMULATION_SPEC: self.__to_simulation_spec(interval, periods, steps_per_second),
                 "initial_concentrations": initial_concentrations
             }
         }
@@ -246,21 +277,26 @@ class ComputeHandler(QObject):
     def __to_fit_simulation_message(
             self,
             model: SubstrateInhibitionModel,
+            fit_range: SubstrateInhibitionModelFitRange,
             interval: int,
             periods: int,
+            steps_per_second: int,
+            iterations: int,
             data: Dict[float, List[float]]
     ):
         return {
             K_FIT_SIMULATION: {
                 K_FIT_SIMULATION_MODEL: self.__to_model_spec(model),
-                K_FIT_SIMULATION_SPEC: self.__to_simulation_spec(interval, periods),
-                K_FIT_SIMULATION_DATA: data
+                K_FIT_SIMULATION_SPEC: self.__to_simulation_spec(interval, periods, steps_per_second),
+                K_FIT_SIMULATION_DATA: data,
+                K_FIT_SIMULATION_ITERATIONS: iterations,
+                K_FIT_RANGE: self.__to_fit_range(fit_range)
             }
         }
 
     def __to_input(
         self,
-        data: Optional[dict] = None,
+        data: Optional[Dict[Any, Any]] = None,
         entity_type: str = "message"
     ):
         return {
@@ -269,7 +305,7 @@ class ComputeHandler(QObject):
             "payload": data or {}
         }
 
-    def __write_json_message(self, message: dict):
+    def __write_json_message(self, message: Dict[Any, Any]):
         self.__track_pending_send(message)
         self.__process.write_json_dict(message)
 
@@ -284,9 +320,11 @@ class ComputeHandler(QObject):
     def request_model_fit(
         self,
         model : SubstrateInhibitionModel,
+        fit_range: SubstrateInhibitionModelFitRange,
+        iterations: int,
         data : List[Point2d]
     ):
-        message = self.__to_input(self.__to_fit_message(model, data))
+        message = self.__to_input(self.__to_fit_message(model, fit_range, iterations, data))
         self.__write_json_message(message)
 
     def request_model_simulate(
@@ -294,6 +332,7 @@ class ComputeHandler(QObject):
             model: SubstrateInhibitionModel,
             intervals: int,
             periods: int,
+            steps_per_second: int,
             initial_concentrations : List[float]
     ):
         message = self.__to_input(
@@ -301,6 +340,7 @@ class ComputeHandler(QObject):
                 model,
                 intervals,
                 periods,
+                steps_per_second,
                 initial_concentrations
             )
         )
@@ -309,15 +349,21 @@ class ComputeHandler(QObject):
     def request_fit_by_simulation(
         self,
         model: SubstrateInhibitionModel,
+        fit_range: Tuple[SubstrateInhibitionModel, SubstrateInhibitionModel],
         interval: int,
         periods: int,
+        steps_per_second: int,
+        iterations: int,
         data : Dict[float, List[float]]
     ):
         message = self.__to_input(
             self.__to_fit_simulation_message(
                 model,
+                fit_range,
                 interval,
                 periods,
+                steps_per_second,
+                iterations,
                 data
             )
         )

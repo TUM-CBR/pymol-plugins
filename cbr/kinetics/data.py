@@ -1,4 +1,4 @@
-from typing import Callable, cast, Generic, NamedTuple, List, TypeVar, TYPE_CHECKING
+from typing import Callable, Tuple, cast, Generic, NamedTuple, List, TypeVar, TYPE_CHECKING
 
 class Point2d(NamedTuple):
     x : float
@@ -53,7 +53,10 @@ class GlobalAttributes(NamedTuple):
     concentration_units: float
 
 class RunMetadata(NamedTuple):
-    concentration : float = 0.0
+    concentration : float = 0.001
+
+class RunVelocityMetadata(NamedTuple):
+    pass
 
 class KineticsRun(NamedTuple):
     run_metadata : RunMetadata
@@ -86,6 +89,8 @@ class SubstrateInhibitionModel(NamedTuple):
         den = (1+s/self.ksi)*s + self.km
 
         return num / den
+    
+SubstrateInhibitionModelFitRange = Tuple[SubstrateInhibitionModel, SubstrateInhibitionModel]
 
 class EvalModelMetadata(NamedTuple):
     model_name: str

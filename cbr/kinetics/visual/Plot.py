@@ -15,16 +15,27 @@ class SeriesSet(NamedTuple):
 
 class Plot(QWidget):
 
-    def __init__(self):
+    def __init__(
+        self,
+        x_scale : float = 1,
+        y_scale : float = 1
+    ):
         super().__init__()
         self.__series = SeriesSet()
         self.__plot_canvas = QWidget()
         layout = QVBoxLayout(self)
         layout.addWidget(self.__plot_canvas)
         self.setLayout(layout)
+        self.__x_scale = x_scale
+        self.__y_scale = y_scale
 
     def set_series(self, series: SeriesSet):
         self.__series = series
+        self.__render_series()
+
+    def set_scaling(self, x_scale: float, y_scale: float):
+        self.__x_scale = x_scale
+        self.__y_scale = y_scale
         self.__render_series()
 
     def __render_series(self):
@@ -35,8 +46,8 @@ class Plot(QWidget):
 
         for series in series_set.series:
             ax.plot(
-                [point.x for point in series.values],
-                [point.y for point in series.values],
+                [point.x * self.__x_scale for point in series.values],
+                [point.y * self.__y_scale for point in series.values],
                 label=series.metadata.name
             )
 

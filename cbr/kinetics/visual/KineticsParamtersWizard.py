@@ -1,7 +1,7 @@
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QDialog
 
-from cbr.kinetics.kinetics import as_vel_vs_conc_series, combined_velocity_vs_conc
+from cbr.kinetics.kinetics import as_vel_vs_conc_series
 
 from ..data import *
 from ...core.Qt.visual.NamedTupleEditor import namedtuple_eidtor
@@ -59,9 +59,7 @@ class KineticsParametersWizard(QDialog):
         self.__ui.closeButtons.rejected.connect(self.__on_rejected)
 
     def on_runs_updated(self, runs: KineticsRuns):
-        self.__combined_velocity_vs_conc = combined_velocity_vs_conc(
-            as_vel_vs_conc_series(runs)
-        )
+        self.__combined_velocity_vs_conc = as_vel_vs_conc_series(runs, 2)
         self.__render_vmax_vs_km()
 
     @pyqtSlot()
@@ -118,15 +116,17 @@ class KineticsParametersWizard(QDialog):
 
     def __update_beta_and_ksi(self):
         params = self.fit_parameters()
-
         assert params, "Params should have default values"
+
+        velocity_vs_conc = self.__combined_velocity_vs_conc
+        points = [] if velocity_vs_conc is None else velocity_vs_conc.values
 
         values = [
             Point2d(
                 x = 1/point.x,
                 y = point.y/(params.v_max - point.y)
             )
-            for point in self.__combined_velocity_vs_conc or []
+            for point in points
         ]
 
         self.__beta_widget.set_series(
@@ -138,12 +138,15 @@ class KineticsParametersWizard(QDialog):
 
     def __render_vmax_vs_km(self):
 
+        velocity_vs_conc = self.__combined_velocity_vs_conc
+        points = [] if velocity_vs_conc is None else velocity_vs_conc.values
+
         values = [
             Point2d(
                 x = 1/point.x,
                 y = 1/point.y
             )
-            for point in self.__combined_velocity_vs_conc or []
+            for point in points
         ]
 
         self.__vmax_widget.set_series(

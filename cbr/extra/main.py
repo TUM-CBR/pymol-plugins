@@ -1,9 +1,11 @@
+from ast import Tuple
 from io import StringIO
 import json
+from venv import logger
 from PyQt5.QtCore import QIODevice, QProcess, pyqtSignal, pyqtSlot
 import os
 import subprocess
-from typing import Any, Callable, List, Optional, TextIO, TypeVar
+from typing import Any, Callable, Dict, List, Optional, TextIO, TypeVar
 
 NOT_FOUND_ERROR="""Only windows binaries are currently provided with 'cbr-tools'. The feature you
 are trying to use requires 'cbr-tools-extra'. Plese obtain a copy at https://github.com/TUM-CBR/cbr-tools-extra
@@ -32,7 +34,7 @@ T = TypeVar('T')
 class CbrToolsProcessException(Exception):
     pass
 
-def decode_bytes(bs):
+def decode_bytes(bs: Any):
     try:
         # The typing claims that line_bytes should already
         # be bytes but experience shows that it is a
@@ -44,22 +46,60 @@ def decode_bytes(bs):
     except AttributeError:
         return bs.decode("utf-8")
 
+class Logger:
+
+    def __init__(self, log_location: Optional[str]):
+        self.__session_log = None if log_location is None else open(log_location, 'w')
+
+    def log_message(self, message: str):
+
+        if self.__session_log is None:
+            return
+        
+        newline = "\n" + "-"*100 + "\n"
+        self.__session_log.write(f"{message}{newline}")
+        self.__session_log.flush()
+
+    def close(self):
+        if self.__session_log is None:
+            return
+
+        self.__session_log.close()
+
 class CbrExtraProcess(QProcess):
 
     message_signal = pyqtSignal(object)
     error_signal = pyqtSignal(object)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args : Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
 
         self.setProgram(cbrtools_bin())
         self.readyReadStandardOutput.connect(self.__on_data_ready)
         self.finished.connect(self.__on_process_finish)
 
-        self.__log_values = os.environ.get('LOG_CBR_EXTRA')
+        self.__logger_instance : Optional[Logger] = Logger(os.environ.get('LOG_CBR_EXTRA'))
+
+    @property
+    def __logger(self) -> Logger:
+        result = self.__logger_instance
+
+        assert result is not None, "Logger requested after close"
+        return result
+
+    def __close_logger(self):
+        logger = self.__logger_instance
+
+        if logger is None:
+            return
+        
+        self.__logger_instance = None
+        logger.close()
 
     @pyqtSlot(int, QProcess.ExitStatus)
-    def __on_process_finish(self, exit_code, exit_status):
+    def __on_process_finish(self, exit_code: int, exit_status: QProcess.ExitStatus):
+
+        self.__close_logger()
 
         if exit_code == 0:
             return
@@ -77,15 +117,17 @@ class CbrExtraProcess(QProcess):
         self.setArguments(args)
         self.start(QIODevice.ReadWrite | QIODevice.Text)
 
-    def write_json_dict(self, value: dict):
-        bs = f"{json.dumps(value)}\n".encode('utf-8')
-        self.write(bs)
+    def write_json_dict(self, value: Dict[Any, Any]):
+        message = f"{json.dumps(value)}\n"
+        self.__logger.log_message(message)
+        self.write(message.encode('utf-8'))
 
     def close(self):
         self.write_json_dict({
             'uid': -1,
             'entity_type': 'stop'
         })
+        self.__close_logger()
         super().close()
 
     @pyqtSlot()
@@ -95,12 +137,11 @@ class CbrExtraProcess(QProcess):
 
         while self.canReadLine():
             line_bytes : Any = self.readLine()
-
-            if self.__log_values:
-                print(line_bytes)
+            line_str = decode_bytes(line_bytes)
+            self.__logger.log_message(line_str)
 
             try:
-                value = json.loads(decode_bytes(line_bytes))
+                value = json.loads(line_str)
             except json.JSONDecodeError:
                 continue
 

@@ -6,7 +6,7 @@ from ..QtWidgets import show_exception
 
 ParseValue = Callable[[str], Any]
 
-EDITABLE_TYPES = {
+EDITABLE_TYPES : Dict[Type[Any], Callable[[str], Any]] = {
     str: lambda s: s,
     float: lambda s: float(s),
     int: lambda s: int(s),
@@ -24,7 +24,7 @@ def can_edit(v: Any) -> bool:
 
     return issubclass(v, EDITABLE_TYPES_TUPLE)
 
-def parser_for(value: Type) -> ParseValue:
+def parser_for(value: Type[Any]) -> ParseValue:
 
     for ty, parser in EDITABLE_TYPES.items():
         if issubclass(value, ty):
@@ -44,7 +44,7 @@ class Field(NamedTuple):
     overrides : MetaFieldOverrides
     name : str
     parse: Callable[[str], Any]
-    field_type: Type
+    field_type: Type[Any]
 
 TTuple = TypeVar('TTuple', bound=NamedTuple)
 
@@ -104,16 +104,21 @@ class NamedTupleEditorModel(QAbstractTableModel, Generic[TTuple]):
     def current_values(self):
         return self.__values
 
-    def rowCount(self, parent = None) -> int:
+    def rowCount(self, parent : Any = None) -> int:
         return len(self.__fields)
 
-    def columnCount(self, parent = None) -> int:
+    def columnCount(self, parent : Any = None) -> int:
         return len(self.__values)
 
-    def headerData(self, section, orientation, role=Qt.DisplayRole):
-        if role == Qt.DisplayRole and orientation == Qt.Horizontal:
+    def headerData(
+            self,
+            section : int,
+            orientation : Qt.Orientation,
+            role: int = Qt.ItemDataRole.DisplayRole
+        ):
+        if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
             return f"{section + 1}"
-        elif role == Qt.DisplayRole and orientation == Qt.Vertical:
+        elif role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Vertical:
             return self.__get_field_display(section)
 
         return super().headerData(section, orientation, role)
@@ -121,10 +126,10 @@ class NamedTupleEditorModel(QAbstractTableModel, Generic[TTuple]):
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:
 
         if self.__is_value_checkable(index):
-            return super().flags(index) | Qt.ItemIsUserCheckable
+            return super().flags(index) | Qt.ItemFlag.ItemIsUserCheckable
 
         if self.__is_value_editable(index):
-            return super().flags(index) | Qt.ItemIsEditable
+            return super().flags(index) | Qt.ItemFlag.ItemIsEditable
 
         return super().flags(index)
 
@@ -183,26 +188,31 @@ class NamedTupleEditorModel(QAbstractTableModel, Generic[TTuple]):
             self.index(self.rowCount() -1, ix)
         )
 
-    def setData(self, index: QModelIndex, value, role = Qt.EditRole) -> bool:
+    def setData(
+        self,
+        index: QModelIndex,
+        value : Any,
+        role: int = Qt.ItemDataRole.EditRole
+    ) -> bool:
 
-        if role == Qt.EditRole:
+        if role == Qt.ItemDataRole.EditRole:
             return self.__set_edit_data(index, value)
-        if role == Qt.CheckStateRole:
+        if role == Qt.ItemDataRole.CheckStateRole:
             return self.__set_checked_sate(index, value)
         return False
 
-    def __set_checked_sate(self, index: QModelIndex, value):
+    def __set_checked_sate(self, index: QModelIndex, value: Any):
         field = self.__get_field(index)
         item = self.__get_item(index) or self.__default_item
 
         assert item is not None, "Error! Control flow should not reach this point with item being None"
 
-        new_value = True if value == Qt.Checked else False
+        new_value = True if value == Qt.CheckState.Checked else False
         self.__set_item(index, item._replace(**{field: new_value}))
         self.dataChanged.emit(index, index)
         return True
 
-    def __set_edit_data(self, index: QModelIndex, value):
+    def __set_edit_data(self, index: QModelIndex, value: Any):
         field = self.__get_field(index)
         item = self.__get_item(index) or self.__default_item
 
@@ -233,7 +243,7 @@ class NamedTupleEditorModel(QAbstractTableModel, Generic[TTuple]):
 
         self.modelReset.emit()
 
-    def __checked_state_data(self, index: QModelIndex):
+    def __checked_state_data(self, index: QModelIndex) -> Optional[Qt.CheckState]:
 
         if not self.__is_value_checkable(index):
             return None
@@ -241,18 +251,18 @@ class NamedTupleEditorModel(QAbstractTableModel, Generic[TTuple]):
         value = self.__get_value(index)
 
         if value:
-            return Qt.Checked
+            return Qt.CheckState.Checked
         else:
-            return Qt.Unchecked
+            return Qt.CheckState.Unchecked
 
-    def data(self, index: QModelIndex, role = Qt.DisplayRole):
+    def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
 
         if not index.isValid():
             return
 
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
             return self.__display_role_data(index)
-        elif role == Qt.CheckStateRole:
+        elif role == Qt.ItemDataRole.CheckStateRole:
             return self.__checked_state_data(index)
 
         return None

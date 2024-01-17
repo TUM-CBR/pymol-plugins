@@ -11,10 +11,14 @@ class SeriesModel(QAbstractTableModel, Generic[TMeta]):
     def __init__(
         self,
         series : List['Series[TMeta]'],
+        x_scale : float,
+        y_scale : float,
         render_series_header : Callable[[int, 'Series[TMeta]'], str] = default_series_header
     ) -> None:
         super().__init__()
         self.__render_series_header = render_series_header
+        self.__x_scale = x_scale
+        self.__y_scale = y_scale
 
         self.__set_series(series)
 
@@ -26,11 +30,16 @@ class SeriesModel(QAbstractTableModel, Generic[TMeta]):
             for i,series in enumerate(series)
         ]
 
-    def rowCount(self, parent = None) -> int:
+    def rowCount(self, parent: Any = None) -> int:
         return self.__row_count
 
-    def columnCount(self, parent = None) -> int:
+    def columnCount(self, parent: Any = None) -> int:
         return len(self.__column_headers)
+    
+    def set_scaling(self, x_scale: float, y_scale: float):
+        self.__x_scale = x_scale
+        self.__y_scale = y_scale
+        self.modelReset.emit()
 
     def headerData(
         self,
@@ -46,7 +55,7 @@ class SeriesModel(QAbstractTableModel, Generic[TMeta]):
 
     def __display_role_data(self, index: QModelIndex) -> Any:
 
-        return self.__series[index.column()].values[index.row()].y
+        return f"{round(self.__series[index.column()].values[index.row()].y * self.__y_scale, 8)}"
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
 

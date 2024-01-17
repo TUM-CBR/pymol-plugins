@@ -74,7 +74,7 @@ class KineticsInput(QWidget):
             ]
 
             yield KineticsRun(
-                run_metadata=cast(RunMetadata, run),
+                run_metadata = run,
                 data = data
             )
 
