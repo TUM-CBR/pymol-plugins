@@ -56,7 +56,7 @@ def run_to_conc_vs_time(
 
         # abs = conc * molar_extinction * distance
         # => conc = abs / (molar_extinction * distance)
-        product_conc = (value / (molar_extinction * distance)) * conc_units
+        product_conc = (value / (molar_extinction * distance))
 
         # We assume that for every molecule of the product
         # we consume a molecule of the substrate

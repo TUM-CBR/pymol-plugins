@@ -128,7 +128,7 @@ class KineticsOptimizer(QWidget):
         )
         self.__data_input_widget.runs_selected.connect(self.__on_runs_updated)
         initial_min = SubstrateInhibitionModel()
-        initial_max = SubstrateInhibitionModel(99,99,99,99)
+        initial_max = SubstrateInhibitionModel(1,1,1,1)
         args_base = FitWidgetArgsBase(self.__compute, (initial_min, initial_max))
 
         # Create the widget to fit by rate
@@ -169,18 +169,23 @@ class KineticsOptimizer(QWidget):
             self.__velocity_widget,
             self.__simulation_widget
         ]
-
-    @pyqtSlot()
-    def __on_ranges_changed(self):
-
+    
+    def __get_fit_parameters_range(self):
         current_values = self.__fit_parameters_range.current_values
         min_range = current_values[0]
         max_range = current_values[1]
 
         assert min_range is not None and max_range is not None, "Ranges widget must have two items"
+        return (
+            self.__scale_model(min_range, False),
+            self.__scale_model(max_range, False)
+        )
+
+    @pyqtSlot()
+    def __on_ranges_changed(self):
 
         for widget in self.__get_fit_widgets():
-            widget.on_parameters_range_changed((min_range, max_range))
+            widget.on_parameters_range_changed(self.__get_fit_parameters_range())
 
     @pyqtSlot()
     def __on_runs_updated(self):
@@ -192,6 +197,10 @@ class KineticsOptimizer(QWidget):
             widget.on_runs_updated(runs)
 
         self.__set_fit_parameters(self.__parameters_wizard.fit_parameters())
+
+        # Changing the runs can potentially change the scaling, so we call
+        # the "on_ranges_changed" method to indicate it.
+        self.__on_ranges_changed()
 
     @pyqtSlot()
     def __on_wizard_clicked(self):
@@ -224,13 +233,20 @@ class KineticsOptimizer(QWidget):
     def __on_compute_error(self, error: Exception):
         show_exception(self, error)
 
+    def __scale_model(self, model: SubstrateInhibitionModel, inverted: bool):
+        runs = self.__runs
+        factor = 1 if runs is None else runs.global_attributes.concentration_units
+        if inverted:
+            factor = 1 / factor
+        return model.scale(factor)
+
     def __fit_parameters(self) -> SubstrateInhibitionModel:
         params = self.__fit_parameters_model[0]
         assert params is not None, "Params should have default values"
-        return params
+        return self.__scale_model(params, False)
 
     def __set_fit_parameters(self, params: SubstrateInhibitionModel):
-        self.__fit_parameters_model[0] = params
+        self.__fit_parameters_model[0] = self.__scale_model(params, True)
 
     @pyqtSlot(object)
     def __on_fit_signal(self, result: FitModelResult):
@@ -238,7 +254,7 @@ class KineticsOptimizer(QWidget):
 
     @pyqtSlot(QModelIndex, QModelIndex)
     def __on_fit_parameters_changed(self, start: QModelIndex, end: QModelIndex):
-        model = self.__fit_parameters_model[0]
+        model = self.__fit_parameters()
 
         assert model is not None, "The model editor should have at least one model"
         self.__velocity_widget.on_model_updated(model)

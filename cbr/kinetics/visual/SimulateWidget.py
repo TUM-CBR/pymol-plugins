@@ -88,7 +88,7 @@ class SimulateWidget(FitWidgetBase):
 
     def __on_runs_updated__(self, runs: KineticsRuns):
         self.__runs = runs
-        scale = 1 / runs.global_attributes.concentration_units
+        scale = 1 / self.__user_units()
         self.__plot.set_scaling(scale, scale)
         self.__update()
 
@@ -125,7 +125,17 @@ class SimulateWidget(FitWidgetBase):
         self.__update()
 
     def __on_model_eval_simulation__(self, result: List[Series[SimulateModelMetadata]]):
-        self.__update(result)        
+        self.__update(result)
+
+    def __user_units(self):
+        runs = self.__runs
+
+        if runs is None:
+            return 1
+        return runs.global_attributes.concentration_units
+
+    def __scale_to_user_units(self, value: float):
+        return value / self.__user_units()
 
     def __update_plot(
         self,
@@ -145,9 +155,10 @@ class SimulateWidget(FitWidgetBase):
         else:
             model_series = [
                 series.update_meta(
-                    PlotMeta(f"Sim {series.metadata.initial_concentration}")
+                    PlotMeta(f"Sim {conc}")
                 )
                 for series in model
+                for conc in [self.__scale_to_user_units(series.metadata.initial_concentration)]
             ]
 
         self.__plot.set_series(

@@ -6,14 +6,25 @@ from .Plot import Plot, SeriesSet
 from .SeriesModel import SeriesModel
 from .Ui_PlotWidget import Ui_PlotWidget
 
+DEFAULT_MAX_SELECTED = 6
+
 class SelectionState(NamedTuple):
-    is_selected : bool = True
+    is_selected : bool = False
 
     def checked_state(self):
         if self.is_selected:
             return Qt.CheckState.Checked
         else:
             return Qt.CheckState.Unchecked
+        
+    @staticmethod
+    def build_default(items: SeriesSet, max_selected: int = DEFAULT_MAX_SELECTED):
+        num_series = len(items.series)
+        selected_marker = 1 if num_series <= DEFAULT_MAX_SELECTED else int(num_series / max_selected)
+        return [
+            SelectionState(i % selected_marker == 0)
+            for i in range(0, num_series)
+        ]
 
 class SelectedSeriesModel(QAbstractTableModel):
 
@@ -24,10 +35,15 @@ class SelectedSeriesModel(QAbstractTableModel):
         super().__init__()
 
         self.__series_set = series_set
-        self.__selected_state = [
-            SelectionState()
-            for _ in range(0, len(series_set.series))
-        ]
+        self.__selected_state = SelectionState.build_default(series_set)
+
+    def update_series_set(self, series_set: SeriesSet):
+        old_length = len(self.__series_set.series)
+        self.__series_set = series_set
+        if len(series_set) != old_length:
+            self.__selected_state = SelectionState.build_default(series_set)
+
+        self.modelReset.emit()
 
     def rowCount(self, parent: Any = None) -> int:
         return len(self.__series_set.series)
@@ -153,7 +169,13 @@ class PlotWidget(QWidget):
         model.set_all(False)
 
     def set_series(self, series: SeriesSet):
-        self.__selection_model = SelectedSeriesModel(series)
+
+        model = self.__selection_model
+        if model is None:
+            self.__selection_model = SelectedSeriesModel(series)
+        else:
+            model.update_series_set(series)
+
         self.__ui.selectedSeriesTable.setModel(self.__selection_model)
         self.__update()
 

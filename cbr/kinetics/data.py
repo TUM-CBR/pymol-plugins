@@ -1,4 +1,4 @@
-from typing import Callable, Tuple, cast, Generic, NamedTuple, List, TypeVar, TYPE_CHECKING
+from typing import Any, Callable, Tuple, cast, Generic, NamedTuple, List, TypeVar, TYPE_CHECKING
 
 class Point2d(NamedTuple):
     x : float
@@ -89,6 +89,19 @@ class SubstrateInhibitionModel(NamedTuple):
         den = (1+s/self.ksi)*s + self.km
 
         return num / den
+    
+    def is_valid(self):
+        for value in self:
+            if cast(Any, value) is None:
+                return False
+            
+        return True
+    
+    def scale(self, factor: float) -> 'SubstrateInhibitionModel':
+        return SubstrateInhibitionModel(*[
+            value * factor
+            for value in self
+        ])
     
 SubstrateInhibitionModelFitRange = Tuple[SubstrateInhibitionModel, SubstrateInhibitionModel]
 

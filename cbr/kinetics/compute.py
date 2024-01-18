@@ -48,6 +48,11 @@ K_RANGE_KM = "km"
 K_RANGE_VMAX = "vmax"
 K_RANGE_BETA = "beta"
 
+INVALID_MODEL_MESSAGE = \
+    """The resulting model is not valid. This happens when the fitting algorithm converges to values that
+    have undefined behavior in the model. You can try reducing the number of iterations, narrow the range
+    of parameters or update the model so it starts at new values."""
+
 class ComputeHandler(QObject):
 
     MESSAGE_ID_COUNTER = AtomicCounter()
@@ -94,15 +99,19 @@ class ComputeHandler(QObject):
 
             assert model_name == K_PARTIAL_INHIBITION, f"Unknown model {model_name}"
             parameters = model[K_MODEL_PARAMETERS]
-            value = FitModelResult(
-                model = SubstrateInhibitionModel(
-                    v_max = parameters[K_VMAX],
-                    beta = parameters[K_BETA],
-                    km = parameters[K_KM],
-                    ksi = parameters[K_KSI]
-                )
+            new_model = SubstrateInhibitionModel(
+                v_max = parameters[K_VMAX],
+                beta = parameters[K_BETA],
+                km = parameters[K_KM],
+                ksi = parameters[K_KSI]
             )
-            self.on_model_fit_singal.emit(value)
+
+            if not new_model.is_valid():
+                self.on_error.emit(
+                    Exception(INVALID_MODEL_MESSAGE)
+                )
+            else:
+                self.on_model_fit_singal.emit(FitModelResult(new_model))
         except IndexError:
             self.on_error.emit(ValueError("Message is not valid results"))
 
@@ -117,7 +126,7 @@ class ComputeHandler(QObject):
                 Series(
                     metadata = SimulateModelMetadata(
                         model_name="partial_inhibition",
-                        initial_concentration=conc,
+                        initial_concentration=float(conc),
                         spec = spec
                     ),
                     values = [
