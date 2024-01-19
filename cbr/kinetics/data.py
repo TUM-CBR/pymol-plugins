@@ -98,10 +98,15 @@ class SubstrateInhibitionModel(NamedTuple):
         return True
     
     def scale(self, factor: float) -> 'SubstrateInhibitionModel':
-        return SubstrateInhibitionModel(*[
-            value * factor
-            for value in self
-        ])
+        return SubstrateInhibitionModel(
+            v_max = self.v_max*factor,
+            km = self.km*factor,
+            ksi = self.ksi*factor,
+
+            # Beta is a ratio, so it does not make
+            # sense to scale
+            beta = self.beta
+        )
     
 SubstrateInhibitionModelFitRange = Tuple[SubstrateInhibitionModel, SubstrateInhibitionModel]
 

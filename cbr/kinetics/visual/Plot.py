@@ -1,7 +1,8 @@
+from PyQt5.QtGui import QHideEvent, QShowEvent
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PyQt5.QtWidgets import QVBoxLayout, QWidget 
-from typing import List, NamedTuple
+from typing import List, NamedTuple, Optional
 
 from ..data import *
 
@@ -22,12 +23,14 @@ class Plot(QWidget):
     ):
         super().__init__()
         self.__series = SeriesSet()
-        self.__plot_canvas = QWidget()
-        layout = QVBoxLayout(self)
+        self.__plot_canvas = FigureCanvas()
+        self.__plot_layout = QVBoxLayout(self)
+        layout = self.__plot_layout
         layout.addWidget(self.__plot_canvas)
         self.setLayout(layout)
         self.__x_scale = x_scale
         self.__y_scale = y_scale
+        self.__should_render = False
 
     def set_series(self, series: SeriesSet):
         self.__series = series
@@ -38,9 +41,30 @@ class Plot(QWidget):
         self.__y_scale = y_scale
         self.__render_series()
 
+    def hideEvent(self, a0: Optional[QHideEvent]) -> None:
+        self.__should_render = False
+        return super().hideEvent(a0)
+    
+    def showEvent(self, a0: Optional[QShowEvent]) -> None:
+        self.__should_render = True
+        self.__render_series()
+        return super().showEvent(a0)
+    
+    def __update_figure(self, figure: Figure):
+
+        old_canvas = self.__plot_canvas
+        self.__plot_canvas = FigureCanvas(figure=figure)
+        self.__plot_layout.replaceWidget(
+            old_canvas,
+            self.__plot_canvas
+        )
+
     def __render_series(self):
+
+        if not self.__should_render:
+            return
+
         figure = Figure()
-        canvas = FigureCanvas(figure)
         ax = figure.add_subplot(111)
         series_set = self.__series
 
@@ -55,12 +79,4 @@ class Plot(QWidget):
         ax.set_ylabel(series_set.y_label)
         ax.legend()
 
-        layout = self.layout()
-
-        assert layout is not None, "Bug in the code! Layout must be created at this point."
-
-        layout.replaceWidget(
-            self.__plot_canvas,
-            canvas
-        )
-        self.__plot_canvas = canvas
+        self.__update_figure(figure)

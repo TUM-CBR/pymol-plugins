@@ -100,25 +100,24 @@ class SimulateWidget(FitWidgetBase):
         runs = self.__runs
         if runs is None:
             return
+        
+        model = self.__model
+        if model_runs is None and model is not None:
+            # If we have a model but no runs for that model,
+            # we evaluate the model before rendering
+            args = self.__simulate_args()
+            self.__simulate_model__(
+                model,
+                runs.global_attributes.measurement_interval,
+                periods = runs.periods(),
+                steps_per_second = args.steps_per_second,
+                initial_concentrations=runs.concentrations()
+            )
+            return
 
         self.__update_plot(
             as_conc_vs_time_series(runs),
             model_runs
-        )
-
-        model = self.__model
-
-        if model is None or model_runs is not None:
-            return
-        
-        args = self.__simulate_args()
-
-        self.__simulate_model__(
-            model,
-            runs.global_attributes.measurement_interval,
-            periods = runs.periods(),
-            steps_per_second = args.steps_per_second,
-            initial_concentrations=runs.concentrations()
         )
 
     def __on_parameters_changed(self):

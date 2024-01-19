@@ -6,10 +6,8 @@ from .Plot import Plot, SeriesSet
 from .SeriesModel import SeriesModel
 from .Ui_PlotWidget import Ui_PlotWidget
 
-DEFAULT_MAX_SELECTED = 6
-
 class SelectionState(NamedTuple):
-    is_selected : bool = False
+    is_selected : bool = True
 
     def checked_state(self):
         if self.is_selected:
@@ -18,12 +16,11 @@ class SelectionState(NamedTuple):
             return Qt.CheckState.Unchecked
         
     @staticmethod
-    def build_default(items: SeriesSet, max_selected: int = DEFAULT_MAX_SELECTED):
+    def build_default(items: SeriesSet):
         num_series = len(items.series)
-        selected_marker = 1 if num_series <= DEFAULT_MAX_SELECTED else int(num_series / max_selected)
         return [
-            SelectionState(i % selected_marker == 0)
-            for i in range(0, num_series)
+            SelectionState()
+            for _i in range(0, num_series)
         ]
 
 class SelectedSeriesModel(QAbstractTableModel):
@@ -40,7 +37,7 @@ class SelectedSeriesModel(QAbstractTableModel):
     def update_series_set(self, series_set: SeriesSet):
         old_length = len(self.__series_set.series)
         self.__series_set = series_set
-        if len(series_set) != old_length:
+        if len(series_set.series) != old_length:
             self.__selected_state = SelectionState.build_default(series_set)
 
         self.modelReset.emit()
