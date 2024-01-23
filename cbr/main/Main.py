@@ -12,7 +12,7 @@ from ..cascades import main as Cascades
 from ..chimeras import Applications as Chimeras
 from ..coevolution import main as Coevolution
 from ..dssp import main as Dssp
-from ..kinetics import main as Kinetics
+#from ..kinetics import main as Kinetics
 from ..msa import Applications as Msa
 from ..primer import Applications as Primer
 from ..schema import Applications as Schema
@@ -74,16 +74,16 @@ APP_DEFINITIONS = [
         text = "DSSP",
         init = Dssp.dssp_runner
     ),
-    AppDefinition(
-        icon = "kinetics.png",
-        text = "Enzyme Kinetics",
-        init = Kinetics.enzyme_kinetics
-    )
+    #AppDefinition(
+    #    icon = "kinetics.png",
+    #    text = "Enzyme Kinetics",
+    #    init = Kinetics.enzyme_kinetics
+    #)
 ]
 
 class Main(QWidget):
 
-    def __init__(self, context : Context, *args, **kwargs) -> None:
+    def __init__(self, context : Context, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
         self.__context = context
@@ -103,7 +103,7 @@ class Main(QWidget):
         title_layout = QHBoxLayout()
 
         pixmap = QPixmap(self.__get_image_path("tumcs.png"))
-        pixmap = pixmap.scaledToWidth(160, Qt.SmoothTransformation)
+        pixmap = pixmap.scaledToWidth(160, Qt.TransformationMode.SmoothTransformation)
         image_label = QLabel()
         image_label.setPixmap(pixmap)
         title_layout.addWidget(image_label)
@@ -117,7 +117,7 @@ class Main(QWidget):
 
         title_layout.addWidget(label)
         title_layout.addItem(
-            QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Expanding)
+            QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         )
 
         main_layout.addLayout(title_layout)
@@ -129,7 +129,7 @@ class Main(QWidget):
 
         main_layout.addLayout(apps_layout)
         main_layout.addItem(
-            QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Expanding)
+            QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         )
 
         self.setLayout(main_layout)
