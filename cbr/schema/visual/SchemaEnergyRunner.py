@@ -4,7 +4,7 @@ from PyQt5.QtCore import pyqtSlot, QRegExp
 from PyQt5.QtGui import QRegExpValidator
 from PyQt5.QtWidgets import QMessageBox, QWidget
 from tempfile import TemporaryDirectory
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 
 from ...core.TaskManager import TaskManager
@@ -12,6 +12,7 @@ from ...clustal import Clustal
 from ...clustal import msa
 from ...core.Context import Context
 from ...core.pymol import structure
+from ...core.Qt.QtWidgets import with_error_handler
 from ...core import visual
 from ...support.visual import as_fasta_selector
 
@@ -21,6 +22,7 @@ from ..raspp import schemaenergy
 
 from .energy import EnergySelector
 from .SchemaEnergyViewer import SchemaEnergyViewer
+from .SequencesPositionEditor import Fragments, SequencesPositionEditor
 from .substitution import SubstitutionSelector
 from .Ui_SchemaEnergyRunner import Ui_SchemaEnergyRunner
 
@@ -28,7 +30,7 @@ class SchemaEnergyRunner(QWidget):
 
     XoValidator = QRegExpValidator(QRegExp("^(\\s*\\d+\\s*(,\\s*\\d+)*)?$"))
 
-    def __init__(self, context : Context, *args, **kwargs):
+    def __init__(self, context : Context, *args: Any, **kwargs: Any):
         super(SchemaEnergyRunner, self).__init__(*args, **kwargs)
 
         self.__ui = Ui_SchemaEnergyRunner()
@@ -44,7 +46,7 @@ class SchemaEnergyRunner(QWidget):
             self.__ui.structureSequenceCombo
         )
 
-        self.__ui.shufflingPointsEdit.setValidator(SchemaEnergyRunner.XoValidator)
+        self.__fasta_selector.sequences_changed.connect(self.__on_sequences_changed)
 
         self.__clustal = Clustal.get_clustal_from_context(context)
         self.__task_manager = TaskManager.from_context(context)
@@ -53,6 +55,16 @@ class SchemaEnergyRunner(QWidget):
         self.__ui.runSchemaEnergyButton.clicked.connect(self.on_runSchemaEnergyButton_clicked)
         self.__energy_selector = EnergySelector(self.__ui.energyScoringCombo)
         self.__substitution_selector = SubstitutionSelector(self.__ui.substitutionSelector)
+        self.__positions_editor = SequencesPositionEditor(
+            self.__ui.shufflingPointsTable,
+            self.__ui.sequencesTable,
+            self.__ui.shufflingPointBox
+        )
+
+    def __on_sequences_changed(self):
+        self.__positions_editor.set_sequences(
+            dict(self.__fasta_selector.get_items())
+        )
 
     def __stop_progress_bar(self):
         self.__ui.schemaProgress.setVisible(False)
@@ -71,13 +83,13 @@ class SchemaEnergyRunner(QWidget):
             "%s_%s.pdb" % (structure_name, chain_name)
         )
 
-    def __msa_file(self, base_path) -> str:
+    def __msa_file(self, base_path: str) -> str:
         return path.join(
             base_path,
             "parents.aln"
         )
 
-    def __structure_msa_file(self, base_path) -> str:
+    def __structure_msa_file(self, base_path: str) -> str:
         return path.join(
             base_path,
             "structure.aln"
@@ -114,24 +126,24 @@ class SchemaEnergyRunner(QWidget):
             xo_file.write(" ".join(map(str, crossovers)))
         return self.__corssovers_file(base_path)
 
-    @pyqtSlot()
+    @pyqtSlot(name="on_runSchemaEnergyButton_clicked")
+    @with_error_handler()
     def on_runSchemaEnergyButton_clicked(self):
         selection = self.__structure_selector.currentSelection
 
         if not selection:
             raise ValueError("Select a structure!")
 
-        crossovers = [ \
-            int(xo) \
-            for xo in self.__ui.shufflingPointsEdit.text().split(",") \
-        ]
+        fragments = self.__positions_editor.fragments()
+        if fragments is None:
+            raise ValueError("No fragments have been selected")
 
         results_directory = TemporaryDirectory()
 
         def task():
             return self.__run_schema_energy(
                 selection,
-                crossovers,
+                fragments,
                 results_directory.name,
                 self.__substitution_selector.selection
             )
@@ -153,8 +165,8 @@ class SchemaEnergyRunner(QWidget):
     def __show_results(
         self,
         structure_seleciton : visual.StructureSelection,
-        results_folder : TemporaryDirectory
-        ):
+        results_folder : TemporaryDirectory[Any]
+    ):
 
         self.__context.run_widget(
             lambda _: \
@@ -167,7 +179,7 @@ class SchemaEnergyRunner(QWidget):
                 )
         ).show()
 
-    def __with_blosum(self, base_path : str, matrix : dict) -> str:
+    def __with_blosum(self, base_path : str, matrix : Dict[Any, Any]) -> str:
         location = path.join(base_path, "blosum.json")
         with open(location, 'w') as blosum:
             write_matrix(matrix, blosum)
@@ -198,7 +210,7 @@ class SchemaEnergyRunner(QWidget):
     def __run_schema_energy(
         self,
         structure_selection : visual.StructureSelection,
-        crossovers : List[int],
+        fragments: Fragments,
         base_path : str,
         blosum : Optional[BlosumMatrix]
     ):

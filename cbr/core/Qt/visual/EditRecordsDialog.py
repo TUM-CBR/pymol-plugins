@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QDialog, QItemDelegate, QLineEdit, QStyleOptionViewI
 from .Ui_editrecords import Ui_EditRecords
 
 K_ARGS_META = "__args_meta__"
-VALUE_CONTEXT_ROLE = Qt.UserRole
+VALUE_CONTEXT_ROLE = Qt.ItemDataRole.UserRole
 
 COLUMN_NAMES = ["Parameter", "Value", "Description"]
 NUM_COLUMNS = len(COLUMN_NAMES)
@@ -15,12 +15,12 @@ T = TypeVar('T', bound=NamedTuple)
 CellDataParser = Callable[[str], Any]
 
 class SupportedType(NamedTuple):
-    type_class : Type
+    type_class : Type[Any]
     parser : CellDataParser
     validator : QValidator
     default : Any
 
-    def is_supported(self, other_type : Type) -> bool:
+    def is_supported(self, other_type : Type[Any]) -> bool:
         return self.type_class == other_type
 
 SUPPORTED_NATIVE_TYPES = [

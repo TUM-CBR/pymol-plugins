@@ -3,34 +3,7 @@ from PyQt5.QtWidgets import QTableView
 from typing import Any, Callable, cast, Dict, List, Generic, NamedTuple, Optional, Type, TypeVar
 
 from ..QtWidgets import show_exception
-
-ParseValue = Callable[[str], Any]
-
-EDITABLE_TYPES : Dict[Type[Any], Callable[[str], Any]] = {
-    str: lambda s: s,
-    float: lambda s: float(s),
-    int: lambda s: int(s),
-    bool: lambda s: bool(s)
-}
-
-CHECKABLE_TYPES_TUPLE = (bool,)
-
-EDITABLE_TYPES_TUPLE = tuple(EDITABLE_TYPES.keys())
-
-def can_edit(v: Any) -> bool:
-
-    if not isinstance(v, Type):
-        v = v.__class__
-
-    return issubclass(v, EDITABLE_TYPES_TUPLE)
-
-def parser_for(value: Type[Any]) -> ParseValue:
-
-    for ty, parser in EDITABLE_TYPES.items():
-        if issubclass(value, ty):
-            return parser
-
-    raise Exception(f"There is no editor for value {value}")
+from .value_handlers import *
 
 OVERRIDES_FIELD = '__editor_field_overrides__'
 
