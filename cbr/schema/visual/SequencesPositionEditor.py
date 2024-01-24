@@ -9,6 +9,7 @@ from ...core import color
 from ...core import dictutils
 from ...core import optional
 from ...core.Qt.visual.JsonRecordsTable import JsonRecordsModel
+from ...clustal.fasta import FastaSequences
 
 Fragments = Dict[str, List[str]]
 
@@ -229,20 +230,43 @@ class SequencesPositionEditor(QObject):
         if seqs_model is None:
             return
 
-        self.__set_shuffling_points_count(seqs_model.sequences())
+        self.__update_shuffling_points_count(seqs_model.sequences())
         self.__update_shuffling_points()
 
-    def __set_shuffling_points_count(self, seqs: Dict[str, str]):
+    def __update_shuffling_points_count(self, seqs: Dict[str, str]):
         count = self.__shuffling_points_box.value()
         shuffling_points = list(get_all_shuffling_points(seqs, count))
         self.__shuffling_points_model.set_data(shuffling_points)
 
+    def __set_shuffling_points_count(self, seqs: FastaSequences):
 
-    def set_sequences(self, seqs: Dict[str, str]):
+        count = max(
+            len(seq.lines)
+            for seq in seqs.sequences
+        ) - 1
 
+        if count < 2:
+            self.__update_shuffling_points_count(seqs.as_dict())
+        else:
+            self.__shuffling_points_box.setValue(count)
+            shuffling_points = [
+                dict(
+                    (
+                        seq.id,
+                        sum(seq.lines[:i + 1])
+                    )
+                    for seq in seqs.sequences
+                )
+                for i in range(0, count)
+            ]
+            self.__shuffling_points_model.set_data(shuffling_points)
+
+    def set_sequences(self, seqs_meta: FastaSequences):
+
+        seqs = seqs_meta.as_dict()
         self.__sequences_builder_model = model = SequencesBuilderModel(seqs)
         self.__sequences_table.setModel(model)
-        self.__set_shuffling_points_count(seqs)
+        self.__set_shuffling_points_count(seqs_meta)
 
         model.set_shuffling_points(self.__shuffling_points_model.get_shuffling_points())
         self.__sequences_table.resizeColumnsToContents()

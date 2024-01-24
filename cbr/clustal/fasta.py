@@ -1,6 +1,6 @@
 from io import TextIOBase
 import os
-from typing import Iterable, Tuple, TypeVar
+from typing import Dict, Iterable, List, NamedTuple, Tuple, TypeVar, Union
 
 from ..core.WrapIO import WrapIO
 
@@ -33,41 +33,89 @@ def parse_fasta_iter(input_any : FastaInput):
 def parse_fasta_stream(input: TextIOBase):
     return parse_fasta(input)
 
-def parse_fasta(in_fasta : FastaInput) -> 'Iterable[Tuple[str, str] | Exception]':
+class FastaSequenceWithMetadata(NamedTuple):
+    id : str
+    seq : str
+    lines : List[int]
 
-    result = []
-    def yield_(k, v = None):
+    def as_tuple(self):
+        return (self.id, self.seq)
 
-        if v is None:
-            result.append(k)
-        else:
-            result.append((k,v))
+class FastaSequences(NamedTuple):
+    sequences : List[FastaSequenceWithMetadata]
+    exceptions : List[Exception]
+
+    def as_tuples(self) -> Iterable[Union[Tuple[str, str], Exception]]:
+        for seq in self.sequences:
+            yield seq.as_tuple()
+
+        for exn in self.exceptions:
+            yield exn
+
+    def as_dict(self, throw_on_errors : bool = True) -> Dict[str, str]:
+
+        if throw_on_errors:
+            for exn in self.exceptions:
+                raise exn
+
+        return dict(
+            entry.as_tuple() for entry in self.sequences
+        )
+
+def parse_fast_meta(in_fasta : FastaInput) -> FastaSequences:
+
+    sequences : List[FastaSequenceWithMetadata] = []
+    errors : List[Exception] = []
 
     with get_fasta_input_arg(in_fasta) as in_fasta_stream:
         current_header : 'None | str' = None
         current_seq : 'None | str' = None
+        current_lines : List[int] = []
 
         for line in in_fasta_stream.stream.readlines():
             line = line.strip()
 
             if line.startswith(">"):
                 if current_header and current_seq:
-                    yield_(current_header, current_seq)
+                    sequences.append(
+                        FastaSequenceWithMetadata(
+                            id = current_header,
+                            seq = current_seq,
+                            lines = current_lines
+                        )
+                    )
 
                 current_header = line[1:]
                 current_seq = ''
+                current_lines = []
                 continue
             
             line = line.replace(" ", "")
             if current_seq is not None and \
                 all([c in allowed_characters for c in line.upper()]):
                 current_seq += line
+
+                if len(line) > 0:
+                    current_lines.append(len(line))
             elif current_header:
                 current_header = None
                 current_seq = None
-                yield_(ValueError('Could not parse line "%s"' % line))
+                errors.append(ValueError('Could not parse line "%s"' % line))
 
         if current_header and current_seq:
-            yield_(current_header, current_seq)
+            sequences.append(
+                FastaSequenceWithMetadata(
+                    id = current_header,
+                    seq = current_seq,
+                    lines = current_lines
+                )
+            )
 
-    return result
+    return FastaSequences(
+        sequences = sequences,
+        exceptions = errors
+    )
+
+def parse_fasta(in_fasta : FastaInput) -> 'Iterable[Tuple[str, str] | Exception]':
+
+    return parse_fast_meta(in_fasta).as_tuples()

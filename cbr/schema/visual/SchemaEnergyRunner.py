@@ -62,9 +62,7 @@ class SchemaEnergyRunner(QWidget):
         )
 
     def __on_sequences_changed(self):
-        self.__positions_editor.set_sequences(
-            dict(self.__fasta_selector.get_items())
-        )
+        self.__positions_editor.set_sequences(self.__fasta_selector.get_items_meta())
 
     def __stop_progress_bar(self):
         self.__ui.schemaProgress.setVisible(False)

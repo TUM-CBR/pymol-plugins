@@ -23,10 +23,10 @@ class FastaSelector(QObject):
         self.__fasta_combo = fastaCombo
 
     def __on_fasta_text_changed(self):
-        self.__fasta_entries = fasta.parse_fasta(self.__fasta_text_edit.toPlainText())
-        valid_entries = (item for item in self.__fasta_entries if isinstance(item, tuple))
+        self.__fasta_entries : fasta.FastaSequences = fasta.parse_fast_meta(self.__fasta_text_edit.toPlainText())
+        valid_entries = self.__fasta_entries.sequences
         self.__fasta_combo.clear()
-        self.__fasta_combo.insertItems(0, (key for (key, _) in valid_entries))
+        self.__fasta_combo.insertItems(0, (entry.id for entry in valid_entries))
         self.sequences_changed.emit()
 
     @property
@@ -37,10 +37,16 @@ class FastaSelector(QObject):
         return next((name, sequence) for (name, sequence) in self.get_items() if name == self.selected_entry)
 
     def get_items(self) -> Iterable[Tuple[str, str]]:
-        for item in self.__fasta_entries:
-            if(isinstance(item, Exception)):
-                raise item
-            yield item
+
+        entries = self.__fasta_entries
+        for exn in entries.exceptions:
+            raise exn
+
+        for item in entries.sequences:
+            yield item.as_tuple()
+
+    def get_items_meta(self):
+        return self.__fasta_entries
 
     @pyqtSlot()
     def __on_text_changed(self):
