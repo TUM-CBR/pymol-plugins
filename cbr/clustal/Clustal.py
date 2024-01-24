@@ -1,10 +1,14 @@
+from Bio.Align import MultipleSeqAlignment
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
 from io import StringIO, TextIOBase
 import os
 import subprocess
-from typing import cast, Dict, Iterable, Tuple, TypeVar
+from typing import cast, Dict, Iterable, List, NamedTuple, Optional, Tuple, TypeVar
 
 from ..core.Context import Context
 from ..core.WrapIO import WrapIO
+from ..core import assertions
 from . import msa
 
 def find_clustal():
@@ -16,6 +20,10 @@ def find_clustal():
 
 class ClustalResult(object):
     pass
+
+class MsaFromFragments(NamedTuple):
+    alignment : MultipleSeqAlignment
+    fragments_positions : List[int]
 
 MsaInput = TypeVar('MsaInput', str, Iterable[Tuple[str, str]], TextIOBase)
 
@@ -31,7 +39,7 @@ class Clustal(object):
 
     def __init__(
         self,
-        clustal_executable = None
+        clustal_executable : Optional[str] = None
     ):
 
         self.__clustal_executable = clustal_executable or find_clustal()
@@ -107,3 +115,60 @@ class Clustal(object):
             self.run_msa(items, result)
             result.seek(0)
             return msa.parse_alignments(result)
+        
+    def run_msa_fragments(
+        self,
+        fragments: Dict[str, List[str]],
+        result_order : Optional[List[str]] = None
+    ) -> MsaFromFragments:
+        
+        if result_order is None:
+            result_order = list(fragments.keys())
+
+        count = assertions.assert_same_length(*(list(values) for values in fragments.values()))
+        result : Dict[str, str] = dict(
+            (name, "")
+            for name in fragments.keys()
+        )
+
+        position = 0
+        positions : List[int] = []
+        for i in range(0, count):
+            input = (
+                (name, seq)
+                for name,seqs in fragments.items()
+                for seq in [seqs[i].strip()] if len(seq) > 0
+            )
+            partial_msa = self.run_msa_items(input)
+
+            # Append the MSA results for the fragment to the
+            # complete result
+            for name,seq in partial_msa.items():
+                result[name] += seq
+
+            msa_length = assertions.assert_same_length(*partial_msa.values())
+            position += msa_length
+
+            # The position of the last fragment is the end of the sequence
+            # this position is not needed
+            if i + 1 < count:
+                positions.append(position)
+
+            # Add gaps for the sequences that were not included in the
+            # alignment (ie. empty strings provided)
+            for name in fragments.keys():
+                if name not in partial_msa:
+                    result[name] += "-"*msa_length
+
+        records = [
+            SeqRecord(
+                seq = Seq(result[name]),
+                id = name
+            )
+            for name in result_order
+        ]
+
+        return MsaFromFragments(
+            alignment = MultipleSeqAlignment(records),
+            fragments_positions = positions
+        )

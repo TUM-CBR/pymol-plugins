@@ -1,7 +1,7 @@
 from PyQt5.QtCore import pyqtSlot, QAbstractTableModel, QModelIndex, QObject, Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QSpinBox, QTableView
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, NamedTuple, Optional
 
 from cbr.core.Qt.visual.JsonRecordsTable import Record
 
@@ -11,6 +11,13 @@ from ...core import optional
 from ...core.Qt.visual.JsonRecordsTable import JsonRecordsModel
 
 Fragments = Dict[str, List[str]]
+
+class FragmentSelection(NamedTuple):
+    """Represents a selection of fragments in the table. As iteration order of python
+    dictionaries is non deterministic and may vary on different python versions, we
+    store the order in a separate array to preserve that information."""
+    order : List[str]
+    fragments : Fragments
 
 colors = [
     QColor(*rgb)
@@ -46,6 +53,8 @@ def get_segments(seq: str, shuffling_points: List[int]) -> Iterable[str]:
     for ix in shuffling_points:
         yield seq[start:ix]
         start = ix
+
+    yield seq[start:]
 
 def get_lengths(seq_segments: Dict[str, List[str]]) -> List[int]:
 
@@ -86,8 +95,16 @@ class SequencesBuilderModel(QAbstractTableModel):
     def sequences(self) -> Dict[str, str]:
         return self.__sequences
     
-    def fragments(self) -> Optional[Fragments]:
-        return self.__fragments
+    def fragments(self) -> Optional[FragmentSelection]:
+        fragments = self.__fragments
+
+        if fragments is None:
+            return None
+
+        return FragmentSelection(
+            fragments = fragments,
+            order = self.__seqs_names
+        )
 
     def set_shuffling_points(self, shuffling_points: Dict[str, List[int]]):
 
@@ -230,7 +247,7 @@ class SequencesPositionEditor(QObject):
         model.set_shuffling_points(self.__shuffling_points_model.get_shuffling_points())
         self.__sequences_table.resizeColumnsToContents()
 
-    def fragments(self) -> Optional[Fragments]:
+    def fragments(self) -> Optional[FragmentSelection]:
         seqs_model = self.__sequences_builder_model
 
         if seqs_model is None:

@@ -1,3 +1,5 @@
+from Bio import AlignIO
+from Bio.PDB import PDBParser
 from os import path
 import pymol
 from PyQt5.QtCore import pyqtSlot, QRegExp
@@ -6,14 +8,12 @@ from PyQt5.QtWidgets import QMessageBox, QWidget
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, List, Optional
 
-
+from ...core import sequence
+from ...core import visual
 from ...core.TaskManager import TaskManager
 from ...clustal import Clustal
-from ...clustal import msa
 from ...core.Context import Context
-from ...core.pymol import structure
 from ...core.Qt.QtWidgets import with_error_handler
-from ...core import visual
 from ...support.visual import as_fasta_selector
 
 from ..blosum import BlosumMatrix, write_matrix
@@ -22,7 +22,7 @@ from ..raspp import schemaenergy
 
 from .energy import EnergySelector
 from .SchemaEnergyViewer import SchemaEnergyViewer
-from .SequencesPositionEditor import Fragments, SequencesPositionEditor
+from .SequencesPositionEditor import FragmentSelection, SequencesPositionEditor
 from .substitution import SubstitutionSelector
 from .Ui_SchemaEnergyRunner import Ui_SchemaEnergyRunner
 
@@ -186,46 +186,52 @@ class SchemaEnergyRunner(QWidget):
 
         return location
 
-    def __map_crossovers_to_msa(
+    def __build_msa_from_fragmetns(
         self,
-        structure_selection : visual.StructureSelection,
-        parents_msa_location : str,
-        structure_msa_location : str,
-        crossovers : List[int]
-    ):
-
-        offset = list(sorted(structure.get_pdb_sequence_index(structure_selection).keys()))
-        positions_seq = msa.get_relative_positions(
-            msa.parse_alignments(parents_msa_location),
-            msa.parse_alignments(structure_msa_location)
+        fragments: FragmentSelection,
+        out_file: str
+    ) -> List[int]:
+        alignment = self.__clustal.run_msa_fragments(
+            fragments.fragments,
+            result_order = fragments.order
         )
 
-        positions = dict((v,k) for k,v in enumerate(positions_seq))
-
-        try:
-            return [positions[offset[i]] for i in crossovers]
-        except KeyError:
-            raise Exception("The assembly points provided are not valid positions in the structure.")
+        with open(out_file, 'w') as handle:
+            AlignIO.write(
+                alignment.alignment,
+                handle,
+                format='clustal'
+            )
+        return alignment.fragments_positions
 
     def __run_schema_energy(
         self,
         structure_selection : visual.StructureSelection,
-        fragments: Fragments,
+        fragments: FragmentSelection,
         base_path : str,
         blosum : Optional[BlosumMatrix]
-    ):
-        
+    ):        
         pdb_file = self.__save_pdb(base_path, structure_selection)
-        sequences = dict(self.__fasta_selector.get_items())
+
+        parser = PDBParser()
+        pdb_structure = parser.get_structure(
+            structure_selection.structure_name,
+            pdb_file
+        )
+        residues : Any = pdb_structure.get_residues()
+        pdb_seq = "".join(sequence.residue_to_1(res.resname) for res in residues)
+
         parents_msa = self.__msa_file(base_path)
         structure_msa = self.__structure_msa_file(base_path)
-        self.__clustal.run_msa(
-            sequences.items(),
+
+        crossovers = self.__build_msa_from_fragmetns(
+            fragments,
             parents_msa
         )
+
         self.__clustal.run_msa(
             [ self.__fasta_selector.selected_sequence()
-            , (structure_selection.structure_name, structure.get_selection_sequece(structure_selection.selection))
+            , (structure_selection.structure_name, pdb_seq)
             ],
             structure_msa
         )
@@ -237,7 +243,6 @@ class SchemaEnergyRunner(QWidget):
             schemacontacts.ARG_INTERACTIONS: self.__energy_selector.write_interactions(base_path)
         })
 
-        crossovers = self.__map_crossovers_to_msa(structure_selection, parents_msa, structure_msa, crossovers)
         xo_file = self.__save_crossovers(base_path, crossovers)
         schemaenergy_args = {
             schemaenergy.ARG_CONTACT_FILE: self.__contacts_file(base_path),
