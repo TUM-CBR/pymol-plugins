@@ -1,3 +1,9 @@
 {
-    "files": ["SchemaRunnerWidget.ui","SchemaSelectorWidget.ui","SchemaEnergyRunner.ui","SchemaInstanceWidget.ui","SchemaEnergyViewer.ui"]
+    "files": [
+        "SchemaRunnerWidget.ui",
+        "SchemaSelectorWidget.ui",
+        "SchemaEnergyRunner.ui",
+        "SchemaInstanceWidget.ui",
+        "SchemaEnergyViewer.ui"
+    ]
 }

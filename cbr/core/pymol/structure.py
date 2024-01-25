@@ -16,7 +16,8 @@ class StructureSelection(NamedTuple):
             , self.segment_identifier and "segi %s" % self.segment_identifier
             ]
 
-        return " and ".join(s for s in selectors if s)
+        items = " and ".join(s for s in selectors if s)
+        return f"byres ({items} & polymer)"
 
     def show(self):
         return f"{self.structure_name}/{self.chain_name}/{self.segment_identifier}"

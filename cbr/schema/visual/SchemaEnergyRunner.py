@@ -173,6 +173,7 @@ class SchemaEnergyRunner(QWidget):
                     structure_seleciton,
                     self.__schema_energy_file(results_folder.name),
                     self.__contacts_file(results_folder.name),
+                    self.__msa_file(results_folder.name),
                     results_folder
                 )
         ).show()

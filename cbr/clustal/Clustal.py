@@ -1,3 +1,4 @@
+from re import split
 from Bio.Align import MultipleSeqAlignment
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
@@ -125,18 +126,24 @@ class Clustal(object):
         if result_order is None:
             result_order = list(fragments.keys())
 
+        fragment_entries = [
+            (parts[0], " ".join(parts[1:]), fragments[item])
+            for item in result_order
+            for parts in [item.split()]
+        ]
+
         count = assertions.assert_same_length(*(list(values) for values in fragments.values()))
         result : Dict[str, str] = dict(
-            (name, "")
-            for name in fragments.keys()
+            (id, "")
+            for id,_,_ in fragment_entries
         )
 
         position = 0
         positions : List[int] = []
         for i in range(0, count):
             input = (
-                (name, seq)
-                for name,seqs in fragments.items()
+                (id, seq)
+                for id,_,seqs in fragment_entries
                 for seq in [seqs[i].strip()] if len(seq) > 0
             )
             partial_msa = self.run_msa_items(input)
@@ -156,16 +163,17 @@ class Clustal(object):
 
             # Add gaps for the sequences that were not included in the
             # alignment (ie. empty strings provided)
-            for name in fragments.keys():
-                if name not in partial_msa:
-                    result[name] += "-"*msa_length
+            for id,_,_ in fragment_entries:
+                if id not in partial_msa:
+                    result[id] += "-"*msa_length
 
         records = [
             SeqRecord(
-                seq = Seq(result[name]),
-                id = name
+                seq = Seq(result[id]),
+                id = id,
+                name = name
             )
-            for name in result_order
+            for id,name,_ in fragment_entries
         ]
 
         return MsaFromFragments(
