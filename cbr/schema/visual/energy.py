@@ -10,7 +10,8 @@ class EnergySelector(object):
         'SCHEMA classic' : None,
         'Simplified Pysics' : [
             contacts.electrostatic_interactions,
-            contacts.van_der_waals
+            contacts.van_der_waals,
+            contacts.h_bond_interactions
         ]
     }
 
