@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_SchemaEnergyRunner(object):
     def setupUi(self, SchemaEnergyRunner):
         SchemaEnergyRunner.setObjectName("SchemaEnergyRunner")
-        SchemaEnergyRunner.resize(950, 559)
+        SchemaEnergyRunner.resize(918, 589)
         SchemaEnergyRunner.setStyleSheet(".QComboBox {\n"
 "    min-width: 150;\n"
 "}")
@@ -24,9 +24,6 @@ class Ui_SchemaEnergyRunner(object):
         self.energyScoringCombo.setMinimumSize(QtCore.QSize(152, 0))
         self.energyScoringCombo.setObjectName("energyScoringCombo")
         self.gridLayout.addWidget(self.energyScoringCombo, 1, 6, 1, 1)
-        self.substitutionSelector = QtWidgets.QComboBox(SchemaEnergyRunner)
-        self.substitutionSelector.setObjectName("substitutionSelector")
-        self.gridLayout.addWidget(self.substitutionSelector, 2, 6, 1, 1)
         self.copySequenceButton = QtWidgets.QPushButton(SchemaEnergyRunner)
         self.copySequenceButton.setObjectName("copySequenceButton")
         self.gridLayout.addWidget(self.copySequenceButton, 1, 2, 1, 1)
@@ -48,9 +45,6 @@ class Ui_SchemaEnergyRunner(object):
         self.shufflingPointsTable = QtWidgets.QTableView(SchemaEnergyRunner)
         self.shufflingPointsTable.setObjectName("shufflingPointsTable")
         self.gridLayout.addWidget(self.shufflingPointsTable, 7, 0, 2, 3)
-        self.label_7 = QtWidgets.QLabel(SchemaEnergyRunner)
-        self.label_7.setObjectName("label_7")
-        self.gridLayout.addWidget(self.label_7, 2, 4, 1, 1)
         self.label_3 = QtWidgets.QLabel(SchemaEnergyRunner)
         self.label_3.setObjectName("label_3")
         self.gridLayout.addWidget(self.label_3, 4, 0, 1, 3)
@@ -104,7 +98,6 @@ class Ui_SchemaEnergyRunner(object):
         self.label_2.setText(_translate("SchemaEnergyRunner", "Select Structure"))
         self.label.setText(_translate("SchemaEnergyRunner", "Schema Energy"))
         self.label_6.setText(_translate("SchemaEnergyRunner", "Energy Scoring"))
-        self.label_7.setText(_translate("SchemaEnergyRunner", "Substitution Scoring"))
         self.label_3.setText(_translate("SchemaEnergyRunner", "Input Sequences (fasta)"))
         self.refreshStructuresButton.setText(_translate("SchemaEnergyRunner", "Refresh"))
         self.label_4.setText(_translate("SchemaEnergyRunner", "Select Structure Sequence"))

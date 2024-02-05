@@ -107,16 +107,6 @@
        </property>
       </widget>
      </item>
-     <item>
-      <widget class="QLabel" name="label_7">
-       <property name="text">
-        <string>Substitution Scoring</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QComboBox" name="substitutionScoringCombo"/>
-     </item>
     </layout>
    </item>
    <item>

@@ -23,7 +23,7 @@ from ..raspp import schemaenergy
 from .energy import EnergySelector
 from .SchemaEnergyViewer import SchemaEnergyViewer
 from .SequencesPositionEditor import FragmentSelection, SequencesPositionEditor
-from .substitution import SubstitutionSelector
+from .substitution import BLOSUM_MATRIXES
 from .Ui_SchemaEnergyRunner import Ui_SchemaEnergyRunner
 
 class SchemaEnergyRunner(QWidget):
@@ -54,7 +54,6 @@ class SchemaEnergyRunner(QWidget):
         self.__stop_progress_bar()
         self.__ui.runSchemaEnergyButton.clicked.connect(self.on_runSchemaEnergyButton_clicked)
         self.__energy_selector = EnergySelector(self.__ui.energyScoringCombo)
-        self.__substitution_selector = SubstitutionSelector(self.__ui.substitutionSelector)
         self.__positions_editor = SequencesPositionEditor(
             self.__ui.shufflingPointsTable,
             self.__ui.sequencesTable,
@@ -143,7 +142,7 @@ class SchemaEnergyRunner(QWidget):
                 selection,
                 fragments,
                 results_directory.name,
-                self.__substitution_selector.selection
+                BLOSUM_MATRIXES
             )
 
         result = self.__task_manager.run_task(
@@ -208,7 +207,7 @@ class SchemaEnergyRunner(QWidget):
         structure_selection : visual.StructureSelection,
         fragments: FragmentSelection,
         base_path : str,
-        blosum : Optional[BlosumMatrix]
+        blosum : Optional[Dict[str, BlosumMatrix]]
     ):        
         pdb_file = self.__save_pdb(base_path, structure_selection)
 
@@ -254,7 +253,7 @@ class SchemaEnergyRunner(QWidget):
         }
 
         if blosum:
-            schemaenergy_args[schemaenergy.ARG_DISRUPTION] = self.__with_blosum(base_path, blosum)
+            schemaenergy_args[schemaenergy.ARG_BLOSUM] = self.__with_blosum(base_path, blosum)
 
         schemaenergy.main_impl(schemaenergy_args)
 

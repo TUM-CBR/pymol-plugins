@@ -1,9 +1,8 @@
 from Bio import AlignIO
 from Bio.Align import MultipleSeqAlignment
-from io import StringIO
 from PyQt5.QtCore import QAbstractTableModel, QModelIndex, QUrl, Qt, pyqtBoundSignal, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QDesktopServices
-from PyQt5.QtWidgets import QTableView, QTableWidgetItem, QWidget
+from PyQt5.QtWidgets import QTableWidgetItem, QWidget
 from pymol import cmd
 from tempfile import TemporaryDirectory
 from typing import Any, cast, List, Optional, Protocol
@@ -55,9 +54,18 @@ class ChimerasModel(QAbstractTableModel):
         average_entry = SchemaEnergy.Entry(
             chimera = None,
             energy = results.average_energy,
-            mutations = results.average_mutations
+            mutations = results.average_mutations,
+            extra = {}
         )
         self.__entries = [average_entry] + list(self.__results.entries)
+        self.__extra_columns = list(
+            set(
+                col
+                for entry in self.__entries
+                for col in entry.extra 
+            )
+        )
+        self.__all_columns = ["Chimera", "Energy", "Mutations"] + list(self.__extra_columns)
 
     def headerData(
         self,
@@ -67,12 +75,12 @@ class ChimerasModel(QAbstractTableModel):
     ) -> Any:
         
         if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
-            return ["Chimera", "Energy", "Mutations"][section]
+            return self.__all_columns[section]
         
         return super().headerData(section, orientation, role)
     
     def columnCount(self, parent: Any = None) -> int:
-        return self.COLUMN_COUNT
+        return len(self.__all_columns)
     
     def rowCount(self, parent: Any = None) -> int:
         return len(self.__entries)
@@ -99,8 +107,9 @@ class ChimerasModel(QAbstractTableModel):
             return entry.energy
         elif column == self.MUTATIONS_COLUMN:
             return entry.mutations
-        
-        return None
+        else:
+            field = self.__all_columns[column]
+            return entry.extra.get(field)
     
     def __get_display_data(self, index: QModelIndex):
         return self.__get_display_data_by_ix(
