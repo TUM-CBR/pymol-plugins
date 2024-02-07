@@ -1,7 +1,5 @@
-from ast import Tuple
 from io import StringIO
 import json
-from venv import logger
 from PyQt5.QtCore import QIODevice, QProcess, pyqtSignal, pyqtSlot
 import os
 import subprocess

@@ -1,6 +1,9 @@
+from tempfile import TemporaryDirectory
 from PyQt5.QtWidgets import QMainWindow, QWidget
 from PyQt5.QtGui import QCloseEvent
-from typing import Any, Callable, Dict, TypeVar
+from typing import Any, Callable, Dict, List, TypeVar
+
+from .executable import *
 
 T = TypeVar('T')
 
@@ -24,7 +27,29 @@ class Context(object):
 
     def __init__(self):
         self.__store : Dict[str, Any] = {}
-        self.__widgets = []
+        self.__widgets : List[RunQWidgetContext] = []
+        self.__directories : List[TemporaryDirectory[Any]] = []
+
+    def create_temporary_directory(self) -> str:
+        directory = TemporaryDirectory()
+        self.__directories.append(directory)
+        return directory.name
+    
+    def __cleanup(self):
+        for directory in self.__directories:
+            directory.cleanup()
+
+        self.__directories = []
+
+    def __del__(self):
+        self.__cleanup()
+
+    def get_executable(
+        self,
+        widget: QWidget,
+        executable: KnownExecutables
+    ) -> Executable:
+        raise NotImplementedError()
 
     def create_or_load(self, name : str, load : Callable[[], T]) -> T:
 
