@@ -1,10 +1,11 @@
 from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtGui import QShowEvent
 from PyQt5.QtWidgets import QWidget
 from pymol import cmd
 from typing import Dict, Iterable, List, NamedTuple, Optional, Set, Tuple
 
 from ...core.Context import Context, KnownExecutables
-from ...core.Qt.QtWidgets import with_error_handler
+from ...core.Qt.QtWidgets import show_exception, with_error_handler
 from ...core.Qt.visual.NamedTupleEditor import MetaFieldOverrides, namedtuple_eidtor
 from ..data import MpnnEditSpace, MpnnSpec
 from .MpnnViewer import MpnnViewer
@@ -67,8 +68,6 @@ class MpnnRunner(QWidget):
             }
         )
 
-        self.__init_widget()
-
     def __is_valid(self, spec: MpnnSpec) -> Optional[str]:
         canary = False
 
@@ -113,11 +112,21 @@ class MpnnRunner(QWidget):
             )
         )
 
+    def __ensure_components(self):
         
-    def __init_widget(self):
+        try:
+            # Enusre the ProteinMPNN executable is available
+            self.__context.get_executable(self, KnownExecutables.ProteinMPNN)
+        except Exception as e:
+            show_exception(self, e)
+            self.close()
+        
+    def showEvent(self, a0: Optional[QShowEvent]):
 
-        # Enusre the ProteinMPNN executable is available
-        self.__context.get_executable(self, KnownExecutables.ProteinMPNN)
+        if not self.isVisible():
+            return
+
+        self.__ensure_components()
         self.__refresh_selections()
 
     @pyqtSlot(name="__on_run_clicked")

@@ -1,16 +1,7 @@
-from enum import Enum
 from PyQt5.QtCore import QObject, QProcess, QTimer, pyqtSignal, pyqtSlot
 from typing import Any, Iterable, List, NamedTuple, Optional
 
-class ExecutableType(Enum):
-    Binary = 0
-
-class Executable(NamedTuple):
-    executable_type : ExecutableType
-    location : str
-
-class KnownExecutables(Enum):
-    ProteinMPNN = "ProteinMPNN"
+from .data import *
 
 def decode_bytes(bs: Any):
     try:

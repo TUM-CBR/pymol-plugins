@@ -1,6 +1,9 @@
-from tempfile import TemporaryDirectory
+from os import path
+import os
+from PyQt5.QtCore import QDir
 from PyQt5.QtWidgets import QMainWindow, QWidget
 from PyQt5.QtGui import QCloseEvent
+from tempfile import TemporaryDirectory
 from typing import Any, Callable, Dict, List, TypeVar
 
 from .executable import *
@@ -29,6 +32,25 @@ class Context(object):
         self.__store : Dict[str, Any] = {}
         self.__widgets : List[RunQWidgetContext] = []
         self.__directories : List[TemporaryDirectory[Any]] = []
+        self.__application_directory = path.join(
+            QDir.homePath(),
+            ".cbrtools"
+        )
+
+    def __ensure_directory_exists(self, directory: str) -> str:
+        if path.exists(directory):
+            return directory
+        
+        os.mkdir(directory)
+        return directory
+
+    def __get_application_directory(self):
+        return self.__ensure_directory_exists(self.__application_directory)
+
+    def __components_directory(self):
+        return self.__ensure_directory_exists(
+            path.join(self.__get_application_directory(), "components")
+        )
 
     def create_temporary_directory(self) -> str:
         directory = TemporaryDirectory()
@@ -50,14 +72,11 @@ class Context(object):
         executable: KnownExecutables
     ) -> Executable:
         
-        import shutil
-        if shutil.which("protein_mpnn_run.sh"):
-            return Executable(
-                executable_type=ExecutableType.Binary,
-                location="protein_mpnn_run.sh"
-            )
-        
-        raise Exception("Cannot locate the exectuable!")
+        return find_executable(
+            widget,
+            executable,
+            self.__components_directory()
+        )
                 
 
     def create_or_load(self, name : str, load : Callable[[], T]) -> T:
