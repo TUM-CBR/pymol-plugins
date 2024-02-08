@@ -13,6 +13,7 @@ from ..chimeras import Applications as Chimeras
 from ..coevolution import main as Coevolution
 from ..dssp import main as Dssp
 #from ..kinetics import main as Kinetics
+from ..mpnn import main as Mpnn
 from ..msa import Applications as Msa
 from ..primer import Applications as Primer
 from ..schema import Applications as Schema
@@ -74,6 +75,11 @@ APP_DEFINITIONS = [
         text = "DSSP",
         init = Dssp.dssp_runner
     ),
+    AppDefinition(
+         icon = "proteinMPNN.png",
+         text = "Protein MPNN",
+         init = Mpnn.mpnn_main
+    )
     #AppDefinition(
     #    icon = "kinetics.png",
     #    text = "Enzyme Kinetics",

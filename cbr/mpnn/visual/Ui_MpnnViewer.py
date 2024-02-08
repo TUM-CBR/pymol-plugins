@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MpnnViewer(object):
     def setupUi(self, MpnnViewer):
         MpnnViewer.setObjectName("MpnnViewer")
-        MpnnViewer.resize(844, 526)
+        MpnnViewer.resize(915, 505)
         self.gridLayout = QtWidgets.QGridLayout(MpnnViewer)
         self.gridLayout.setObjectName("gridLayout")
         self.sequencesTextEdit = QtWidgets.QPlainTextEdit(MpnnViewer)

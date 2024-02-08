@@ -9,12 +9,12 @@ def mpnn_selection(model: str, chain : Optional[str] = None):
     else:
         chain_selection = ""
 
-    return model_selection + chain_selection
+    return model_selection + chain_selection + " & polymer.protein & backbone"
 
 def get_chains(model: str) -> Set[str]:
 
     result: Set[str] = set()
-    cmd.iterate(mpnn_selection(model), 'result.add(chain)')
+    cmd.iterate(mpnn_selection(model), 'result.add(chain)', space={'result': result})
     return result
 
 class Residue(NamedTuple):
@@ -112,7 +112,7 @@ class MpnnSpec(NamedTuple):
                 residues = get_residues(model, chain)
                 edit_positions = positions_to_be_edited[(model, chain)]
                 fixed = [
-                    residue.seq_pos
+                    residue.seq_pos + 1
                     for residue in residues.values()
                         if residue.resv not in edit_positions
                 ]

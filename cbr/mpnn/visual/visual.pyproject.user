@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 12.0.1, 2024-02-07T08:11:32. -->
+<!-- Written by QtCreator 12.0.1, 2024-02-07T16:08:59. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -144,14 +144,12 @@
     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
     <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">main.py</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration./home/ernesto/code/pymol-plugins/cbr/mpnn/visual/visual/main.py</value>
-    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">/home/ernesto/code/pymol-plugins/cbr/mpnn/visual/visual/main.py</value>
-    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
-    <value type="QString" key="PythonEditor.RunConfiguation.Script">/home/ernesto/code/pymol-plugins/cbr/mpnn/visual/visual/main.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">MpnnRunner.py</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">PythonEditor.RunConfiguration./home/ernesto/code/pymol-plugins/cbr/mpnn/visual/MpnnRunner.py</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">/home/ernesto/code/pymol-plugins/cbr/mpnn/visual/MpnnRunner.py</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">true</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
-    <value type="QString" key="RunConfiguration.WorkingDirectory.default">/home/ernesto/code/pymol-plugins/cbr/mpnn/visual/visual</value>
     <value type="QString" key="RunConfiguration.X11Forwarding">:0</value>
    </valuemap>
    <value type="qlonglong" key="ProjectExplorer.Target.RunConfigurationCount">1</value>

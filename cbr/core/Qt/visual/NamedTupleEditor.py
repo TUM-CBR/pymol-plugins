@@ -1,6 +1,8 @@
 from PyQt5.QtCore import QAbstractTableModel, QModelIndex, Qt
 from PyQt5.QtWidgets import QTableView
-from typing import Any, Callable, cast, Dict, List, Generic, NamedTuple, Optional, Type, TypeVar
+from typing import Any, Callable, Iterable, cast, Dict, List, Generic, NamedTuple, Optional, Type, TypeVar
+
+from numpy import append
 
 from ..QtWidgets import show_exception
 from .value_handlers import *
@@ -149,6 +151,24 @@ class NamedTupleEditorModel(QAbstractTableModel, Generic[TTuple]):
 
     def __getitem__(self, ix: int) -> Optional[TTuple]:
         return self.__get_item(self.index(0, ix))
+    
+    def iterate_values(self) -> Iterable[Optional[TTuple]]:
+        return (value for value in self.__values)
+    
+    def remove(self, *values: TTuple):
+
+        for value in values:
+            index = self.__values.index(value)
+            if index >= 0:
+                self.__values.pop(index)
+
+        self.modelReset.emit()
+    
+    def append(self, *values: Optional[TTuple]):
+
+        for value in values:
+            self.__values.append(value)
+        self.modelReset.emit()
 
     def __setitem__(self, ix: int, value: Optional[TTuple]) -> None:
         self.__set_item(

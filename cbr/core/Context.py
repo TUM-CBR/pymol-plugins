@@ -49,7 +49,16 @@ class Context(object):
         widget: QWidget,
         executable: KnownExecutables
     ) -> Executable:
-        raise NotImplementedError()
+        
+        import shutil
+        if shutil.which("protein_mpnn_run.sh"):
+            return Executable(
+                executable_type=ExecutableType.Binary,
+                location="protein_mpnn_run.sh"
+            )
+        
+        raise Exception("Cannot locate the exectuable!")
+                
 
     def create_or_load(self, name : str, load : Callable[[], T]) -> T:
 
