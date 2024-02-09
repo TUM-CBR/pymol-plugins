@@ -25,9 +25,12 @@ class Residue(NamedTuple):
 def get_residues(model: str, chain: str) -> Dict[int, Residue]:
 
     items : Dict[int, Residue] = {}
+    valid_positions = get_valid_pdb_range(model, chain)
 
     def add_residue(residue: str, resv: int):
-        items[resv] = Residue(residue=residue, resv=resv, seq_pos=0)
+
+        if valid_positions.is_included(resv):
+            items[resv] = Residue(residue=residue, resv=resv, seq_pos=0)
 
     cmd.iterate(
         mpnn_selection(model, chain),
@@ -41,6 +44,43 @@ def get_residues(model: str, chain: str) -> Dict[int, Residue]:
         res.resv: res._replace(seq_pos=seq_pos)
         for seq_pos, res in enumerate(result)
     }
+
+class PdbRange(NamedTuple):
+    min_value : int
+    max_value : int
+
+    def is_included(self, value: int) -> bool:
+        return value >= self.min_value and value <= self.max_value
+
+def get_valid_pdb_range(model: str, chain: str) -> PdbRange:
+    """
+    Gets the range of atoms that should be considered when providing
+    positions to ProteinMPNN. The thing is that not all atoms end up
+    in the pdb file, but ProteinMPNN will also add the missing positions
+    if the missing atoms are in the middle.
+    """
+    selection = mpnn_selection(model, chain)
+    min_value : Optional[int] = None
+    max_value : Optional[int] = None
+
+    def update_range(resv: int):
+        nonlocal min_value
+        nonlocal max_value
+        if min_value is None or min_value > resv:
+            min_value = resv
+        if max_value is None or max_value < resv:
+            max_value = resv
+
+    cmd.iterate_state(0, selection, 'update_range(resv)', space={'update_range': update_range})
+
+    if min_value is None or max_value is None:
+        raise ValueError(f"There are no visible atoms in the model '{model}' and chain '{chain}'")
+
+    return PdbRange(
+        min_value=cast(int, min_value),
+        max_value=cast(int, max_value)
+    )
+
 
 PositionsJonsl = Dict[str, Dict[str, List[int]]]
 ExclusionListEntry = List[Union[List[int], str]]
@@ -84,6 +124,7 @@ class MpnnEditSpace(NamedTuple):
 
     def get_excluded_positions_array(self) -> ExclusionList:
 
+        valid_range = get_valid_pdb_range(self.model, self.chain)
         combined_exclusions : Dict[str, List[int]] = {}
         for position, res_list in self.excluded.items():
             residues = "".join(res_list)
@@ -92,7 +133,8 @@ class MpnnEditSpace(NamedTuple):
             if entry is None:
                 entry = combined_exclusions[residues] = []
 
-            entry.append(position)
+            if valid_range.is_included(position):
+                entry.append(position)
 
         return [
             [positions, residues]
@@ -188,12 +230,14 @@ class MpnnSpec(NamedTuple):
         for model in self.get_models():
             results[model] = {}
             for chain in get_chains(model):
+                position_range = get_valid_pdb_range(model, chain)
                 residues = get_residues(model, chain)
                 edit_positions = positions_to_be_edited[(model, chain)]
                 fixed = [
                     residue.seq_pos + 1
                     for residue in residues.values()
-                        if residue.resv not in edit_positions
+                        if residue.resv not in edit_positions \
+                            and position_range.is_included(residue.resv)
                 ]
                 fixed.sort()
                 results[model][chain] = fixed
