@@ -1,11 +1,12 @@
 import json
 from pathlib import Path
+from turtle import st
 from PyQt5.QtCore import pyqtSlot, QUrl
 from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtWidgets import QWidget
 from os import path
 from pymol import cmd
-from typing import Iterable, Optional
+from typing import Iterable, List, Optional
 
 from ...core.executable import Executable, ExecutableGroupResult, ExecutableProcess, ExecutableProcessGroup
 from ...core.Context import Context
@@ -48,6 +49,9 @@ class MpnnViewer(QWidget):
     
     def __get_fixed_positions_jonsl_path(self) -> str:
         return path.join(self.__working_directory, "fixed.jsonl")
+    
+    def __get_excluded_residues_jonsl_path(self) -> str:
+        return path.join(self.__working_directory, "excluded.jsonl")
     
     def __get_model_location(self, model: str) -> str:
         return path.join(self.__working_directory, f"{model}.pdb")
@@ -108,8 +112,20 @@ class MpnnViewer(QWidget):
 
         self.__populate_fasta()
 
-    def __run_mpnn(self):
+    def __get_excluded_args(self) -> List[str]:
+        excluded = self.__spec.get_excluded_jonsl()
+        if len(excluded) < 1:
+            return []
         
+        excluded_file = self.__get_excluded_residues_jonsl_path()
+        with open(excluded_file, 'w') as out_stream:
+            json.dump(excluded, out_stream)
+
+        return ["--omit_AA_jsonl", excluded_file]
+
+    def __run_mpnn(self):
+
+        args = self.__spec.mpnn_args
         self.__processess = ExecutableProcessGroup.create(
             ExecutableProcess.create_process(
                 self.__mpnn,
@@ -119,8 +135,12 @@ class MpnnViewer(QWidget):
                     "--jsonl_path", self.__get_chains_jonsl_path(),
                     "--chain_id_jsonl", self.__get_assigned_chains_jonsl_path(),
                     "--fixed_positions_jsonl", self.__get_fixed_positions_jonsl_path(),
-                    "--num_seq_per_target", str(self.__spec.num_seqs)
-                ]
+                    "--num_seq_per_target", str(self.__spec.num_seqs),
+                    "--backbone_noise", str(args.backbone_noise),
+                    "--sampling_temp", str(args.sampling_temperature)
+                ] \
+                + self.__get_excluded_args() \
+                + (["--use_soluble_model"] if args.use_soluble_model else [])
             )
             for model in self.__spec.get_models()
         )

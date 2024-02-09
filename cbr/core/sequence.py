@@ -1,4 +1,4 @@
-from Bio.Data.IUPACData import protein_letters_1to3, protein_letters_3to1
+from Bio.Data.IUPACData import protein_letters_1to3, protein_letters_3to1, protein_letters
 
 three_to_one_upper = dict(
     (three.upper(), one.upper())
@@ -10,3 +10,8 @@ def residue_to_3(one : str) -> str:
 
 def residue_to_1(three: str) -> str:
     return three_to_one_upper[three.upper()]
+
+def assert_residue(value: str) -> str:
+    value = value.upper()
+    assert value in protein_letters, f"The value '{value}' is not a known residue."
+    return value

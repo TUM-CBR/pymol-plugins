@@ -22,7 +22,7 @@ class RunQWidgetContext(QMainWindow):
         self.__on_close = on_close
         self.setCentralWidget(widget)
 
-    def closeEvent(self, a0: QCloseEvent) -> None:
+    def closeEvent(self, a0: Optional[QCloseEvent]) -> None:
         super().closeEvent(a0)
         self.__on_close(self)
 

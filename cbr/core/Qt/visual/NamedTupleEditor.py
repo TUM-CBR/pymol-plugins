@@ -1,8 +1,7 @@
+from enum import Enum
 from PyQt5.QtCore import QAbstractTableModel, QModelIndex, Qt
 from PyQt5.QtWidgets import QTableView
 from typing import Any, Callable, Iterable, cast, Dict, List, Generic, NamedTuple, Optional, Type, TypeVar
-
-from numpy import append
 
 from ..QtWidgets import show_exception
 from .value_handlers import *
@@ -54,6 +53,10 @@ def editable_fields(
             if can_edit(ty)
     ]
 
+class FieldOrientation(Enum):
+    Vertical = 0
+    Horizontal = 1
+
 class NamedTupleEditorModel(QAbstractTableModel, Generic[TTuple]):
 
     def __init__(
@@ -62,7 +65,8 @@ class NamedTupleEditorModel(QAbstractTableModel, Generic[TTuple]):
         tuple_class_overrides : Optional[MetaFieldOverridesDict],
         values : List[Optional[TTuple]],
         panic: Callable[[Exception], None],
-        default_item: Optional[TTuple] = None
+        default_item: Optional[TTuple] = None,
+        fields_orientation : FieldOrientation = FieldOrientation.Vertical
     ) -> None:
         super().__init__()
         self.__values = values
@@ -74,16 +78,35 @@ class NamedTupleEditorModel(QAbstractTableModel, Generic[TTuple]):
         )
         self.__panic = panic
         self.__default_item = default_item
+        self.__fields_orientation = fields_orientation
 
     @property
     def current_values(self):
         return self.__values
 
     def rowCount(self, parent : Any = None) -> int:
-        return len(self.__fields)
+        if self.__fields_orientation == FieldOrientation.Vertical:
+            return len(self.__fields)
+        else:
+            return len(self.__values)
 
     def columnCount(self, parent : Any = None) -> int:
-        return len(self.__values)
+        if self.__fields_orientation == FieldOrientation.Vertical:
+            return len(self.__values)
+        else:
+            return len(self.__fields)
+        
+    def __get_column_headers(self, i: int) -> str:
+        if self.__fields_orientation == FieldOrientation.Vertical:
+            return f"{i + 1}"
+        else:
+            return self.__get_field_display(i)
+        
+    def __get_row_headers(self, i: int) -> str:
+        if self.__fields_orientation == FieldOrientation.Vertical:
+            return self.__get_field_display(i)
+        else:
+            return f"{i + 1}"
 
     def headerData(
             self,
@@ -92,9 +115,9 @@ class NamedTupleEditorModel(QAbstractTableModel, Generic[TTuple]):
             role: int = Qt.ItemDataRole.DisplayRole
         ):
         if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
-            return f"{section + 1}"
+            return self.__get_column_headers(section)
         elif role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Vertical:
-            return self.__get_field_display(section)
+            return self.__get_row_headers(section)
 
         return super().headerData(section, orientation, role)
 
@@ -135,13 +158,22 @@ class NamedTupleEditorModel(QAbstractTableModel, Generic[TTuple]):
         )
 
     def __get_item(self, index: QModelIndex) -> Optional[TTuple]:
-        return self.__values[index.column()]
+        if self.__fields_orientation == FieldOrientation.Vertical:
+            return self.__values[index.column()]
+        else:
+            return self.__values[index.row()]
 
     def __set_item(self, index: QModelIndex, item: Optional[TTuple]):
-        self.__values[index.column()] = item
+        if self.__fields_orientation == FieldOrientation.Vertical:
+            self.__values[index.column()] = item
+        else:
+            self.__values[index.row()] = item
 
     def __get_field_definition(self, index: QModelIndex) -> Field:
-        return self.__fields[index.row()]
+        if self.__fields_orientation == FieldOrientation.Vertical:
+            return self.__fields[index.row()]
+        else:
+            return self.__fields[index.column()]
 
     def __get_field(self, index: QModelIndex) -> str:
         return self.__get_field_definition(index).name
@@ -265,7 +297,8 @@ def namedtuple_eidtor(
     *values: Optional[TTuple],
     tuple_type : Optional[Type[TTuple]] = None,
     tuple_field_overrides: Optional[MetaFieldOverridesDict] = None,
-    default_item : Optional[TTuple] = None
+    default_item : Optional[TTuple] = None,
+    fields_orientation : FieldOrientation = FieldOrientation.Vertical
     ) -> NamedTupleEditorModel[TTuple]:
 
     def panic(e: Exception):
@@ -284,7 +317,8 @@ def namedtuple_eidtor(
         overrides,
         list(values),
         panic,
-        default_item
+        default_item,
+        fields_orientation=fields_orientation
     )
     table.setModel(editor)
 

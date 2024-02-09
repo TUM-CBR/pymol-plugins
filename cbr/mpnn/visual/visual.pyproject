@@ -1,5 +1,6 @@
 {
     "files": [
+        "MpnnAdvancedOptions.ui",
         "MpnnRunner.ui",
         "MpnnViewer.ui"
     ]
