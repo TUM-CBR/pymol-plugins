@@ -3,12 +3,10 @@ from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QSpinBox, QTableView
 from typing import Any, Dict, Iterable, List, NamedTuple, Optional
 
-from cbr.core.Qt.visual.JsonRecordsTable import Record
-
 from ...core import color
 from ...core import dictutils
 from ...core import optional
-from ...core.Qt.visual.JsonRecordsTable import JsonRecordsModel
+from ...core.Qt.visual.JsonRecordsTable import JsonRecordsModel, Record
 from ...clustal.fasta import FastaSequences
 
 Fragments = Dict[str, List[str]]

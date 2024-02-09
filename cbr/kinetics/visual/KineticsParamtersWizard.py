@@ -1,10 +1,9 @@
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QDialog
 
-from cbr.kinetics.kinetics import as_vel_vs_conc_series
-
-from ..data import *
 from ...core.Qt.visual.NamedTupleEditor import namedtuple_eidtor
+from ..data import *
+from ..kinetics import as_vel_vs_conc_series
 from .LinearFitWidget import LinearFitMeta, LinearFitWidget
 from .Plot import Point2d, PlotMeta
 from .Ui_ParametersWizard import Ui_ParametersWizard

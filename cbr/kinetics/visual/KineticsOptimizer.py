@@ -1,7 +1,6 @@
 from PyQt5.QtCore import pyqtSlot, QModelIndex
 from PyQt5.QtWidgets import QDialog, QWidget
 from typing import Tuple
-from cbr.kinetics.visual import FitWidgetBase
 
 from ...core.atomic import AtomicCounter
 from ...core.Context import Context
@@ -17,6 +16,7 @@ from .Plot import PlotMeta, Point2d, Series
 from .SimulateWidget import SimulateWidget
 from .VelocityFitWidget import VelocityFitWidget
 from .Ui_KineticsOptimizer import Ui_KineticsOptimizer
+from .visual import FitWidgetBase
 
 # km should be the concentration at which we have half v_max
 # v_max := 1/v vs 1/s, km = v_max * m, v_max = 1/y-intercept

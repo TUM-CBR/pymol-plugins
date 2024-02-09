@@ -9,8 +9,8 @@ windows_known_executables = [
 
     KnownExecutableLocation(
         name = "ProteinMPNN",
-        location = "https://github.com/TUM-CBR/cbr-tools-extra/releases/download/nightly-20240206/cbr-tools-extra-20240206-win64.zip",
-        relative_path = "cbrtools/cbrtools.exe",
+        location = "https://github.com/TUM-CBR/pymol-plugins-support/releases/download/nightly-20240209/proteinMPNN-20240209-win64.zip",
+        relative_path = "proteinMPNN/proteinMPNN.exe",
         known_executable = KnownExecutables.ProteinMPNN
     )
 ]
