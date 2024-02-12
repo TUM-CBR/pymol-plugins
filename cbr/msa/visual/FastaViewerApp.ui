@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>FastaViewerApp</class>
+ <widget class="QWidget" name="FastaViewerApp">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>536</width>
+    <height>485</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout" rowstretch="0,0,1" columnstretch="0,0,0,1">
+   <item row="1" column="0">
+    <widget class="QLabel" name="label_2">
+     <property name="text">
+      <string>Select Fasta</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1" colspan="2">
+    <widget class="QPushButton" name="browseButton">
+     <property name="text">
+      <string>Browse</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="3">
+    <widget class="QLabel" name="selectedFileLabel">
+     <property name="text">
+      <string/>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="0" colspan="4">
+    <widget class="FastaViewer" name="fastaViewerWidget" native="true"/>
+   </item>
+   <item row="0" column="0" colspan="4">
+    <widget class="QLabel" name="label">
+     <property name="styleSheet">
+      <string notr="true">font-size: 26px;
+font-weight: bold;</string>
+     </property>
+     <property name="text">
+      <string>Fasta Viewer</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>FastaViewer</class>
+   <extends>QWidget</extends>
+   <header>...support.fasta.visual.FastaViewer</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

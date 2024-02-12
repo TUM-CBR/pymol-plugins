@@ -1,14 +1,8 @@
 from Bio.Align import MultipleSeqAlignment
 from enum import Enum
-from PyQt5.QtGui import QColor
 from typing import NamedTuple, List, Set, Tuple
 
-from ....core import color
-
-RESIDUE_COLORS = dict(
-    [(resi, QColor(*rgb)) for resi, rgb in color.residue_letter_colors.items()] \
-        + [("X", QColor(200,200,200))]
-    )
+from ...display.sequence import RESIDUE_COLORS
 
 class MaskPositionMode(Enum):
     HIGHLIGHT = 0

@@ -19,8 +19,8 @@ from .Ui_MsaViewer import Ui_MsaViewer
 def mask_offset(
     mask : Set[int],
     length : int
-):
-    masked_mappings = []
+) -> List[int]:
+    masked_mappings : List[int] = []
     col_ix = 0
 
     while(col_ix < length):

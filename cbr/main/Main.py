@@ -76,9 +76,14 @@ APP_DEFINITIONS = [
         init = Dssp.dssp_runner
     ),
     AppDefinition(
-         icon = "proteinMPNN.png",
-         text = "Protein MPNN",
-         init = Mpnn.mpnn_main
+        icon = "proteinMPNN.png",
+        text = "Protein MPNN",
+        init = Mpnn.mpnn_main
+    ),
+    AppDefinition(
+        icon = "fasta.png",
+        text = "Fasta Viewer",
+        init = Msa.fasta_viewer
     )
     #AppDefinition(
     #    icon = "kinetics.png",
