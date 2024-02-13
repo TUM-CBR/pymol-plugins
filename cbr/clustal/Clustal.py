@@ -1,11 +1,12 @@
-from re import split
+from Bio import SeqIO
+from Bio import AlignIO
 from Bio.Align import MultipleSeqAlignment
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from io import StringIO, TextIOBase
 import os
 import subprocess
-from typing import cast, Dict, Iterable, List, NamedTuple, Optional, Tuple, TypeVar
+from typing import Any, cast, Dict, Iterable, List, NamedTuple, Optional, Tuple, TypeVar
 
 from ..core.Context import Context
 from ..core.WrapIO import WrapIO
@@ -109,6 +110,23 @@ class Clustal(object):
             
 
         return ClustalResult()
+    
+    def run_msa_seqs(self, seqs: List[SeqRecord]) -> MultipleSeqAlignment:
+        with StringIO() as seqs_in, \
+            StringIO() as seqs_out:
+            SeqIO.write(
+                seqs,
+                seqs_in,
+                format='fasta'
+            )
+            seqs_in.seek(0)
+            self.run_msa(seqs_in, seqs_out)
+            seqs_out.seek(0)
+            seq_it: Any = AlignIO.parse(
+                seqs_out,
+                format='clustal'
+            )
+            return next(seq_it)
 
     def run_msa_items(self, items : MsaInput) -> Dict[str, str]:
 

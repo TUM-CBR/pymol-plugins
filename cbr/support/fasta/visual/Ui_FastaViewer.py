@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_FastaViewer(object):
     def setupUi(self, FastaViewer):
         FastaViewer.setObjectName("FastaViewer")
-        FastaViewer.resize(704, 463)
+        FastaViewer.resize(859, 541)
         self.gridLayout = QtWidgets.QGridLayout(FastaViewer)
         self.gridLayout.setObjectName("gridLayout")
         self.tabWidget = QtWidgets.QTabWidget(FastaViewer)
@@ -32,13 +32,14 @@ class Ui_FastaViewer(object):
         self.gridLayout_3 = QtWidgets.QGridLayout(self.rawTab)
         self.gridLayout_3.setObjectName("gridLayout_3")
         self.sequencesTextEdit = QtWidgets.QTextEdit(self.rawTab)
+        self.sequencesTextEdit.setReadOnly(True)
         self.sequencesTextEdit.setObjectName("sequencesTextEdit")
         self.gridLayout_3.addWidget(self.sequencesTextEdit, 0, 0, 1, 1)
         self.tabWidget.addTab(self.rawTab, "")
         self.gridLayout.addWidget(self.tabWidget, 0, 0, 1, 1)
 
         self.retranslateUi(FastaViewer)
-        self.tabWidget.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(1)
         QtCore.QMetaObject.connectSlotsByName(FastaViewer)
 
     def retranslateUi(self, FastaViewer):

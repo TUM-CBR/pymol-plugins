@@ -118,7 +118,7 @@ class MsaViewerModel(QAbstractTableModel):
             self.__alignment,
             structure = structure
         )
-        self.dataChanged.emit(index, index, [Qt.DisplayRole])
+        self.dataChanged.emit(index, index, [Qt.ItemDataRole.DisplayRole])
 
     def __get_headers(self):
 
@@ -281,16 +281,16 @@ class MsaViewerModel(QAbstractTableModel):
 
         return None
 
-    def data(self, index: QModelIndex, role=Qt.DisplayRole):
+    def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole):
 
         if not index.isValid():
             return None
 
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
             return self.__get_content_at(index)
-        if role == Qt.BackgroundColorRole:
+        if role == Qt.ItemDataRole.BackgroundColorRole:
             return self.__get_color_at(index)
-        if role == Qt.TextColorRole:
+        if role == Qt.ItemDataRole.TextColorRole:
             return self.__get_text_color_at(index)
         else:
             return None
@@ -359,7 +359,7 @@ class MsaViewer(QWidget):
     def __select_structure(self, index : QModelIndex):
 
         for model in viter(self.__model):
-            if (self.__select_structure_dialog.exec() == QDialog.Accepted):
+            if (self.__select_structure_dialog.exec() == QDialog.DialogCode.Accepted):
                 model.set_structure(
                     index,
                     self.__select_structure_dialog.current_selection()

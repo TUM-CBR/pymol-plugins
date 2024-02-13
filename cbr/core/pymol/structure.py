@@ -1,7 +1,7 @@
 import math
 import pymol
 
-from typing import Dict, List, NamedTuple, Optional, Tuple, TypeVar
+from typing import Dict, Iterable, List, NamedTuple, Optional, Tuple, TypeVar
 
 class StructureSelection(NamedTuple):
     structure_name : str
@@ -21,6 +21,15 @@ class StructureSelection(NamedTuple):
 
     def show(self):
         return f"{self.structure_name}/{self.chain_name}/{self.segment_identifier}"
+    
+    def residue_selection(self, resis: Iterable[int]) -> str:
+        resi_selection = " or ".join(
+            f"resi {i}"
+            for i in resis
+        )
+        selection = self.selection
+
+        return f"{selection} and ({resi_selection})"
 
 def get_structure_query(structure_name : str, chain : 'str | None' = None) -> str:
     if chain:
@@ -57,6 +66,26 @@ def get_selection_sequece(selection : AnySelection) -> str:
         sequence[k]
         for k in sorted(sequence.keys())
     )
+
+def get_pdb_dominant_color(
+    selection : StructureSelection
+) -> Tuple[int, int, int]:
+    colors : Dict[int, int] = dict()
+
+    def consume(color: int):
+        if color not in colors:
+            colors[color] = 0
+
+        colors[color] += 1
+
+    pymol.cmd.iterate(
+        selection.selection,
+        'consume(color)',
+        space={'consume': consume}
+    )
+
+    favorite_ix = max(colors.items(), key=lambda kv: kv[1])[0]
+    return pymol.cmd.get_color_tuple(favorite_ix)
 
 def get_pdb_sequence(
     selection : StructureSelection,
