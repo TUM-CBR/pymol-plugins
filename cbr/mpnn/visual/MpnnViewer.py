@@ -1,19 +1,60 @@
+from Bio.SeqRecord import SeqRecord
+from Bio import SeqIO
 import json
 from pathlib import Path
-from turtle import st
 from PyQt5.QtCore import pyqtSlot, QUrl
 from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtWidgets import QWidget
 from os import path
 from pymol import cmd
-from typing import Iterable, List, Optional
+import re
+from typing import cast, Dict, Iterable, List, Optional
 
 from ...core.executable import Executable, ExecutableGroupResult, ExecutableProcess, ExecutableProcessGroup
 from ...core.Context import Context
 from ...core.Qt.QtWidgets import show_error
+from ...core.pymol.structure import StructureSelection
 from ..data import MpnnSpec, mpnn_selection
 from ..dispatch import parse_multiple_chains
 from .Ui_MpnnViewer import Ui_MpnnViewer
+
+DESIGNED_CHAINS_RE = re.compile(r"designed_chains=\[[a-zA-z',]+\]")
+
+def clean_id(id: Optional[str]) -> Optional[str]:
+
+    if id is None:
+        return None
+    
+    return id.replace(",", "").upper()
+
+def get_selection(record: SeqRecord) -> Optional[StructureSelection]:
+    model = clean_id(record.id)
+    chains = DESIGNED_CHAINS_RE.findall(record.description)
+    models: List[str] = cmd.get_names()
+    model_ix = next(
+        (ix for ix, candidate in enumerate(models) if candidate.upper() == model),
+        None
+    )
+
+    if model is None \
+        or len(chains) < 1 \
+        or model_ix is None:
+        return None
+    
+    model = models[model_ix]
+    seq_chains = [chain.replace("'", "").upper() for chain in chains[0]]
+    available_chains = [chain.upper() for chain in cmd.get_chains(model)]
+
+    for chain in seq_chains:
+
+        if chain in available_chains:
+            return StructureSelection(
+                structure_name=model,
+                chain_name=chain,
+                segment_identifier=None
+            )
+        
+    return None
 
 class MpnnViewer(QWidget):
 
@@ -85,12 +126,29 @@ class MpnnViewer(QWidget):
 
     def __populate_fasta(self):
 
-        result = ""
+        seqs: List[SeqRecord] = []
+        selections: Dict[int, StructureSelection] = {}
         for fasta in Path(self.__get_results_location()).rglob("*.[Ff][aA]"):
-            with fasta.open('r') as f:
-                result += f.read() + "\n\n"
+            current = list(cast(Iterable[SeqRecord], SeqIO.parse(fasta, format='fasta')))
 
-        self.__ui.sequencesTextEdit.setPlainText(result)
+            if len(current) < 0:
+                continue
+
+            main = current[0]
+            start_ix = len(seqs)
+            seqs += current
+            
+            # Find out which of the currently loaded structures was used
+            # as a template to generate the given sequences
+            selection = get_selection(main)
+            if selection is None:
+                continue
+
+            for i in range(start_ix, len(seqs)):
+                selections[i] = selection
+
+
+        self.__ui.fastaViewer.set_sequences(seqs, structure_mappings=selections)
 
     @pyqtSlot(object)
     def __on_complete(self, result: ExecutableGroupResult):

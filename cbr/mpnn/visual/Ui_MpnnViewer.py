@@ -14,18 +14,10 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MpnnViewer(object):
     def setupUi(self, MpnnViewer):
         MpnnViewer.setObjectName("MpnnViewer")
-        MpnnViewer.resize(845, 618)
+        MpnnViewer.resize(948, 663)
         MpnnViewer.setBaseSize(QtCore.QSize(800, 600))
         self.gridLayout = QtWidgets.QGridLayout(MpnnViewer)
         self.gridLayout.setObjectName("gridLayout")
-        self.sequencesTextEdit = QtWidgets.QPlainTextEdit(MpnnViewer)
-        self.sequencesTextEdit.setReadOnly(True)
-        self.sequencesTextEdit.setObjectName("sequencesTextEdit")
-        self.gridLayout.addWidget(self.sequencesTextEdit, 1, 0, 1, 3)
-        self.textEdit = QtWidgets.QTextEdit(MpnnViewer)
-        self.textEdit.setReadOnly(True)
-        self.textEdit.setObjectName("textEdit")
-        self.gridLayout.addWidget(self.textEdit, 3, 0, 1, 3)
         self.resultsFolderButton = QtWidgets.QPushButton(MpnnViewer)
         self.resultsFolderButton.setObjectName("resultsFolderButton")
         self.gridLayout.addWidget(self.resultsFolderButton, 2, 2, 1, 1)
@@ -35,12 +27,23 @@ class Ui_MpnnViewer(object):
         self.label.setObjectName("label")
         self.gridLayout.addWidget(self.label, 0, 0, 1, 3)
         self.progressBar = QtWidgets.QProgressBar(MpnnViewer)
+        self.progressBar.setBaseSize(QtCore.QSize(800, 0))
         self.progressBar.setMaximum(0)
         self.progressBar.setProperty("value", -1)
         self.progressBar.setObjectName("progressBar")
         self.gridLayout.addWidget(self.progressBar, 4, 0, 1, 3)
-        spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        spacerItem = QtWidgets.QSpacerItem(800, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
         self.gridLayout.addItem(spacerItem, 2, 1, 1, 1)
+        self.textEdit = QtWidgets.QTextEdit(MpnnViewer)
+        self.textEdit.setBaseSize(QtCore.QSize(800, 0))
+        self.textEdit.setReadOnly(True)
+        self.textEdit.setObjectName("textEdit")
+        self.gridLayout.addWidget(self.textEdit, 3, 0, 1, 3)
+        self.fastaViewer = FastaViewer(MpnnViewer)
+        self.fastaViewer.setBaseSize(QtCore.QSize(800, 0))
+        self.fastaViewer.setObjectName("fastaViewer")
+        self.gridLayout.addWidget(self.fastaViewer, 1, 1, 1, 2)
+        self.gridLayout.setRowStretch(1, 1)
 
         self.retranslateUi(MpnnViewer)
         QtCore.QMetaObject.connectSlotsByName(MpnnViewer)
@@ -48,6 +51,8 @@ class Ui_MpnnViewer(object):
     def retranslateUi(self, MpnnViewer):
         _translate = QtCore.QCoreApplication.translate
         MpnnViewer.setWindowTitle(_translate("MpnnViewer", "Form"))
+        self.resultsFolderButton.setText(_translate("MpnnViewer", "Open Results Folder"))
+        self.label.setText(_translate("MpnnViewer", "Protein MPNN Results"))
         self.textEdit.setHtml(_translate("MpnnViewer", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><meta charset=\"utf-8\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
@@ -67,5 +72,4 @@ class Ui_MpnnViewer(object):
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:10pt;\">  year={2022},</span></p>\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:10pt;\">  publisher={American Association for the Advancement of Science}</span></p>\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:10pt;\">}</span></p></body></html>"))
-        self.resultsFolderButton.setText(_translate("MpnnViewer", "Open Results Folder"))
-        self.label.setText(_translate("MpnnViewer", "Protein MPNN Results"))
+from ...support.fasta.visual.FastaViewer import FastaViewer

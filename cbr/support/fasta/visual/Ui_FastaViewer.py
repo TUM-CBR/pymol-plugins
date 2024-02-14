@@ -39,7 +39,7 @@ class Ui_FastaViewer(object):
         self.gridLayout.addWidget(self.tabWidget, 0, 0, 1, 1)
 
         self.retranslateUi(FastaViewer)
-        self.tabWidget.setCurrentIndex(1)
+        self.tabWidget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(FastaViewer)
 
     def retranslateUi(self, FastaViewer):

@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import QDialog, QWidget
 from typing import Any, cast, Dict, Iterable, List, NamedTuple, Optional, Tuple
 
 from ....clustal.Clustal import Clustal
-from ....core.pymol.structure import get_selection_sequence_index, StructureSelection
+from ....core.pymol.structure import get_pdb_dominant_color_index, get_selection_sequence_index, StructureSelection
 from ...msa.visual.MsaStructureSelector import MsaStructureSelector
 from ...display.sequence import RESIDUE_COLORS
 from .Ui_FastaViewer import Ui_FastaViewer
@@ -27,6 +27,7 @@ class SequenceData(NamedTuple):
     structure_alignment: Optional[MultipleSeqAlignment] = None
     pdb_seq: Optional[str] = None
     pdb_ix_to_resv: Optional[List[int]] = None
+    pdb_color_ix: Optional[int] = None
 
     SEQ_IX : int = 0
     PDB_IX :int = 1
@@ -41,6 +42,7 @@ class SequenceData(NamedTuple):
             alignment = None
             pdb_seq = None
             pdb_ix_to_resv = None
+            pdb_color_ix = None
         else:
             seq_index = get_selection_sequence_index(structure)
             alignment = clustal.run_msa_seqs([
@@ -54,17 +56,21 @@ class SequenceData(NamedTuple):
             pdb_ix_to_resv = list(seq_index.keys())
             pdb_ix_to_resv.sort()
             pdb_seq = [seq_index[i] for i in pdb_ix_to_resv]
+            pdb_color_ix = get_pdb_dominant_color_index(structure)
 
         return self._replace(
             sequence_structure = structure,
             structure_alignment = alignment,
             pdb_seq = pdb_seq,
-            pdb_ix_to_resv = pdb_ix_to_resv
+            pdb_ix_to_resv = pdb_ix_to_resv,
+            pdb_color_ix = pdb_color_ix
         )
     
     def to_pdb_resv(self, ix: int) -> Optional[int]:
         msa = self.structure_alignment
-        assert msa is not None, "This function can only be called if there is a structure mapping"
+
+        if msa is None:
+            return None
 
         aligment = msa.alignment
         indexes = aligment.indices
@@ -144,13 +150,22 @@ class FastaViewerModel(QAbstractTableModel):
         role: int = Qt.ItemDataRole.DisplayRole
     ) -> Any:
         
-        if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Vertical:
+        if role != Qt.ItemDataRole.DisplayRole:
+            return super().headerData(section, orientation, role)
+        
+        if orientation == Qt.Orientation.Vertical:
             seq = self.__sequences[section].sequence
             return f"{seq.id} {seq.name}"
-        return super().headerData(section, orientation, role)
+        elif section < len(self.MEATA_COLS):
+            return self.MEATA_COLS[section]
+        else:
+            return str(section - len(self.MEATA_COLS) + 1)
+    
+    def __get_entry_index(self, index: QModelIndex) -> int:
+        return index.row()
     
     def __get_entry(self, index: QModelIndex) -> SequenceData:
-        return self.__sequences[index.row()]
+        return self.__sequences[self.__get_entry_index(index)]
 
     def __get_sequence(self, index: QModelIndex) -> SeqRecord:
         return self.__get_entry(index).sequence
@@ -185,7 +200,7 @@ class FastaViewerModel(QAbstractTableModel):
         if col_name == self.SEQ_STRUCTURE_COL:
             structure = self.__sequences[index.row()].sequence_structure
 
-            return structure is not None and structure.structure_name or "<double click to select>"
+            return structure is not None and structure.show() or "<double click to select>"
         
     def __get_data_role(self, index: QModelIndex) -> Optional[str]:
         result: Optional[str] = None
@@ -204,7 +219,7 @@ class FastaViewerModel(QAbstractTableModel):
             or self.MEATA_COLS[col] != self.SEQ_STRUCTURE_COL:
             return None
         
-        return index.row()
+        return self.__get_entry_index(index)
 
     def set_structure(self, ix: int, structure: Optional[StructureSelection]):
         self.__sequences[ix] = self.__sequences[ix].set_structure(
@@ -290,15 +305,78 @@ class FastaViewerModel(QAbstractTableModel):
 
         return True
     
-    def on_selection(
+    def update_colors(
         self,
         selected: QItemSelection,
         deselected: QItemSelection
     ):
+        selected_selections = set()
         for index in selected.indexes():
 
             item = self.__get_entry(index)
             self.__select_model(item)
+
+            if item.sequence_structure is not None:
+                selected_selections.add(item.sequence_structure.show())
+
+        for index in deselected.indexes():
+            item = self.__get_entry(index)
+            structure = item.sequence_structure
+            pdb_color = item.pdb_color_ix
+            if  structure is None \
+                or pdb_color is None \
+                or structure.show() in selected_selections:
+                continue
+
+            cmd.color(
+                pdb_color,
+                structure.selection
+            )
+
+    def __get_selected_resv(self, item: QModelIndex) -> Optional[Tuple[int, int]]:
+        ix = self.__get_entry_index(item)
+        entry = self.__sequences[ix]
+        seq_ix = None
+        resv = None
+
+        if ((seq_ix := self.__get_residue_with_ix(item)) is None \
+            or (resv := entry.to_pdb_resv(seq_ix[0])) is None):
+            return None
+        
+        return (ix, resv)
+
+    def update_selected_items(
+        self,
+        items: Iterable[QModelIndex]
+    ):
+        # mapping from indexes of the sequences to
+        # the resv of each sequence to be selected
+        residues_to_select: Dict[int, List[int]] = dict()
+
+        for item in items:
+            selection = self.__get_selected_resv(item)
+
+            if selection is None:
+                continue
+
+            (ix, resv) = selection
+            if ix not in residues_to_select:
+                residues_to_select[ix] = []
+            residues_to_select[ix].append(resv)
+
+        # we can now easily construct a query with
+        # all the selections
+        selection = " or ".join(
+            structure.residue_selection(resv)
+            for (ix, resv) in residues_to_select.items()
+            for entry in [self.__sequences[ix]]
+            for structure in [entry.sequence_structure] if structure is not None
+        )
+
+        cmd.select(
+            "sele",
+            selection
+        )
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
 
@@ -327,7 +405,7 @@ class FastaViewer(QWidget):
         self.__model = FastaViewerModel(None)
         sequences_table = self.__ui.sequencesTable
         sequences_table.setModel(self.__model)
-        sequences_table.doubleClicked.connect(self.__select_structure)
+        sequences_table.doubleClicked.connect(self.__on_select_structure)
         selection_model = sequences_table.selectionModel()
         assert selection_model is not None, "Selection model is not eexpected to be None"
         selection_model.selectionChanged.connect(self.__on_selection_changed)
@@ -337,9 +415,15 @@ class FastaViewer(QWidget):
 
     @pyqtSlot(QItemSelection, QItemSelection)
     def __on_selection_changed(self, selected: QItemSelection, deselected: QItemSelection):
-        self.__model.on_selection(selected, deselected)
+        self.__model.update_colors(selected, deselected)
+        self.__model.update_selected_items(
+            self.__ui.sequencesTable.selectedIndexes()
+        )
 
     @pyqtSlot(QModelIndex)
+    def __on_select_structure(self, index: QModelIndex):
+        self.__select_structure(index)
+
     def __select_structure(self, index: QModelIndex):
 
         seq_index = self.__model.get_select_structure_index(index)
@@ -358,6 +442,14 @@ class FastaViewer(QWidget):
         sequences: List[SeqRecord] = list(
             cast(Any, SeqIO.parse(fasta_file, format="fasta"))
         )
+
+        self.set_sequences(sequences)
+
+    def set_sequences(
+        self,
+        sequences: List[SeqRecord],
+        structure_mappings: Optional[Dict[int, StructureSelection]] = None
+    ):
         self.__model.set_sequences(sequences)
         seqs_table = self.__ui.sequencesTable
 
@@ -372,4 +464,10 @@ class FastaViewer(QWidget):
             SeqIO.write(sequences, seq_buffer, format="fasta")
             seq_buffer.seek(0)
             self.__ui.sequencesTextEdit.setText(seq_buffer.read())
+
+        if structure_mappings is None:
+            return
+        
+        for ix, structure in structure_mappings.items():
+            self.__model.set_structure(ix, structure)
 

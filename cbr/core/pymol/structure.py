@@ -67,9 +67,9 @@ def get_selection_sequece(selection : AnySelection) -> str:
         for k in sorted(sequence.keys())
     )
 
-def get_pdb_dominant_color(
+def get_pdb_dominant_color_index(
     selection : StructureSelection
-) -> Tuple[int, int, int]:
+) -> int:
     colors : Dict[int, int] = dict()
 
     def consume(color: int):
@@ -85,7 +85,7 @@ def get_pdb_dominant_color(
     )
 
     favorite_ix = max(colors.items(), key=lambda kv: kv[1])[0]
-    return pymol.cmd.get_color_tuple(favorite_ix)
+    return favorite_ix
 
 def get_pdb_sequence(
     selection : StructureSelection,
