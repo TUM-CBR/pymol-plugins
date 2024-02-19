@@ -6,10 +6,11 @@ from typing import Dict, Iterable, List, NamedTuple, Optional, Set, Tuple
 
 
 from ...core.Context import Context, KnownExecutables
+from ...core.Qt.sets_editor import SetsEditorModel
 from ...core.Qt.QtWidgets import show_exception, with_error_handler
 from ...core.Qt.visual.NamedTupleEditor import FieldOrientation, MetaFieldOverrides, namedtuple_eidtor
 from ...core.sequence import assert_residue
-from ..data import MpnnEditSpace, MpnnSpec
+from ..data import get_chains, MpnnEditSpace, MpnnSpec
 from .MpnnAdvancedOptionsDialog import MpnnAdvancedOptionsDialog
 from .MpnnViewer import MpnnViewer
 from .Ui_MpnnRunner import Ui_MpnnRunner
@@ -152,6 +153,10 @@ class MpnnRunner(QWidget):
                 for selection in selections
             )
         )
+
+        for model in cmd.get_names():
+            for chain in get_chains(model):
+
 
     def __ensure_components(self):
         

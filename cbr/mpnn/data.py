@@ -190,6 +190,18 @@ class MpnnSpec(NamedTuple):
                 for mapping in space.get_excluded_positions_array()
             ]
 
+        # ProteinMPNN requires that all models and chains have an entry
+        # in the dictionary of excludsions. Hence we must add an empty
+        # list for all models/chains that are not in any of the edit
+        # spaces
+        for model in self.get_models():
+            if model not in result:
+                result[model] = {}
+            chains_dict = result[model]
+            for chain in get_chains(model):
+                if chain not in chains_dict:
+                    chains_dict[chain] = []
+
         return result
     
     def get_chains_jsonl(self) -> Dict[str, List[List[str]]]:
@@ -232,7 +244,13 @@ class MpnnSpec(NamedTuple):
             for chain in get_chains(model):
                 position_range = get_valid_pdb_range(model, chain)
                 residues = get_residues(model, chain)
-                edit_positions = positions_to_be_edited[(model, chain)]
+                edit_positions: Optional[Set[int]] = positions_to_be_edited.get((model, chain))
+
+                # If the model/chain combination is not present in the
+                # 'edit_positions' dictionary, it means that no positions
+                # are to be edited.
+                if edit_positions is None:
+                    edit_positions = set()
                 fixed = [
                     residue.seq_pos + 1
                     for residue in residues.values()

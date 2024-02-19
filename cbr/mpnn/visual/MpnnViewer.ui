@@ -34,7 +34,7 @@
 font-weight: bold;</string>
      </property>
      <property name="text">
-      <string>Protein MPNN Results</string>
+      <string>ProteinMPNN Results</string>
      </property>
     </widget>
    </item>
@@ -86,7 +86,7 @@ hr { height: 1px; border-width: 0; }
 li.unchecked::marker { content: &quot;\2610&quot;; }
 li.checked::marker { content: &quot;\2612&quot;; }
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Sans Serif'; font-size:9pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;These sequences were produced using &amp;quot;Protein MPNN&amp;quot;. Learn more about it at: &lt;a href=&quot;https://github.com/dauparas/ProteinMPNN&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;https://github.com/dauparas/ProteinMPNN.&lt;/span&gt;&lt;/a&gt; If these sequences are used in an academic publication, please acknolwedge the usage of &amp;quot;Protein MPNN&amp;quot; with the citation below:&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;These sequences were produced using &amp;quot;&lt;span style=&quot; font-weight:700;&quot;&gt;ProteinMPNN&lt;/span&gt;&amp;quot;. Learn more about it at: &lt;a href=&quot;https://github.com/dauparas/ProteinMPNN&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;https://github.com/dauparas/ProteinMPNN.&lt;/span&gt;&lt;/a&gt; If these sequences are used in an academic publication, please acknolwedge the usage of &amp;quot;ProteinMPNN&amp;quot; with the citation below:&lt;/p&gt;
 &lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;@article{dauparas2022robust,&lt;/span&gt;&lt;/p&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;  title={Robust deep learning--based protein sequence design using ProteinMPNN},&lt;/span&gt;&lt;/p&gt;

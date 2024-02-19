@@ -188,7 +188,7 @@ class MpnnViewer(QWidget):
             ExecutableProcess.create_process(
                 self.__mpnn,
                 [
-                    "--pdb_path", self.__get_model_location(model),
+                    #"--pdb_path", self.__get_model_location(model),
                     "--out_folder", self.__get_results_location(),
                     "--jsonl_path", self.__get_chains_jonsl_path(),
                     "--chain_id_jsonl", self.__get_assigned_chains_jonsl_path(),

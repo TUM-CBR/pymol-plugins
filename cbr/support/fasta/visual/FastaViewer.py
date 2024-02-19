@@ -453,7 +453,7 @@ class FastaViewer(QWidget):
         self.__model.set_sequences(sequences)
         seqs_table = self.__ui.sequencesTable
 
-        for col in range(self.__ui.sequencesTable.colorCount()):
+        for col in range(self.__model.columnCount()):
 
             if col < len(self.__model.MEATA_COLS):
                 seqs_table.resizeColumnToContents(col)

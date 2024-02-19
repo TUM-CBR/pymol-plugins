@@ -52,7 +52,7 @@ class Ui_MpnnViewer(object):
         _translate = QtCore.QCoreApplication.translate
         MpnnViewer.setWindowTitle(_translate("MpnnViewer", "Form"))
         self.resultsFolderButton.setText(_translate("MpnnViewer", "Open Results Folder"))
-        self.label.setText(_translate("MpnnViewer", "Protein MPNN Results"))
+        self.label.setText(_translate("MpnnViewer", "ProteinMPNN Results"))
         self.textEdit.setHtml(_translate("MpnnViewer", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><meta charset=\"utf-8\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
@@ -60,7 +60,7 @@ class Ui_MpnnViewer(object):
 "li.unchecked::marker { content: \"\\2610\"; }\n"
 "li.checked::marker { content: \"\\2612\"; }\n"
 "</style></head><body style=\" font-family:\'Sans Serif\'; font-size:9pt; font-weight:400; font-style:normal;\">\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">These sequences were produced using &quot;Protein MPNN&quot;. Learn more about it at: <a href=\"https://github.com/dauparas/ProteinMPNN\"><span style=\" text-decoration: underline; color:#0000ff;\">https://github.com/dauparas/ProteinMPNN.</span></a> If these sequences are used in an academic publication, please acknolwedge the usage of &quot;Protein MPNN&quot; with the citation below:</p>\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">These sequences were produced using &quot;<span style=\" font-weight:700;\">ProteinMPNN</span>&quot;. Learn more about it at: <a href=\"https://github.com/dauparas/ProteinMPNN\"><span style=\" text-decoration: underline; color:#0000ff;\">https://github.com/dauparas/ProteinMPNN.</span></a> If these sequences are used in an academic publication, please acknolwedge the usage of &quot;ProteinMPNN&quot; with the citation below:</p>\n"
 "<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p>\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:10pt;\">@article{dauparas2022robust,</span></p>\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:10pt;\">  title={Robust deep learning--based protein sequence design using ProteinMPNN},</span></p>\n"
