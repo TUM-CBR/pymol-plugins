@@ -9,7 +9,7 @@ class StructureSelection(NamedTuple):
     segment_identifier : Optional[str]
 
     @property
-    def selection(self) -> str:
+    def base_query(self) -> str:
         selectors = \
             [ self.structure_name
             , self.chain_name and "chain %s" % self.chain_name
@@ -17,19 +17,26 @@ class StructureSelection(NamedTuple):
             ]
 
         items = " and ".join(s for s in selectors if s)
-        return f"byres ({items} & polymer)"
+        return f"{items} & polymer"
+    
+    @property
+    def selection(self) -> str:
+        return f"byres ({self.base_query})"
 
     def show(self):
-        return f"{self.structure_name}/{self.chain_name}/{self.segment_identifier}"
+        return "/".join(
+            part
+            for part in [self.structure_name, self.chain_name, self.segment_identifier]
+                if part is not None
+        )
     
     def residue_selection(self, resis: Iterable[int]) -> str:
         resi_selection = " or ".join(
-            f"resi {i}"
+            f"resi {i}" if i >= 0 else f"resi \\-{abs(i)}"
             for i in resis
         )
-        selection = self.selection
 
-        return f"{selection} and ({resi_selection})"
+        return f"byres ({self.base_query} and ({resi_selection}))"
 
 def get_structure_query(structure_name : str, chain : 'str | None' = None) -> str:
     if chain:
@@ -46,7 +53,7 @@ def get_selection_sequence_index(selection_obj : AnySelection) -> Dict[int, str]
         if isinstance(selection_obj, str) \
         else selection_obj.selection
 
-    result = []
+    result: List[Tuple[int, str]] = []
 
     pymol.cmd.iterate(
         "%s & guide & alt +A" % selection,
@@ -89,7 +96,7 @@ def get_pdb_dominant_color_index(
 
 def get_pdb_sequence(
     selection : StructureSelection,
-    include_non_bonded = False
+    include_non_bonded: bool = False
 ) -> str:
 
     parts = [

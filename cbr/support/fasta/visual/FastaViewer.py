@@ -7,13 +7,15 @@ from pymol import cmd
 from PyQt5.QtCore import pyqtSlot, QAbstractTableModel, QItemSelection, QModelIndex, Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QDialog, QWidget
-from typing import Any, cast, Dict, Iterable, List, NamedTuple, Optional, Tuple
+from typing import Any, Callable, cast, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
 
 from ....clustal.Clustal import Clustal
 from ....core.pymol.structure import get_pdb_dominant_color_index, get_selection_sequence_index, StructureSelection
 from ...msa.visual.MsaStructureSelector import MsaStructureSelector
 from ...display.sequence import RESIDUE_COLORS
 from .Ui_FastaViewer import Ui_FastaViewer
+
+SequenceStructures = Union[List[Optional[StructureSelection]], Optional[StructureSelection]]
 
 class ResidueEntry(NamedTuple):
     seq_ix: Optional[int]
@@ -28,6 +30,7 @@ class SequenceData(NamedTuple):
     pdb_seq: Optional[str] = None
     pdb_ix_to_resv: Optional[List[int]] = None
     pdb_color_ix: Optional[int] = None
+    group_header: bool = False
 
     SEQ_IX : int = 0
     PDB_IX :int = 1
@@ -68,8 +71,9 @@ class SequenceData(NamedTuple):
     
     def to_pdb_resv(self, ix: int) -> Optional[int]:
         msa = self.structure_alignment
+        pdb_ix_to_resv = self.pdb_ix_to_resv
 
-        if msa is None:
+        if msa is None or pdb_ix_to_resv is None:
             return None
 
         aligment = msa.alignment
@@ -81,12 +85,12 @@ class SequenceData(NamedTuple):
         if seq_to_msa < 0:
             return None
         
-        msa_to_pdb = indexes[self.PDB_IX][seq_to_msa]
+        msa_to_pdb: int = indexes[self.PDB_IX][seq_to_msa]
 
         if msa_to_pdb < 0:
             return None
 
-        return msa_to_pdb
+        return pdb_ix_to_resv[msa_to_pdb]
 
     def iterate_residues(self) -> Iterable[ResidueEntry]:
         msa = self.structure_alignment
@@ -121,6 +125,34 @@ class SequenceData(NamedTuple):
                 pdb_residue = cast(Any, pdb_residue)
             )
 
+def get_groups(seq: SeqRecord) -> List[SequenceData]:
+    seqs = seq.seq.rsplit('/')
+
+    if len(seqs) == 1:
+        return [SequenceData(seq)]
+
+    def make_seq_record(i: int, segment: Seq):
+        record = SeqRecord(
+            seq=segment,
+            id=seq.id,
+            description=seq.description
+        )
+
+        return SequenceData(
+            record,
+            # First sequence of the group is the header
+            group_header=i == 0
+        )
+        
+    return [make_seq_record(i, new_seq) for i,new_seq in enumerate(seqs)]
+
+def default_render_header(seq: SeqRecord, is_group_header: bool) -> str:
+    if is_group_header:
+        return f"{seq.id} {seq.name}"
+    else:
+        return "/"
+    
+RenderHeaderFunction = Callable[[SeqRecord, bool], str]
 
 class FastaViewerModel(QAbstractTableModel):
 
@@ -136,6 +168,11 @@ class FastaViewerModel(QAbstractTableModel):
         super().__init__()
         self.set_sequences(sequences, notify=False)
         self.__clustal = clustal is not None and clustal or Clustal()
+        self.__render_header: RenderHeaderFunction = default_render_header
+
+    def set_render_header(self, render_header: RenderHeaderFunction):
+        self.__render_header = render_header
+        self.modelReset.emit()
 
     def rowCount(self, parent: Optional[QModelIndex] = None) -> int:
         return len(self.__sequences)
@@ -154,8 +191,11 @@ class FastaViewerModel(QAbstractTableModel):
             return super().headerData(section, orientation, role)
         
         if orientation == Qt.Orientation.Vertical:
-            seq = self.__sequences[section].sequence
-            return f"{seq.id} {seq.name}"
+            entry = self.__sequences[section]
+            return self.__render_header(
+                entry.sequence,
+                entry.group_header
+            )
         elif section < len(self.MEATA_COLS):
             return self.MEATA_COLS[section]
         else:
@@ -221,14 +261,26 @@ class FastaViewerModel(QAbstractTableModel):
         
         return self.__get_entry_index(index)
 
-    def set_structure(self, ix: int, structure: Optional[StructureSelection]):
-        self.__sequences[ix] = self.__sequences[ix].set_structure(
-            self.__clustal,
-            structure
-        )
+    def set_structure(
+        self,
+        group_ix: int,
+        new_structure: SequenceStructures
+    ):
+        group = self.__sequence_groups[group_ix]
 
-        updated_index = self.index(ix, self.MEATA_COLS.index(self.SEQ_STRUCTURE_COL))
-        self.dataChanged.emit(updated_index, updated_index)
+        if isinstance(new_structure, list):
+            structures = new_structure
+        else:
+            structures = [new_structure] * len(group)
+
+        for ix, structure in zip(group, structures):
+            self.__sequences[ix] = self.__sequences[ix].set_structure(
+                self.__clustal,
+                structure
+            )
+
+            updated_index = self.index(ix, self.MEATA_COLS.index(self.SEQ_STRUCTURE_COL))
+            self.dataChanged.emit(updated_index, updated_index)
     
     def set_sequences(
         self,
@@ -236,13 +288,30 @@ class FastaViewerModel(QAbstractTableModel):
         notify: bool = True
     ):
         if sequences is None:
-            self.__sequences = []
+            self.__sequences: List[SequenceData] = []
             self.__length = 0
+            self.__sequence_groups = []
         else:
-            self.__sequences: List[SequenceData] = [
-                SequenceData(sequence=sequence)
-                for sequence in sequences
-            ]
+            new_sequences: List[SequenceData] = []
+            groups: List[List[int]] = []
+
+            items = (
+                (group_id, member)
+                for group_id, sequence in enumerate(sequences)
+                for member in get_groups(sequence)
+            )
+
+            for i,(gid, item) in enumerate(items):
+                new_sequences.append(item)
+
+                while(len(groups) <= gid):
+                    groups.append([])
+
+                groups[gid].append(i)
+
+            self.__sequences: List[SequenceData] = new_sequences
+            self.__sequence_groups = groups
+
             self.__length = max(
                 len(seq.sequence)
                 for seq in self.__sequences
@@ -413,6 +482,9 @@ class FastaViewer(QWidget):
         self.__structure_selection_dialog = MsaStructureSelector(self)
         self.set_fasta(fasta_file)
 
+    def set_render_header(self, render_header: RenderHeaderFunction):
+        self.__model.set_render_header(render_header)
+
     @pyqtSlot(QItemSelection, QItemSelection)
     def __on_selection_changed(self, selected: QItemSelection, deselected: QItemSelection):
         self.__model.update_colors(selected, deselected)
@@ -448,7 +520,7 @@ class FastaViewer(QWidget):
     def set_sequences(
         self,
         sequences: List[SeqRecord],
-        structure_mappings: Optional[Dict[int, StructureSelection]] = None
+        structure_mappings: Optional[Dict[int, SequenceStructures]] = None
     ):
         self.__model.set_sequences(sequences)
         seqs_table = self.__ui.sequencesTable

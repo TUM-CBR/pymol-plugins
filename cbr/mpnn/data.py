@@ -1,6 +1,8 @@
 from typing import cast, Dict, List, NamedTuple, Optional, Set, Tuple, Union
 from pymol import cmd
 
+from ..core.pymol.structure import StructureSelection
+
 def mpnn_selection(model: str, chain : Optional[str] = None):
     model_selection = f"model {model}"
 
@@ -155,10 +157,65 @@ class MpnnArgs(NamedTuple):
     use_soluble_model: bool = False
     backbone_noise: float = 0.0
 
+TiedChainsEntryJonsl = Dict[str, List[int]]
+
+TiedChainsJonsl = Dict[str, List[TiedChainsEntryJonsl]]
+
+class TiedPositionsSpec(NamedTuple):
+    tied_chains: List[Set[StructureSelection]]
+
+    def __get_tied_positions(
+        self,
+        group: Set[StructureSelection],
+        results_dict: TiedChainsJonsl
+    ):
+        items = list(group)
+
+        if len(items) == 0:
+            return
+        
+        model = items[0].structure_name
+        assert all(i.structure_name == model and i.chain_name is not None for i in items), "Only chains in the same model can be tied"
+
+        if model not in results_dict:
+            results_dict[model] = []
+
+        results_list = results_dict[model]
+        chains = [cast(str, item.chain_name) for item in items]
+        seqs = [get_residues(model, chain) for chain in chains]
+        lengths = [len(s) for s in seqs]
+        top = max(l for l in lengths)
+
+        for i in range(top):
+            tied_dict: TiedChainsEntryJonsl = {}
+            for chain, length in zip(chains, lengths):
+                if i >= length:
+                    continue
+                
+                # The tied positions dict corresponds to all the values
+                # that will be sampled together. That means that if we
+                # want a position from multiple chains to be sampled together,
+                # only that single position must be in the list per chain
+                tied_dict[chain] = [i + 1]
+
+            results_list.append(tied_dict)
+
+        return results_list
+
+    def get_tied_chains_jonsl(self) -> TiedChainsJonsl:
+
+        results: TiedChainsJonsl = {}
+
+        for group in self.tied_chains:
+            self.__get_tied_positions(group, results)
+
+        return results
+
 class MpnnSpec(NamedTuple):
     edit_spaces: List[MpnnEditSpace]
     num_seqs : int
     mpnn_args: MpnnArgs
+    tied_positions: TiedPositionsSpec
 
     def get_models(self) -> Set[str]:
 
@@ -261,3 +318,6 @@ class MpnnSpec(NamedTuple):
                 results[model][chain] = fixed
 
         return results
+    
+    def get_tied_jonsl(self) -> TiedChainsJonsl:
+        return self.tied_positions.get_tied_chains_jonsl()

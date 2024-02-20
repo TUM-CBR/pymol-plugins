@@ -6,11 +6,11 @@ from typing import Dict, Iterable, List, NamedTuple, Optional, Set, Tuple
 
 
 from ...core.Context import Context, KnownExecutables
-from ...core.Qt.sets_editor import SetsEditorModel
+from ...core.pymol.visual.PymolChainSetEditor import PymolChainSetEditorModel
 from ...core.Qt.QtWidgets import show_exception, with_error_handler
 from ...core.Qt.visual.NamedTupleEditor import FieldOrientation, MetaFieldOverrides, namedtuple_eidtor
 from ...core.sequence import assert_residue
-from ..data import get_chains, MpnnEditSpace, MpnnSpec
+from ..data import MpnnEditSpace, MpnnSpec, TiedPositionsSpec
 from .MpnnAdvancedOptionsDialog import MpnnAdvancedOptionsDialog
 from .MpnnViewer import MpnnViewer
 from .Ui_MpnnRunner import Ui_MpnnRunner
@@ -105,6 +105,8 @@ class MpnnRunner(QWidget):
         )
         self.__advanced_settings = MpnnAdvancedOptionsDialog()
         self.__ui.advancedOptionsButton.clicked.connect(self.__on_advanced_options_clicked)
+        self.__chain_set_model = PymolChainSetEditorModel(exclusive=True)
+        self.__ui.tiedPositionsTable.setModel(self.__chain_set_model)
 
     @pyqtSlot()
     def __on_advanced_options_clicked(self):
@@ -154,9 +156,8 @@ class MpnnRunner(QWidget):
             )
         )
 
-        for model in cmd.get_names():
-            for chain in get_chains(model):
-
+        self.__chain_set_model.refresh()
+        self.__ui.tiedPositionsTable.resizeColumnsToContents()
 
     def __ensure_components(self):
         
@@ -182,7 +183,8 @@ class MpnnRunner(QWidget):
         spec = MpnnSpec(
             num_seqs=self.__ui.numSequencesSpinBox.value(),
             edit_spaces=[],
-            mpnn_args=self.__advanced_settings.value()
+            mpnn_args=self.__advanced_settings.value(),
+            tied_positions=TiedPositionsSpec(tied_chains=self.__chain_set_model.values())
         )
 
         spec = with_selection(

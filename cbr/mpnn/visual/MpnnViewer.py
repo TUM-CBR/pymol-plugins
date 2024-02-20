@@ -8,17 +8,41 @@ from PyQt5.QtWidgets import QWidget
 from os import path
 from pymol import cmd
 import re
-from typing import cast, Dict, Iterable, List, Optional
+from typing import Any, cast, Dict, Iterable, List, Optional
 
 from ...core.executable import Executable, ExecutableGroupResult, ExecutableProcess, ExecutableProcessGroup
 from ...core.Context import Context
 from ...core.Qt.QtWidgets import show_error
 from ...core.pymol.structure import StructureSelection
+from ...support.fasta.visual.FastaViewer import SequenceStructures
 from ..data import MpnnSpec, mpnn_selection
 from ..dispatch import parse_multiple_chains
 from .Ui_MpnnViewer import Ui_MpnnViewer
 
-DESIGNED_CHAINS_RE = re.compile(r"designed_chains=\[[a-zA-z',]+\]")
+KV_RE = re.compile(r"(?P<key>\w+)=(?P<value>[\w\.]+)")
+
+def render_header_fn(record: SeqRecord, is_group_header: bool) -> str:
+
+    if not is_group_header:
+        return "/"
+    
+    attributes = dict(
+        (m.group('key'), m.group('value'))
+        for m in KV_RE.finditer(record.description)
+    )
+
+    sample = attributes.get('sample')
+
+    # if sample=X is not present, then this is the sequnece
+    # of the structure
+    if sample is None:
+        return str(record.id)
+    else:
+        t = attributes.get('T')
+        score = attributes.get('score')
+        return f"sample{sample}, T={t}, score={score}"
+
+DESIGNED_CHAINS_RE = re.compile(r"designed_chains=\[(?P<designed_chains>('[a-zA-Z]',?\s*)+)\]")
 
 def clean_id(id: Optional[str]) -> Optional[str]:
 
@@ -27,9 +51,9 @@ def clean_id(id: Optional[str]) -> Optional[str]:
     
     return id.replace(",", "").upper()
 
-def get_selection(record: SeqRecord) -> Optional[StructureSelection]:
+def get_selection(record: SeqRecord) -> Optional[List[StructureSelection]]:
     model = clean_id(record.id)
-    chains = DESIGNED_CHAINS_RE.findall(record.description)
+    chains = DESIGNED_CHAINS_RE.search(record.description)
     models: List[str] = cmd.get_names()
     model_ix = next(
         (ix for ix, candidate in enumerate(models) if candidate.upper() == model),
@@ -37,24 +61,28 @@ def get_selection(record: SeqRecord) -> Optional[StructureSelection]:
     )
 
     if model is None \
-        or len(chains) < 1 \
+        or chains is None \
         or model_ix is None:
         return None
     
     model = models[model_ix]
-    seq_chains = [chain.replace("'", "").upper() for chain in chains[0]]
+    seq_chains = [chain.replace("'", "").upper().strip() for chain in chains.group('designed_chains').split(',')]
     available_chains = [chain.upper() for chain in cmd.get_chains(model)]
 
-    for chain in seq_chains:
+    result = [
+        StructureSelection(
+            structure_name=model,
+            chain_name=chain,
+            segment_identifier=None
+        )
+        for chain in seq_chains
+            if chain in available_chains
+    ]
 
-        if chain in available_chains:
-            return StructureSelection(
-                structure_name=model,
-                chain_name=chain,
-                segment_identifier=None
-            )
-        
-    return None
+    if len(result) > 0:
+        return result
+    else:
+        return None
 
 class MpnnViewer(QWidget):
 
@@ -73,6 +101,7 @@ class MpnnViewer(QWidget):
         self.__ui.setupUi(self)
         self.__processess : Optional[ExecutableProcessGroup] = None
         self.__ui.resultsFolderButton.clicked.connect(self.__on_results_folder_clicked)
+        self.__ui.fastaViewer.set_render_header(render_header_fn)
 
         self.__init_widget()
 
@@ -93,6 +122,9 @@ class MpnnViewer(QWidget):
     
     def __get_excluded_residues_jonsl_path(self) -> str:
         return path.join(self.__working_directory, "excluded.jsonl")
+    
+    def __get_tied_jonsl_path(self) -> str:
+        return path.join(self.__working_directory, "tied.jsonl")
     
     def __get_model_location(self, model: str) -> str:
         return path.join(self.__working_directory, f"{model}.pdb")
@@ -127,7 +159,7 @@ class MpnnViewer(QWidget):
     def __populate_fasta(self):
 
         seqs: List[SeqRecord] = []
-        selections: Dict[int, StructureSelection] = {}
+        selections: Dict[int, SequenceStructures] = {}
         for fasta in Path(self.__get_results_location()).rglob("*.[Ff][aA]"):
             current = list(cast(Iterable[SeqRecord], SeqIO.parse(fasta, format='fasta')))
 
@@ -140,13 +172,12 @@ class MpnnViewer(QWidget):
             
             # Find out which of the currently loaded structures was used
             # as a template to generate the given sequences
-            selection = get_selection(main)
+            selection: Optional[List[Optional[StructureSelection]]] = cast(Any, get_selection(main))
             if selection is None:
                 continue
 
             for i in range(start_ix, len(seqs)):
                 selections[i] = selection
-
 
         self.__ui.fastaViewer.set_sequences(seqs, structure_mappings=selections)
 
@@ -180,10 +211,30 @@ class MpnnViewer(QWidget):
             json.dump(excluded, out_stream)
 
         return ["--omit_AA_jsonl", excluded_file]
+    
+    def __get_tied_jonsl(self) -> Optional[str]:
+
+        tied_jonsl = self.__spec.get_tied_jonsl()
+
+        if len(tied_jonsl) == 0:
+            return None
+        
+        tied_file = self.__get_tied_jonsl_path()
+        with open(tied_file, 'w') as jsonl:
+            json.dump(tied_jonsl, jsonl)
+
+        return tied_file
 
     def __run_mpnn(self):
 
         args = self.__spec.mpnn_args
+
+        tied_jonsl = self.__get_tied_jonsl()
+        if tied_jonsl is not None:
+            tied_args = ["--tied_positions_jsonl", tied_jonsl]
+        else:
+            tied_args = []
+
         self.__processess = ExecutableProcessGroup.create(
             ExecutableProcess.create_process(
                 self.__mpnn,
@@ -198,9 +249,10 @@ class MpnnViewer(QWidget):
                     "--sampling_temp", str(args.sampling_temperature)
                 ] \
                 + self.__get_excluded_args() \
-                + (["--use_soluble_model"] if args.use_soluble_model else [])
+                + (["--use_soluble_model"] if args.use_soluble_model else []) \
+                + tied_args
             )
-            for model in self.__spec.get_models()
+            for _model in self.__spec.get_models()
         )
         self.__processess.on_complete.connect(self.__on_complete)
         self.__processess.start()
