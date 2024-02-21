@@ -9,6 +9,7 @@ def main(
     import numpy as np
     import os, time, gzip, json
     import glob
+    from os import path
 
     alpha_1 = list("ARNDCQEGHILKMFPSTWYV-")
     states = len(alpha_1)
@@ -99,10 +100,8 @@ def main(
     
     pdb_dict_list = []
     c = 0
-    
-    if folder_with_pdbs_path[-1]!='/':
-        folder_with_pdbs_path = folder_with_pdbs_path+'/'
-    
+
+    folder_with_pdbs_path = path.join(folder_with_pdbs_path, '')
     
     init_alphabet = ['A', 'B', 'C', 'D', 'E', 'F', 'G','H', 'I', 'J','K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T','U', 'V','W','X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g','h', 'i', 'j','k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't','u', 'v','w','x', 'y', 'z']
     extra_alphabet = [str(item) for item in list(np.arange(300))]
@@ -138,8 +137,7 @@ def main(
                     coords_dict_chain['O_chain_' + letter] = xyz[:, 3, :].tolist()
                 my_dict['coords_chain_'+letter]=coords_dict_chain
                 s += 1
-        fi = biounit.rfind("/")
-        my_dict['name']=biounit[(fi+1):-4]
+        my_dict['name']=path.basename(biounit)[:-4]
         my_dict['num_of_chains'] = s
         my_dict['seq'] = concat_seq
         if s < len(chain_alphabet):
