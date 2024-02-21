@@ -30,7 +30,7 @@ class SequenceData(NamedTuple):
     pdb_seq: Optional[str] = None
     pdb_ix_to_resv: Optional[List[int]] = None
     pdb_color_ix: Optional[int] = None
-    group_header: bool = False
+    group_header: bool = True
 
     SEQ_IX : int = 0
     PDB_IX :int = 1

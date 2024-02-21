@@ -1,10 +1,10 @@
-from typing import Optional
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QComboBox, QPushButton
 from pymol import cmd as pymol
+from typing import Optional, Set
 
-from ..core.pymol import structure
+from ..core.pymol import objects, structure
 from ..core.pymol.structure import StructureSelection
 
 class StructureSelector(QObject):
@@ -41,7 +41,10 @@ class StructureSelector(QObject):
             return
 
         sequence = structure.get_selection_sequece(selection.selection)
-        QApplication.clipboard().setText(sequence)
+        clipboard = QApplication.clipboard()
+
+        assert clipboard is not None, "This function must be used with a GUI"
+        clipboard.setText(sequence)
 
     @pyqtSlot()
     def __on_refresh_clicked(self):
@@ -50,21 +53,20 @@ class StructureSelector(QObject):
     def refresh_structures(self):
         self.__structures_combo.clear()
 
-        for name in pymol.get_names():
-            for chain in pymol.get_chains(name):
+        for (name, chain) in objects.iter_chains():
 
-                segs = set()
-                pymol.iterate(
-                    "model %s and chain %s" % (name, chain),
-                    'segs.add(segi)',
-                    space={'segs': segs}
+            segs: Set[str] = set()
+            pymol.iterate(
+                "model %s and chain %s" % (name, chain),
+                'segs.add(segi)',
+                space={'segs': segs}
+            )
+
+            for seg in segs:
+                self.__structures_combo.addItem(
+                    "%s/%s/%s" % (name, chain, seg),
+                    StructureSelection(name, chain, seg)
                 )
-
-                for seg in segs:
-                    self.__structures_combo.addItem(
-                        "%s/%s/%s" % (name, chain, seg),
-                        StructureSelection(name, chain, seg)
-                    )
 
     @property
     def currentSelection(self) -> Optional[StructureSelection]:
