@@ -1,34 +1,23 @@
 from os import path
 import os
-from PyQt5.QtCore import QDir
-from PyQt5.QtWidgets import QMainWindow, QWidget
-from PyQt5.QtGui import QCloseEvent
+from PyQt5.QtCore import QDir, QUrl
+from PyQt5.QtWidgets import QWidget
 from tempfile import TemporaryDirectory
 from typing import Any, Callable, Dict, List, TypeVar
 
+from .context.visual.RunQWidgetContext import RunQWidgetContext
 from .executable import *
 
 T = TypeVar('T')
 
-class RunQWidgetContext(QMainWindow):
-    
-    def __init__(
-        self,
-        widget : QWidget,
-        on_close : 'Callable[[RunQWidgetContext], None]'
-    ):
-        super().__init__()
-
-        self.__on_close = on_close
-        self.setCentralWidget(widget)
-
-    def closeEvent(self, a0: Optional[QCloseEvent]) -> None:
-        super().closeEvent(a0)
-        self.__on_close(self)
+MAIN_USER_MANUAL = QUrl('https://github.com/TUM-CBR/pymol-plugins/wiki')
 
 class Context(object):
 
-    def __init__(self):
+    def __init__(
+        self,
+        user_manual: Optional[QUrl] = None
+    ):
         self.__store : Dict[str, Any] = {}
         self.__widgets : List[RunQWidgetContext] = []
         self.__directories : List[TemporaryDirectory[Any]] = []
@@ -36,6 +25,8 @@ class Context(object):
             QDir.homePath(),
             ".cbrtools"
         )
+        self.__user_manual = user_manual if user_manual is not None else MAIN_USER_MANUAL
+        self.__child_contexts: List['Context'] = []
 
     def __ensure_directory_exists(self, directory: str) -> str:
         if path.exists(directory):
@@ -57,14 +48,19 @@ class Context(object):
         self.__directories.append(directory)
         return directory.name
     
-    def __cleanup(self):
+    def __cleanup__(self):
         for directory in self.__directories:
             directory.cleanup()
 
-        self.__directories = []
+        self.__directories.clear()
+
+        for ctx in self.__child_contexts:
+            ctx.__cleanup__()
+
+        self.__child_contexts.clear()
 
     def __del__(self):
-        self.__cleanup()
+        self.__cleanup__()
 
     def get_executable(
         self,
@@ -96,10 +92,25 @@ class Context(object):
             # This should not happen, but not critical if it does
             pass
 
-    def run_widget(self, run_widget : Callable[['Context'], QWidget]) -> RunQWidgetContext:
+    def create_child_context(
+        self,
+        new_user_manual: Optional[QUrl] = None
+    ) -> 'Context':
+        
+        ctx = Context(
+            user_manual = new_user_manual if new_user_manual is not None else self.__user_manual
+        )
+        self.__child_contexts.append(ctx)
+
+        return ctx
+
+    def run_widget(
+        self,
+        run_widget : Callable[['Context'], QWidget]
+    ) -> RunQWidgetContext:
 
         widget = run_widget(self)
-        window = RunQWidgetContext(widget, self.__on_close)
+        window = RunQWidgetContext(widget, self.__on_close, self.__user_manual)
 
         self.__widgets.append(window)
 

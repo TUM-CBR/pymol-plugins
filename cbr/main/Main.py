@@ -1,10 +1,10 @@
 from . import resources # pyright: ignore
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QUrl
 from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QSizePolicy, QSpacerItem, QWidget, QVBoxLayout
 from os import path
-from typing import Any, Callable, NamedTuple
+from typing import Any, Callable, NamedTuple, Optional
 
 from ..core.Context import Context
 from .. import apbs as Apbs
@@ -23,22 +23,26 @@ class AppDefinition(NamedTuple):
     icon : str
     text : str
     init : Callable[[Context], Any]
+    user_manual: Optional[QUrl] = None
 
 APP_DEFINITIONS = [
     AppDefinition(
         icon = "schema.png",
         text = "SCHEMA RASPP",
-        init = Schema.schema_raspp
+        init = Schema.schema_raspp,
+        user_manual = QUrl("https://github.com/TUM-CBR/pymol-plugins/wiki/SCHEMA-RASPP")
     ),
     AppDefinition(
         icon = "schema.png",
         text = "SCHEMA Energy",
-        init = Schema.schema_energy
+        init = Schema.schema_energy,
+        user_manual = QUrl("https://github.com/TUM-CBR/pymol-plugins/wiki/SCHEMA-Energy")
     ),
     AppDefinition(
         icon = "msa.png",
         text = "MSA Viewer",
-        init = Msa.msa_viewer
+        init = Msa.msa_viewer,
+        user_manual = QUrl("https://github.com/TUM-CBR/pymol-plugins/wiki/MSA-Viewer")
     ),
     AppDefinition(
         icon = "msa.png",
@@ -63,12 +67,14 @@ APP_DEFINITIONS = [
     AppDefinition(
         icon = "apbs.png",
         text = "APBS Electrostatics",
-        init = Apbs.run_apbs_electrostatics
+        init = Apbs.run_apbs_electrostatics,
+        user_manual = QUrl("https://pymolwiki.org/index.php/APBS")
     ),
     AppDefinition(
         icon = "cascades.png",
         text = "Cascade BLAST",
-        init = Cascades.cascades_main
+        init = Cascades.cascades_main,
+        user_manual=QUrl("https://github.com/TUM-CBR/pymol-plugins/wiki/Cascade-BLAST")
     ),
     AppDefinition(
         icon = "dssp-logo.svg",
@@ -77,8 +83,9 @@ APP_DEFINITIONS = [
     ),
     AppDefinition(
         icon = "proteinMPNN.png",
-        text = "Protein MPNN",
-        init = Mpnn.mpnn_main
+        text = "ProteinMPNN",
+        init = Mpnn.mpnn_main,
+        user_manual = QUrl('https://github.com/TUM-CBR/pymol-plugins/wiki/ProteinMPNN')
     ),
     AppDefinition(
         icon = "fasta.png",
@@ -153,7 +160,11 @@ class Main(QWidget):
             icon = self.__get_image_path(app_definition.icon)
 
             def __init_app__():
-                 app_definition.init(self.__context)
+                app_definition.init(
+                    self.__context.create_child_context(
+                        new_user_manual=app_definition.user_manual # type: ignore
+                    )
+                )
 
             app_icon = AppIcon(app_definition.text, icon, __init_app__)
             apps_layout.addWidget(app_icon, row, col)
