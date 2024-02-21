@@ -2,7 +2,7 @@ import numpy as np
 from numpy import linalg
 from numpy.typing import NDArray
 from pymol import cmd
-from typing import Any, Generic, List, TypeVar
+from typing import Any, cast, Generic, List, NamedTuple, Tuple, TypeVar
 
 from .structure import StructureSelection
 
@@ -23,7 +23,7 @@ class StructureVector(Generic[TValue]):
         self.indexes = indexes
         self.array = array
 
-def cx_centroids(
+def cx_coords(
     s: StructureSelection,
     state: int = 1
 ) -> StructureVector[np.float64]:
@@ -57,14 +57,14 @@ def cx_centroids(
         array=np.array(ca_coords)
     )
 
-def alpha_distance_matrix(
+def cx_distance_matrix(
     s1: StructureSelection,
     s2: StructureSelection,
     state1: int = 1,
     state2: int = 1
 ) -> StructureVector[np.float64]:
-    c1 = cx_centroids(s1, state1)
-    c2 = cx_centroids(s2, state2)
+    c1 = cx_coords(s1, state1)
+    c2 = cx_coords(s2, state2)
     a1 = c1.array
     a2 = c2.array
 
@@ -80,3 +80,78 @@ def alpha_distance_matrix(
         indexes=c1.indexes + c2.indexes,
         array=norms
     )
+
+class Interval(NamedTuple):
+    bottom: Tuple[int, int]
+    top: Tuple[int, int]
+
+    def __valid(self) -> bool:
+        (a_low, b_low) = self.bottom
+        (a_high, b_high) = self.top
+
+        return a_low <= a_high and b_low <= b_high
+
+    def split(self, index: Tuple[int, int]) -> List['Interval']:
+        (ia, ib) = index
+        new_items = [
+            Interval(bottom=self.bottom, top=(ia-1, ib-1)),
+            Interval(bottom=(ia+1, ib+1), top=self.top)
+        ]
+
+        return [
+            item
+            for item in new_items if item.__valid()
+        ]
+
+    def contains(self, index: Tuple[int, int]) -> bool:
+        (ia, ib) = index
+        (a_low, b_low) = self.bottom
+        (a_high, b_high) = self.top
+
+        return \
+            ia >= a_low and ia <= a_high \
+            and ib >= b_low and ib <= b_high
+
+def cx_seq_align(
+    distances: StructureVector[np.float64]
+):
+    d_matrix = distances.array
+    ix_iter = np.nditer(d_matrix, flags=['multi_index'])
+    indices: List[Tuple[int, int]] = cast(Any, list(ix_iter.multi_index for _ in ix_iter))
+
+    # Sort the indices by the distance in the d_matrix
+    # this means that we can iterate the indexes in from closest
+    # to furthest
+    indices.sort(key=lambda i: d_matrix[i])
+
+    intervals = [Interval(bottom=(0,0), top=(len(d_matrix) - 1, len(d_matrix[0] - 1)))]
+    mappings: List[Tuple[int, int]] = []
+
+    for index in indices:
+
+        if len(intervals) == 0:
+            break
+
+        # Give the current list of allowed intervals, we check
+        # to see if the given index falls into one of them
+        candidate = next(
+            (
+                ix
+                for ix,interval in enumerate(intervals)
+                    if interval.contains(index)
+            ),
+            None
+        )
+
+        if candidate is None:
+            continue
+
+        next_interval = intervals.pop(candidate)
+        mappings.append(index)
+
+        for new_interval in next_interval.split(index):
+            intervals.append(new_interval)
+
+    mappings.sort(key=lambda i: i[0])
+
+    return mappings
