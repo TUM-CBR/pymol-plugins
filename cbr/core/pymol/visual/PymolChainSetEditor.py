@@ -1,18 +1,17 @@
-from typing import cast, Iterable
-from pymol import cmd
+from typing import Iterable
 
+from .. import objects
 from ...Qt.visual.SetEditorModel import SetsEditorModel
 from ..structure import StructureSelection
 
 def list_available_selections() -> Iterable[StructureSelection]:
 
-    for model in cmd.get_names():
-        for chain in cmd.get_chains(model):
-            yield StructureSelection(
-                structure_name=model,
-                chain_name=cast(str, chain),
-                segment_identifier=None
-            )
+    for (model, chain) in objects.iter_chains():
+        yield StructureSelection(
+            structure_name=model,
+            chain_name=chain,
+            segment_identifier=None
+        )
 
 class PymolChainSetEditorModel(SetsEditorModel[StructureSelection]):
 
