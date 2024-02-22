@@ -11,7 +11,7 @@ class StructureSelection(NamedTuple):
     @property
     def base_query(self) -> str:
         selectors = \
-            [ self.structure_name
+            [ f"model {self.structure_name}"
             , self.chain_name and "chain %s" % self.chain_name
             , self.segment_identifier and "segi %s" % self.segment_identifier
             ]

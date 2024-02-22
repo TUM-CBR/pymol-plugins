@@ -12,6 +12,7 @@ from ..cascades import main as Cascades
 from ..chimeras import Applications as Chimeras
 from ..coevolution import main as Coevolution
 from ..dssp import main as Dssp
+from ..frankenprot import main as FrankenProt
 #from ..kinetics import main as Kinetics
 from ..mpnn import main as Mpnn
 from ..msa import Applications as Msa
@@ -91,6 +92,11 @@ APP_DEFINITIONS = [
         icon = "fasta.png",
         text = "Fasta Viewer",
         init = Msa.fasta_viewer
+    ),
+    AppDefinition(
+        icon = "frankenprot.png",
+        text = "FrankenProt",
+        init = FrankenProt.frankenprot
     )
     #AppDefinition(
     #    icon = "kinetics.png",

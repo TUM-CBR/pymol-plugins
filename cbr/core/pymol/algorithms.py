@@ -159,11 +159,26 @@ def cx_seq_align(
 
     return mappings
 
+def index_by_resv(index: NDArray[np.int64]):
+    return {
+        resv: i
+        for i,resv in enumerate(index)
+    }
+
 class SpatialAlignment(NamedTuple):
     distance_matrix: StructureVector[np.float64]
     alignment: MultipleSeqAlignment
-    seq1_resv_map: Dict[int, int]
-    seq2_resv_map: Dict[int, int]
+    resv_maps: List[Dict[int, int]]
+    resv_to_seq_maps: List[Dict[int, int]]
+
+    def distance_by_resv(self, resv1: int, resv2: int) -> Optional[np.float64]:
+        i1 = self.resv_to_seq_maps[0].get(resv1)
+        i2 = self.resv_to_seq_maps[1].get(resv2)
+
+        if i1 is None or i2 is None:
+            return None
+
+        return self.distance_matrix.array[i1, i2]
 
 def align_by_rmsd(
     s1: StructureSelection,
@@ -306,7 +321,7 @@ def align_by_rmsd(
 
     return SpatialAlignment(
         distance_matrix=distances,
-        alignment=msa, # type: ignore
-        seq1_resv_map=alg1_to_resv,
-        seq2_resv_map=alg2_to_resv
+        alignment=cast(Any, msa),
+        resv_maps=[alg1_to_resv, alg2_to_resv],
+        resv_to_seq_maps=[index_by_resv(i) for i in distances.indexes]
     )
