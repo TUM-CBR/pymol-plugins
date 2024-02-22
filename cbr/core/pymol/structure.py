@@ -17,7 +17,7 @@ class StructureSelection(NamedTuple):
             ]
 
         items = " and ".join(s for s in selectors if s)
-        return f"{items} & polymer"
+        return f"{items} and polymer"
     
     @property
     def selection(self) -> str:
@@ -37,6 +37,22 @@ class StructureSelection(NamedTuple):
         )
 
         return f"byres ({self.base_query} and ({resi_selection}))"
+    
+    def get_sequence(self) -> Dict[int, str]:
+
+        query = f"{self.base_query} and name CA"
+        result: Dict[int, str] = {}
+
+        def apply(resv: int, res: str):
+            result[resv] = res
+
+        pymol.cmd.iterate(
+            query,
+            'apply(resv, oneletter)',
+            space={'apply': apply}
+        )
+
+        return result
 
 def get_structure_query(structure_name : str, chain : 'str | None' = None) -> str:
     if chain:

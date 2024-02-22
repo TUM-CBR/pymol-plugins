@@ -1,8 +1,11 @@
+from Bio.Align import MultipleSeqAlignment
+from Bio import AlignIO
+from io import StringIO
 import numpy as np
 from numpy import linalg
 from numpy.typing import NDArray
 from pymol import cmd
-from typing import Any, cast, Generic, List, NamedTuple, Tuple, TypeVar
+from typing import Any, Dict, cast, Generic, List, NamedTuple, Optional, Tuple, TypeVar
 
 from .structure import StructureSelection
 
@@ -155,3 +158,155 @@ def cx_seq_align(
     mappings.sort(key=lambda i: i[0])
 
     return mappings
+
+class SpatialAlignment(NamedTuple):
+    distance_matrix: StructureVector[np.float64]
+    alignment: MultipleSeqAlignment
+    seq1_resv_map: Dict[int, int]
+    seq2_resv_map: Dict[int, int]
+
+def align_by_rmsd(
+    s1: StructureSelection,
+    s2: StructureSelection,
+    state1: int = 1,
+    state2: int = 1
+) -> SpatialAlignment:
+    
+    distances = cx_distance_matrix(s1, s2, state1, state2)
+    spatial_alignment = cx_seq_align(distances)
+    seq1 = s1.get_sequence()
+    resvs1 = list(seq1.keys())
+    resvs1.sort()
+    n_resvs1 = len(resvs1)
+
+    seq2 = s2.get_sequence()
+    resvs2 = list(seq2.keys())
+    resvs2.sort()
+    n_resvs2 = len(resvs2)
+
+    alg1: List[Optional[str]] = []
+    resvs1_ix = 0
+    alg1_to_resv: Dict[int, int] = {}
+    resv1 = None
+    alg2: List[Optional[str]] = []
+    resv2 = None
+    resvs2_ix = 0
+    spatial_ix = 0
+    alg2_to_resv: Dict[int, int] = {}
+
+    def next_alg1():
+        nonlocal resvs1_ix
+        nonlocal alg1
+        nonlocal resv1
+
+        if resv1 is not None:
+            alg1_to_resv[len(alg1)] = resv1
+        alg1.append(next1)
+        resvs1_ix += 1
+
+    def skip_alg1():
+        nonlocal alg1
+        alg1.append(None)
+
+    def next_alg2():
+        nonlocal resvs2_ix
+        nonlocal alg2
+
+        if resv2 is not None:
+            alg2_to_resv[len(alg2)] = resv2
+        alg2.append(next2)
+        resvs2_ix += 1
+
+    def skip_alg2():
+        nonlocal alg2
+        alg2.append(None)
+
+    def next_both():
+        next_alg1()
+        next_alg2()
+
+    def finished():
+        return resvs1_ix >= len(resvs1) \
+            and resvs2_ix >= len(resvs2)
+
+    while(not finished()):
+        resv1 = resvs1[resvs1_ix] if resvs1_ix < n_resvs1 else None
+        resv2 = resvs2[resvs2_ix] if resvs2_ix < n_resvs2 else None
+
+        if resv1 is None:
+            next1 = None
+        else:
+            next1 = seq1[resv1]
+        
+        if resv2 is None:
+            next2 = None
+        else:
+            next2 = seq2[resv2]
+
+        # If one of the sequences has been completed,
+        # we just need to append until both sequences
+        # are done.
+        # It is also the case that if we have already
+        # visited all the spatial indexes, then we
+        # can just append what remains to the
+        # alignment
+        if resvs1_ix >= len(resvs1) \
+            or resvs2_ix >= len(resvs2) \
+            or spatial_ix >= len(spatial_alignment):
+            next_both()
+            continue
+
+        (ix1, ix2) = spatial_alignment[spatial_ix]
+        s_resv1 = int(distances.indexes[0][ix1])
+        s_resv2 = int(distances.indexes[1][ix2])
+
+        # If both sequences are at a position matching
+        # the spatial alignment, then we append
+        # both residues and move forward. We also
+        # move to the next spatial index as the current
+        # one has been resolved
+        if resv1 == s_resv1 and resv2 == s_resv2:
+            next_both()
+            spatial_ix += 1
+
+        # If both poositions are below the spatial index
+        # we need to advance both
+        elif (resv1 is not None and resv1 < s_resv1) \
+            and (resv2 is not None and resv2 < s_resv2):
+            next_both()
+
+        # If one of the sequences has reached a position
+        # in the spatial alignment, we advance the other
+        # sequence until it also reaches the position in
+        # the spatial alignment
+        elif resv1 == s_resv1 \
+            or (resv2 is not None and resv2 < s_resv2):
+            skip_alg1()
+            next_alg2()
+        elif resv2 == s_resv2 \
+            or (resv1 is not None and resv1 < s_resv1):
+            next_alg1()
+            skip_alg2()
+        
+        # The last possibility is that the position
+        # of both sequences is not part of the spatial
+        # alignment. In such case, we advance both
+        else:
+            next_both()
+
+    with StringIO() as raw_msa:
+        raw_msa.write(f">{s1.show()}\n")
+        raw_msa.write("".join(v if v is not None else "-" for v in alg1))
+        raw_msa.write("\n\n")
+        raw_msa.write(f">{s2.show()}\n")
+        raw_msa.write("".join(v if v is not None else "-" for v in alg2))
+        raw_msa.seek(0)
+
+        msa = AlignIO.read(raw_msa, format='fasta')
+
+    return SpatialAlignment(
+        distance_matrix=distances,
+        alignment=msa, # type: ignore
+        seq1_resv_map=alg1_to_resv,
+        seq2_resv_map=alg2_to_resv
+    )
