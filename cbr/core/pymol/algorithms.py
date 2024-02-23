@@ -26,6 +26,9 @@ class StructureVector(Generic[TValue]):
         self.indexes = indexes
         self.array = array
 
+ERROR_ATOMS = ["CA"]
+ERROR_ATOMS_N = len(ERROR_ATOMS)
+
 def cx_coords(
     s: StructureSelection,
     state: int = 1
@@ -38,18 +41,22 @@ def cx_coords(
 
         if len(resv_maping) == 0 or resv_maping[-1] != resv:
 
-            while len(ca_coords) > 0 and len(ca_coords[-1]) < 2:
+            while len(ca_coords) > 0 and len(ca_coords[-1]) < ERROR_ATOMS_N:
                 ca_coords[-1].append([0,0,0])
 
             resv_maping.append(resv)
             ca_coords.append([])
 
-        if len(ca_coords[-1]) < 2:
+        # If we have more than one CA atom, it means
+        # there are alternative conformations
+        if len(ca_coords[-1]) < ERROR_ATOMS_N:
             ca_coords[-1].append([x, y, z])
+
+    atom_selection = " and ".join(f"name {a}" for a in ERROR_ATOMS)
 
     cmd.iterate_state(
         state,
-        f"{s.base_query} & (name CA or name CB)",
+        f"{s.base_query} and ({atom_selection})",
         'apply(resv, x, y, z)',
         space={'apply': apply}
     )

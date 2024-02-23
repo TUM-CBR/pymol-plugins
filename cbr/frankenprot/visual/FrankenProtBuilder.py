@@ -1,15 +1,20 @@
+from numpy import average
+from os import path
 from pymol import cmd
-from PyQt5.QtCore import QAbstractTableModel, QItemSelection, QModelIndex, QObject, QThread, Qt, pyqtSignal, pyqtSlot
-from PyQt5.QtGui import QColor
+from PyQt5.QtCore import QAbstractTableModel, QItemSelection, QModelIndex, QObject, QRegExp, QThread, Qt, pyqtSignal, pyqtSlot
+from PyQt5.QtGui import QColor, QRegExpValidator
 from PyQt5.QtWidgets import QWidget
-from typing import Any, cast, List, Optional, Tuple
+from tempfile import TemporaryDirectory
+from typing import Any, cast, Dict, List, Optional, Tuple
+import warnings
 
 from ...core.Context import Context
 from ...core.pymol.algorithms import SpatialAlignment, align_by_rmsd
 from ...core.pymol.structure import StructureSelection
-from ...core.Qt.QtWidgets import with_error_handler
+from ...core.Qt.QtWidgets import show_info, with_error_handler
 from ...core.visual import as_structure_selector
 from ...support.display.sequence import RESIDUE_COLORS
+from ..data import FrankenProt
 from .Ui_FrankenProt import Ui_FrankenProt
 
 class AlignRmsdWorker(QObject):
@@ -42,8 +47,6 @@ class FrankenProtModel(QAbstractTableModel):
         DISTANCE_ROW_IX
     ]
 
-    DISTANCE_CAP = 5
-
     def __init__(self, alignment: SpatialAlignment):
         super().__init__()
         self.__alignment = alignment
@@ -51,6 +54,8 @@ class FrankenProtModel(QAbstractTableModel):
             self.__get_distance_for_position(i)
             for i in range(alignment.alignment.get_alignment_length())
         ]
+        self.__new_structure = None
+        self.__distance_cap = float(average([v for v in self.__distances if v is not None]))
 
     def rowCount(self, parent: Optional[QModelIndex] = None) -> int:
         return len(self.ROWS)
@@ -127,9 +132,9 @@ class FrankenProtModel(QAbstractTableModel):
         
     def __distance_color(self, value: float):
 
-        value = min(value, self.DISTANCE_CAP)
-        green = int(255 * (1 - value/self.DISTANCE_CAP))
-        red = int(255 * value/self.DISTANCE_CAP)
+        value = min(value, self.__distance_cap)
+        green = int(255 * (1 - value/self.__distance_cap))
+        red = int(255 * value/self.__distance_cap)
 
         return QColor(red,green,0)
     
@@ -142,7 +147,7 @@ class FrankenProtModel(QAbstractTableModel):
         
         distance = self.__get_distance(index)
 
-        return self.__distance_color(distance if distance is not None else self.DISTANCE_CAP)
+        return self.__distance_color(distance if distance is not None else self.__distance_cap)
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
 
@@ -162,39 +167,50 @@ class FrankenProtModel(QAbstractTableModel):
             return
 
         columns = set(self.__position_from_index(i) for i in indexes)
-        base_resv = [
-            resv
-            for c in columns
-            for resv in [self.__alignment.resv_maps[0].get(c)] if resv is not None
-        ]
-        fragment_resv = [
-            resv
-            for c in columns
-            for resv in [self.__alignment.resv_maps[1].get(c)] if resv is not None
-        ]
+        replacements: Dict[int, List[int]] = {}
+        prev_resv = None
+        current_replacements: List[int] = []
+        base_resv_map = self.__alignment.resv_maps[0]
+        fragment_resv_map = self.__alignment.resv_maps[1]
 
-        selections = self.__alignment.distance_matrix.selections
-        base_model = selections[0]
-        base_sel = base_model.selection
+        for column in columns:
+            next_resv = base_resv_map.get(column)
+            next_sub_resv = fragment_resv_map.get(column)
 
-        fragment_model = selections[1]
-        fragment_sel = fragment_model.selection
+            if next_resv is None and next_sub_resv is None:
+                warnings.warn(
+                    "FrankenProtBuilder: Alginment has gaps in all positions."
+                )
 
-        cmd.show(representation='cartoon', selection=base_sel)
-        cmd.color("blue", base_sel)
+            # We need to handle the case that the replacement starts at a position
+            # where the base structure has a gap. In such a case, all residues
+            # from the fragment structure appearing befor the first residue
+            # of the base structure will be part of the replacements for the
+            # first residue
+            if next_resv is not None:
+                if prev_resv is None:
+                    replacements[next_resv] = current_replacements
+                else:
+                    current_replacements = replacements[next_resv] = []
+                prev_resv = next_resv
 
-        if len(base_resv) > 0:
-            cmd.hide(selection=base_model.residue_selection(base_resv))
+            if next_sub_resv is not None: # This is not needed but pylance isn't smart enough
+                current_replacements.append(next_sub_resv)
 
-        cmd.hide(selection=fragment_sel)
+        self.__new_structure = FrankenProt(
+            base_structure=self.__alignment.distance_matrix.selections[0],
+            fragments_structure=self.__alignment.distance_matrix.selections[1],
+            replacements=replacements
+        )
 
-        if len(fragment_resv) > 0:
-            start = min(fragment_resv)
-            end = max(fragment_resv)
-            cmd.show(representation='cartoon', selection=fragment_model.residue_selection([start - 1, end + 1] + fragment_resv))
-            cmd.color("green", fragment_sel)
+        self.__new_structure.show_preview()
 
-class FrankenProt(QWidget):
+    def get_structure(self):
+        return self.__new_structure
+
+STRUCTURE_NAME_RE = QRegExp(r"[A-Za-z0-9_]+")
+
+class FrankenProtBuilder(QWidget):
 
     start_rmsd = pyqtSignal(object, object)
 
@@ -223,6 +239,8 @@ class FrankenProt(QWidget):
         self.start_rmsd.connect(self.__align_worker.run_rmsd_align)
         self.__align_worker.moveToThread(self.__align_thread)
         self.__align_thread.start()
+        self.__ui.saveButton.clicked.connect(self.__on_save_button_clicked)
+        self.__ui.structureNameInput.setValidator(QRegExpValidator(STRUCTURE_NAME_RE))
 
         self.__model: Optional[FrankenProtModel] = None
 
@@ -279,3 +297,33 @@ class FrankenProt(QWidget):
         )
 
         self.start_rmsd.emit(base_structure, fragment_structure)
+
+    @pyqtSlot(name="__on_save_button_clicked")
+    @with_error_handler()
+    def __on_save_button_clicked(self):
+
+        model = self.__model
+
+        if model is None:
+            raise Exception("You need to create a structure first.")
+
+        structure = model.get_structure()
+
+        if structure is None:
+            raise Exception("You need to do a selection.")
+        
+        name = self.__ui.structureNameInput.text().strip()
+
+        if len(name) == 0:
+            raise Exception("You need a name for your structure.")
+        
+        with TemporaryDirectory() as pdb_tmp:
+            out_file = path.join(pdb_tmp, f"{name}.pdb")
+            structure.save_pdb(name, out_file)
+            cmd.load(out_file)
+
+        show_info(
+            self,
+            "New Model",
+            f"The model {name} has been added"
+        )
