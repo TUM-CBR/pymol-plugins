@@ -1,64 +1,113 @@
 import numpy as np
-from numpy import float64
+from numpy import int64, float64
 from numpy.typing import NDArray
 from pymol import cmd
 
-from typing import Dict, Iterable, List, NamedTuple, Tuple
+from typing import Dict, List, NamedTuple
 
-class SpaceOfCubes(NamedTuple):
-    x_size: int
-    y_size: int
-    z_size: int
-    delta: float64
+class IndexEntry(NamedTuple):
+    value: float64
+    i: int
+
+class IndexedVertices(NamedTuple):
+    sorted_axes: List[NDArray[float64]]
+    sorted_to_vertex: List[NDArray[int64]]
     vertices: NDArray[float64]
 
-    def reshape_3d(self) -> NDArray[float64]:
-        return self.vertices.reshape(
-            (self.x_size, self.y_size, self.z_size, 3)
+    @staticmethod
+    def create(vertices: NDArray[float64]) -> 'IndexedVertices':
+        (_, dims) = vertices.shape
+        sorted_axes = [
+            np.sort(vertices[:,d])
+            for d in range(dims)
+        ]
+        sorted_to_vertex = [
+            np.argsort(vertices[:,d])
+            for d in range(dims)
+        ]
+
+        return IndexedVertices(
+            sorted_axes=sorted_axes,
+            sorted_to_vertex=sorted_to_vertex,
+            vertices=vertices
         )
     
-    def all_indexes(self) -> Iterable[Tuple[int, int, int]]:
-        for i in range(self.x_size):
-            for j in range(self.y_size):
-                for k in range(self.z_size):
-                    yield (i,j,k)
+    @property
+    def bottom(self) -> NDArray[float64]:
+        return np.array([
+            sorted_axis[0]
+            for sorted_axis in self.sorted_axes
+        ])
+    
+    @property
+    def top(self) -> NDArray[float64]:
+        return np.array([
+            sorted_axis[-1]
+            for sorted_axis in self.sorted_axes
+        ])
+    
+    @property
+    def dims(self) -> int:
+        return len(self.sorted_axes)
+    
+    def empty_spaces_mesh(
+        self,
+        cutoff_distance: float,
+        stride: float
+    ) -> NDArray[float64]:
+        
+        sorted_axes = self.sorted_axes
+        delta_vertex = np.array([cutoff_distance for _ in sorted_axes])
 
-def get_cube_mesh(
-    v1: NDArray[float64],
-    v2: NDArray[float64],
-    side: float
-) -> SpaceOfCubes:
+        bottom = self.bottom
+        top = self.top
 
-    if len(v1) != 3 or len(v2) != 3:
-        raise ValueError("Arrays must have shape (3)")
-    
-    # Calculate dimensions of the larger cube
-    dimensions = np.abs(v2 - v1)
-    
-    # Calculate the number of unit cubes along each dimension
-    num_cubes = (np.floor(dimensions) / side).astype(int)
-    
-    # Total number of vertices for all unit cubes (8 vertices per cube)
-    total_vertices = np.prod(num_cubes)
-    
-    # Pre-allocate array for storing vertices. Shape: (total_vertices, 3)
-    vertices = np.zeros((total_vertices, 3))
-    
-    # Counter for filling the vertices array
-    counter = 0
-    for x in range(num_cubes[0]):
-        for y in range(num_cubes[1]):
-            for z in range(num_cubes[2]):
-                vertices[counter] = v1 + side*np.array([x, y, z])
-                counter += 1
-    
-    return SpaceOfCubes(
-        x_size=num_cubes[0],
-        y_size=num_cubes[1],
-        z_size=num_cubes[2],
-        delta=np.float64(side),
-        vertices=vertices
-    )
+        # Calculate dimensions of the larger cube
+        dimensions = np.abs(top - bottom)
+        
+        # Calculate the number of unit cubes along each dimension
+        num_cubes = (np.floor(dimensions) / stride).astype(int)
+
+        mesh = np.array([
+            bottom + stride*np.array([x,y,z])
+            for x in range(num_cubes[0])
+            for y in range(num_cubes[1])
+            for z in range(num_cubes[2])
+        ])
+
+        mesh_low = mesh - delta_vertex
+        mesh_high = mesh + delta_vertex
+
+        bottom_indices = [
+            np.searchsorted(axis, mesh_low[:,d])
+            for d,axis in enumerate(sorted_axes)
+        ]
+
+        top_indices = [
+            np.searchsorted(axis, mesh_high[:,d], side='right')
+            for d,axis in enumerate(sorted_axes)
+        ]
+
+        def mask_vertices(bottom: NDArray[int64], top: NDArray[int64]) -> bool:
+            items = [
+                self.sorted_to_vertex[d][bottom[d]:top[d]]
+                for d in range(self.dims)
+            ]
+
+            base = items[0]
+
+            for item in items[1:]:
+                base = base[np.isin(base, item)]
+
+            return len(base) == 0
+        
+        mask_vectorized = np.vectorize(mask_vertices, signature=f"({self.dims}),({self.dims})->()")
+
+        mask = mask_vectorized(
+            np.stack(bottom_indices).transpose(),
+            np.stack(top_indices).transpose()
+        )
+        return mesh[mask]
 
 def find_nearest_distances(vertices: NDArray[float64], values: NDArray[float64]) -> NDArray[float64]:
     result = np.zeros(len(vertices)) + np.inf
@@ -133,9 +182,9 @@ class Cavities(NamedTuple):
 
 def find_cavities(
     selection: str,
-    max_distance: float,
+    cutoff_distance: float,
     state: int = 1,
-    mesh_spacing: float = 1
+    stride: float = 1
 ):
     vertices_dict: Dict[int, List[NDArray[float64]]] = {}
 
@@ -161,21 +210,19 @@ def find_cavities(
         for vertex in group
     ])
 
-    xyzs = [vertices[:,0], vertices[:,1], vertices[:,2]]
+    indexed_structure = IndexedVertices.create(vertices)
 
-    bottom = np.array([np.min(v) for v in xyzs])
-    top = np.array([np.max(v) for v in xyzs])
+    mesh = indexed_structure.empty_spaces_mesh(cutoff_distance, stride)
 
-    mesh = get_cube_mesh(bottom, top, mesh_spacing)
-
-    groups = find_regions(mesh.vertices, vertices, max_distance, mesh_spacing)
+    groups = find_regions(mesh, vertices, cutoff_distance, stride)
 
     def is_close(atoms: List[NDArray[float64]], group: NDArray[float64]):
+        nonlocal cutoff_distance
 
         for atom in atoms:
             min_norm = np.min(np.linalg.norm(group - atom, axis=1))
 
-            if min_norm <= max_distance + 1:
+            if min_norm <= cutoff_distance + 1:
                 return True
         return False
 
