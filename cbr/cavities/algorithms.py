@@ -1,9 +1,71 @@
+import itertools
 import numpy as np
+import pandas as pd
+from numpy.lib import recfunctions
 from numpy import int64, float64
 from numpy.typing import NDArray
+from open3d.geometry import Octree, OctreePointColorLeafNode, OctreeInternalNode, OctreeInternalPointNode, OctreeLeafNode, PointCloud, VoxelGrid
+from open3d.utility import Vector3dVector
 from pymol import cmd
 
 from typing import Dict, List, NamedTuple
+
+def get_corners(tree: Octree):
+
+    xs = []
+    ys = []
+    zs = []
+    nids = []
+    depths = []
+    sizes = []
+    counts = []
+
+
+    node_id = 0
+
+    spacing = [0, 1]
+    coord_items = [
+        (x,y,z)
+        for x in spacing
+        for y in spacing
+        for z in spacing
+    ]
+
+    coords = np.array(coord_items)
+
+    def apply(node, node_info):
+        nonlocal xs, ys, zs, nids, depths, node_id, sizes
+
+        node_id += 1
+        corners = coords * node_info.size + node_info.origin
+
+        for corner in corners:
+            origin = tuple(np.round(i,2) for i in corner)
+
+            nids.append(node_id)
+            depths.append(node_info.depth)
+            sizes.append(node_info.size)
+            xs.append(origin[0])
+            ys.append(origin[1])
+            zs.append(origin[2])
+
+            if hasattr(node, 'indices'):
+                counts.append(len(getattr(node, 'indices')))
+            else:
+                counts.append(0)
+
+    tree.traverse(apply)
+
+    return pd.DataFrame({
+        "xs": xs,
+        "ys": ys,
+        "zs": zs,
+        "nids": nids,
+        "depths": depths,
+        "sizes": sizes,
+        "points": counts
+    })
+
 
 class IndexEntry(NamedTuple):
     value: float64
@@ -13,6 +75,7 @@ class IndexedVertices(NamedTuple):
     sorted_axes: List[NDArray[float64]]
     sorted_to_vertex: List[NDArray[int64]]
     vertices: NDArray[float64]
+    voxels: VoxelGrid
 
     @staticmethod
     def create(vertices: NDArray[float64]) -> 'IndexedVertices':
@@ -26,10 +89,15 @@ class IndexedVertices(NamedTuple):
             for d in range(dims)
         ]
 
+        pcd = PointCloud()
+        pcd.points = Vector3dVector(vertices)
+        voxels = VoxelGrid.create_from_point_cloud(pcd, voxel_size=1)
+
         return IndexedVertices(
             sorted_axes=sorted_axes,
             sorted_to_vertex=sorted_to_vertex,
-            vertices=vertices
+            vertices=vertices,
+            voxels=voxels
         )
     
     @property
@@ -75,6 +143,8 @@ class IndexedVertices(NamedTuple):
             for z in range(num_cubes[2])
         ])
 
+        included_test = self.voxels.check_if_included(Vector3dVector(mesh))
+
         mesh_low = mesh - delta_vertex
         mesh_high = mesh + delta_vertex
 
@@ -100,6 +170,34 @@ class IndexedVertices(NamedTuple):
                 base = base[np.isin(base, item)]
 
             return len(base) == 0
+        
+        stride = 30000
+        values = []
+        for i in range(0, len(mesh), stride):
+            top_i = i + stride
+            indexes = [
+                recfunctions.unstructured_to_structured(
+                    np.concatenate([
+                        np.stack(
+                            [
+                                row,
+                                np.repeat(i, len(row))
+                            ],
+                            axis=1
+                        )
+                        for i,(bottom_ix, top_ix) in enumerate(zip(bottom_indices[d][i:top_i], top_indices[d][i:top_i]))
+                        for row in [self.sorted_to_vertex[d][bottom_ix:top_ix]]
+                    ]),
+                    dtype=[('index', int64), ('mesh', int64)]
+                )
+                for d in range(self.dims)
+            ]
+            base = indexes[0]
+
+            for item in indexes[1:]:
+                base = base[np.isin(base, item)]
+
+            values.append(base)
         
         mask_vectorized = np.vectorize(mask_vertices, signature=f"({self.dims}),({self.dims})->()")
 
