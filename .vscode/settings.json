@@ -12,5 +12,6 @@
         "reportUnknownMemberType":"warning",
         "reportUnknownVariableType": "warning",
         "reportMissingTypeStubs": "warning"
-      }
+      },
+      "python.analysis.stubPath": "${workspaceFolder}/typings"
 }
