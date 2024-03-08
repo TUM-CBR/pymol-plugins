@@ -435,12 +435,17 @@ class FastaViewerModel(QAbstractTableModel):
 
         # we can now easily construct a query with
         # all the selections
-        selection = " or ".join(
+        queries = [
             structure.residue_selection(resv)
             for (ix, resv) in residues_to_select.items()
             for entry in [self.__sequences[ix]]
             for structure in [entry.sequence_structure] if structure is not None
-        )
+        ]
+
+        if len(queries) == 0 or all(len(query) == 0 for query in queries):
+            return
+
+        selection = " or ".join(queries)
 
         cmd.select(
             "sele",

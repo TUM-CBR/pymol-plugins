@@ -232,7 +232,8 @@ class FrankenProtBuilder(QWidget):
         self.__ui.selectButton.clicked.connect(self.__on_select_clicked)
         self.__ui.statusProgress.setVisible(False)
 
-        self.__align_thread = QThread()
+        self.__align_thread = QThread(self)
+        context.on_app_close(self.__on_app_close)
         self.__align_worker = AlignRmsdWorker()
         self.__align_worker.rmsd_started.connect(self.__on_rmsd_started)
         self.__align_worker.rmsd_completed.connect(self.__on_rmsd_completed)
@@ -243,6 +244,10 @@ class FrankenProtBuilder(QWidget):
         self.__ui.structureNameInput.setValidator(QRegExpValidator(STRUCTURE_NAME_RE))
 
         self.__model: Optional[FrankenProtModel] = None
+
+    def __on_app_close(self):
+        self.__align_thread.quit()
+        self.__align_thread.wait()
 
     @pyqtSlot(QItemSelection, QItemSelection)
     def __on_selection_changed(self, selected: QItemSelection, deselected: QItemSelection):

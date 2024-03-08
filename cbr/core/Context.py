@@ -12,6 +12,8 @@ T = TypeVar('T')
 
 MAIN_USER_MANUAL = QUrl('https://github.com/TUM-CBR/pymol-plugins/wiki')
 
+AppCloseHandler = Callable[[], Any]
+
 class Context(object):
 
     def __init__(
@@ -27,6 +29,7 @@ class Context(object):
         )
         self.__user_manual = user_manual if user_manual is not None else MAIN_USER_MANUAL
         self.__child_contexts: List['Context'] = []
+        self.__app_close_handlers: List[AppCloseHandler] = []
 
     def __ensure_directory_exists(self, directory: str) -> str:
         if path.exists(directory):
@@ -84,7 +87,21 @@ class Context(object):
 
         return result
 
+    def on_app_close(self, handler: AppCloseHandler):
+        self.__app_close_handlers.append(handler)
+
     def __on_close(self, window: RunQWidgetContext):
+
+        for handler in self.__app_close_handlers:
+
+            try:
+                handler()
+            except Exception:
+                # Handler threw excepotion, we need to
+                # continue execution
+                pass
+
+        self.__app_close_handlers = []
 
         try:
             self.__widgets.remove(window)
