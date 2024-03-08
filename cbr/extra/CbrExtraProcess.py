@@ -1,6 +1,6 @@
 from io import StringIO
 import json
-from PyQt5.QtCore import QIODevice, QProcess, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import QIODevice, QObject, QProcess, pyqtSignal, pyqtSlot
 import os
 import subprocess
 from typing import Any, Callable, Dict, List, Optional, TextIO, TypeVar
@@ -146,10 +146,11 @@ class CbrExtraProcess(QProcess):
             self.message_signal.emit(value)
 
 def run_cbr_tools_interactive(
-    args : List[str]
+    args : List[str],
+    parent : Optional[QObject] = None
 ) -> CbrExtraProcess:
 
-    process = CbrExtraProcess()
+    process = CbrExtraProcess(parent=parent)
     process.run_cbr_process(args)
 
     return process
