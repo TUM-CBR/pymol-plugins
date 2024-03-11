@@ -9,6 +9,7 @@ from typing import Any, Callable, NamedTuple, Optional
 from ..core.Context import Context
 from .. import apbs as Apbs
 from ..cascades import main as Cascades
+from ..cavities import main as Cavitites
 from ..chimeras import Applications as Chimeras
 from ..coevolution import main as Coevolution
 from ..dssp import main as Dssp
@@ -97,6 +98,11 @@ APP_DEFINITIONS = [
         icon = "frankenprot.png",
         text = "FrankenProt",
         init = FrankenProt.frankenprot
+    ),
+    AppDefinition(
+         icon = "protodentist.webp",
+         text = "ProtoDentist",
+         init = Cavitites.main
     )
     #AppDefinition(
     #    icon = "kinetics.png",

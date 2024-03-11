@@ -1,7 +1,7 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from enum import Enum
-from typing import Any, Callable, Dict, Generic, List, NamedTuple, Optional, TypeVar
-from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
+from typing import Any, Callable, cast, Dict, Generic, List, NamedTuple, Optional, TypeVar
+from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QProcess
 
 from ..core.uRx.core import Observable
 from ..core.uRx import dsl
@@ -88,7 +88,7 @@ class CbrMessage(Generic[TMessageIn, TMessageOut]):
     def __init__(
         self,
         input_uids: List[int],
-        payload: Optional[TMessageOut],
+        payload: Optional[TMessageIn],
         error_message: Optional[str]
     ):
         self.__input_uids = input_uids
@@ -96,13 +96,17 @@ class CbrMessage(Generic[TMessageIn, TMessageOut]):
         self.__error_message = error_message
 
     @property
-    def payload(self):
+    def payload(self) -> Optional[TMessageIn]:
         return self.__payload
+    
+    @property
+    def error(self) -> Optional[str]:
+        return self.__error_message
 
 class SendMessageResult(NamedTuple):
     message_uid: int
 
-class CbrExtraInteractiveHandlerBase(QObject, ABC):
+class CbrExtraInteractiveHandlerBase(QObject):
 
     message_signal = pyqtSignal(object)
 
@@ -179,8 +183,20 @@ class CbrExtraInteractiveHandler(CbrExtraInteractiveHandlerBase, Generic[TMessag
     def __serialize_message_base__(self, message: Any) -> Dict[Any, Any]:
         return self.__serializer(message)
 
-    def observe_message(self):
+    def observe_message(self) -> dsl.Dsl[CbrMessage[TMessageIn, TMessageOut]]:
         return dsl.observe(self.__message_observable)
+    
+    def observe_values(self) -> dsl.Dsl[TMessageIn]:
+
+        def mapping(message: CbrMessage[TMessageIn, TMessageOut]):
+            if message.error is not None:
+                raise Exception(message.error)
+            
+            assert message.payload is not None, "Message must have a payload if there is no error"
+            
+            return message.payload
+
+        return self.observe_message().map(mapping)
     
     def __should_handle__(self, message: InteractiveOutput) -> bool:
 
@@ -189,13 +205,17 @@ class CbrExtraInteractiveHandler(CbrExtraInteractiveHandlerBase, Generic[TMessag
 
         return True
 
-    def send_message(self, message: TMessageIn) -> SendMessageResult:
+    def send_message(self, message: TMessageOut) -> SendMessageResult:
         result = self.__send_message__(message)
         self.__latest_send_uid = result.message_uid
         return result
 
 K_ENTITY_TYPE = 'entity_type'
 K_STOP = 'stop'
+
+class CbrProcessExit(NamedTuple):
+    exit_code: int
+    exit_status: QProcess.ExitStatus
 
 class CbrExtraInteractiveManager(QObject):
 
@@ -213,8 +233,26 @@ class CbrExtraInteractiveManager(QObject):
         self.__process = process
         process.message_signal.connect(self.__on_message)
         self.__handlers: List[CbrExtraInteractiveHandlerBase] = []
+        exit_obs = qtRx.observer_from_signal(
+            self,
+            process.finished,
+            slot_args=[int, QProcess.ExitStatus],
+            signal_mapper=lambda values: CbrProcessExit(*values)
+        )
+        error_obs = qtRx.observer_from_signal(
+            self,
+            process.error_signal,
+            signal_mapper=lambda e: cast(Exception, e)
+        )
+        self.__status_obs = dsl.observe(exit_obs) \
+            .merge(
+                dsl.observe(error_obs).as_error(lambda e: e)
+            )
+        
+    def observe_status(self):
+        return self.__status_obs
 
-    @pyqtSlot()
+    @pyqtSlot(object)
     def __on_message(self, message: Dict[Any, Any]):
 
         payload = InteractiveOutput.parse(message)

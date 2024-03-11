@@ -19,7 +19,9 @@ class FindCavitiesArgs(NamedTuple):
 
 K_FIND_CAVITIES = 'find_cavities'
 
-class InteractiveInput(NamedTuple):
+class CavitiesInteractiveInput(NamedTuple):
+    """Class representing the input that is given to the cbr-extra-process
+    which takes care of finding cavities in a protein."""
     find_cavities: Optional[List[FindCavitiesArgs]] = None
 
     def to_json_dict(self):
@@ -38,7 +40,7 @@ class InteractiveInput(NamedTuple):
         }
 
     @classmethod
-    def serialize(cls, value: 'FindCavitiesArgs') -> Dict[Any, Any]:
+    def serialize(cls, value: 'CavitiesInteractiveInput') -> Dict[Any, Any]:
         return value.to_json_dict()
 
 K_POINTS = 'points'
@@ -71,11 +73,13 @@ class CavitiesResult(NamedTuple):
     
 K_CAVITIES_RESULT = 'cavities_result'
     
-class InteractiveOutput(NamedTuple):
+class CavitiesInteractiveOutput(NamedTuple):
+    """Class representing the output that is produced by the
+    process which finds cavities."""
     cavities_result: Optional[CavitiesResult]
 
     @classmethod
-    def parse(cls, json_dict: Dict[Any, Any]) -> 'InteractiveOutput':
+    def parse(cls, json_dict: Dict[Any, Any]) -> 'CavitiesInteractiveOutput':
 
         cavities_json = json_dict.get(K_CAVITIES_RESULT)
 
@@ -84,4 +88,4 @@ class InteractiveOutput(NamedTuple):
         else:
             cavities_result = None
 
-        return InteractiveOutput(cavities_result=cavities_result)
+        return CavitiesInteractiveOutput(cavities_result=cavities_result)

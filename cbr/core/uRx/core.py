@@ -1,6 +1,6 @@
 
 from abc import ABC, abstractmethod
-from typing import Callable, Generic, Optional, TypeVar
+from typing import Callable, Generic, Iterable, List, Optional, TypeVar
 
 TValue = TypeVar('TValue')
 
@@ -44,7 +44,27 @@ class SubscriptionCallable(SubscriptionBase):
         self.__unsubscribe = None
         unsubscribe()
 
-class ObservableBase(ABC, Generic[TValue]):
+class SubscriptionComposite(SubscriptionBase):
+
+    def __init__(
+        self,
+        nested: Iterable[SubscriptionBase]
+    ) -> None:
+        super().__init__()
+        self.__subscriptions: List[SubscriptionBase] = list(nested)
+
+    def dispose(self) -> None:
+        exn = None
+        for sub in self.__subscriptions:
+            try:
+                sub.dispose()
+            except Exception as e:
+                exn = e
+
+        if exn is not None:
+            raise exn
+
+class ObservableBase(Generic[TValue]):
 
     @abstractmethod
     def subscribe(self, os: Observer[TValue]) -> Subscription:
