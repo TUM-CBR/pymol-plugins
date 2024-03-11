@@ -5,6 +5,8 @@ from PyQt5.QtCore import QObject
 from PyQt5.QtWidgets import QWidget
 from typing import Any, Dict, NamedTuple, Optional
 
+from cbr import cavities
+
 from ...core.Context import Context
 from ...core.pymol.structure import StructureSelection
 from ...core.Qt.QtWidgets import show_exception, with_error_handler
@@ -67,7 +69,7 @@ class CavityFinderInstance(NamedTuple):
     cavity_handler: CbrExtraInteractiveHandler[CavitiesInteractiveOutput, CavitiesInteractiveInput]
 
     def stop(self):
-        pass
+        self.interactive_manager.stop()
 
     @classmethod
     def start(
@@ -118,6 +120,13 @@ class CavityFinder(QWidget):
         self.__cavity_process: Optional[CavityFinderInstance] = None
         self.__working_dir = context.create_temporary_directory()
         self.__ui.busyProgress.hide()
+        context.on_app_close(self.__on_app_closed)
+
+    def __on_app_closed(self):
+        cavity_process = self.__cavity_process
+
+        if cavity_process is not None:
+            cavity_process.stop()
 
     def __get_or_create_cavity_process(self):
         structure = self.__structure_selector.currentSelection
@@ -167,7 +176,12 @@ class CavityFinder(QWidget):
         pass
     
     def __on_result(self, result: CavitiesInteractiveOutput):
-        print(result)
+        cavities = result.cavities_result
+
+        if cavities is not None:
+            cavities.display()
+        else:
+            show_exception(self, Exception("Result contains invalid data!"))
 
     def __on_error(self, exn: Exception):
         show_exception(self, exn)

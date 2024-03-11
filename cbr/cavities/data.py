@@ -1,3 +1,4 @@
+from pymol import cmd
 from typing import Any, Dict, List, NamedTuple, Optional
 
 K_POINTS_ID = "points_id"
@@ -56,6 +57,25 @@ class CavityModel(NamedTuple):
             points = json_dict[K_POINTS],
             radii = json_dict[K_RADII]
         )
+    
+    def display(self, structure_name: str):
+        for i,(pos,size) in enumerate(zip(self.points, self.radii)):
+            cmd.pseudoatom(
+                structure_name,
+                pos=pos,
+                elem='C',
+                vdw=size,
+                name='C1',
+                resn='CAV',
+                resi=str(i),
+                chain='A',
+                segi='1'
+            )
+        
+        cmd.show_as(
+            representation='spheres',
+            selection = f"model {structure_name}"
+        )
 
 K_CAVITIES = "cavities"
 
@@ -70,6 +90,20 @@ class CavitiesResult(NamedTuple):
                 for name, records in json_dict[K_CAVITIES].items()
             }
         )
+    
+    def __display_cavity(self, name: str):
+
+        cavities = self.cavities[name]
+
+        for i,cavity in enumerate(cavities):
+            name = name.replace("/", "_")
+            structure_name = f"cav_{name}_{i}"
+            cavity.display(structure_name)
+
+    def display(self):
+        for cav in self.cavities:
+            self.__display_cavity(cav)
+
     
 K_CAVITIES_RESULT = 'cavities_result'
     

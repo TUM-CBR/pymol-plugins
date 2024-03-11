@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from enum import Enum
+from multiprocessing import process
 from typing import Any, Callable, cast, Dict, Generic, List, NamedTuple, Optional, TypeVar
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QProcess
 
@@ -248,6 +249,9 @@ class CbrExtraInteractiveManager(QObject):
             .merge(
                 dsl.observe(error_obs).as_error(lambda e: e)
             )
+    
+    def stop(self):
+        self.__process.close()
         
     def observe_status(self):
         return self.__status_obs
