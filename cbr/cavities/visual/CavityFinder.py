@@ -1,21 +1,20 @@
 import json
 from os import path
 from pymol import cmd
-from PyQt5.QtCore import QObject
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtCore import QObject, pyqtSlot
+from PyQt5.QtWidgets import QDialog, QWidget
 from typing import Any, Dict, NamedTuple, Optional
-
-from cbr import cavities
 
 from ...core.Context import Context
 from ...core.pymol.structure import StructureSelection
 from ...core.Qt.QtWidgets import show_exception, with_error_handler
+from ...core.Qt.visual.NamedtupleEditorDialog import namedtuple_dialog
 from ...core.uRx import dsl as rx
 from ...core.uRx import qt as qtRx
 from ...core.uRx import util as rxUtil
 from ...core.visual import as_structure_selector
 from ...extra.CbrExtraInteractiveHandler import CbrExtraInteractiveHandler, CbrExtraInteractiveManager, CbrProcessExit, MessageQueingPolicy, run_interactive
-from ..data import CavitiesInteractiveInput, CavitiesInteractiveOutput, FindCavitiesArgs
+from ..data import AdvancedOptions, CavitiesInteractiveInput, CavitiesInteractiveOutput, FindCavitiesArgs
 from .Ui_CavityFinder import Ui_CavityFinder
 
 K_CAVITIES = "cavities"
@@ -67,6 +66,7 @@ class CavityFinderInstance(NamedTuple):
     interactive_manager: CbrExtraInteractiveManager
     structure: StructureSelection
     cavity_handler: CbrExtraInteractiveHandler[CavitiesInteractiveOutput, CavitiesInteractiveInput]
+    advanced_options: AdvancedOptions
 
     def stop(self):
         self.interactive_manager.stop()
@@ -76,7 +76,8 @@ class CavityFinderInstance(NamedTuple):
         cls,
         parent: QObject,
         structure: StructureSelection,
-        working_folder: str
+        working_folder: str,
+        advanced_options: AdvancedOptions
     ) -> 'CavityFinderInstance':
         
         json_file = create_structure_json(structure, working_folder)
@@ -86,7 +87,8 @@ class CavityFinderInstance(NamedTuple):
                 "interactive",
                 "--input-points",
                 json_file
-            ],
+            ]
+            + advanced_options.to_cmd_args(),
             parent=parent
         )
         cavity_handler = interactive.message_handler(
@@ -95,7 +97,7 @@ class CavityFinderInstance(NamedTuple):
             MessageQueingPolicy.HANDLE_LATEST
         )
 
-        return CavityFinderInstance(interactive, structure, cavity_handler)
+        return CavityFinderInstance(interactive, structure, cavity_handler, advanced_options)
 
 class CavityFinder(QWidget):
 
@@ -110,6 +112,10 @@ class CavityFinder(QWidget):
             self.__ui.refreshButton
         )
 
+        self.__advanced_options = AdvancedOptions()
+        self.__advanced = namedtuple_dialog(self.__advanced_options)
+        self.__ui.advancedSettingsButton.clicked.connect(self.__on_advanced_clicked)
+
         self.__click_os = qtRx.observer_from_signal0(self, self.__ui.findButton.clicked, hot=False)
         self.__busy_subscription = rxUtil.UpdatableSubscription()
         self.__result_subscription = rxUtil.UpdatableSubscription()
@@ -121,6 +127,13 @@ class CavityFinder(QWidget):
         self.__working_dir = context.create_temporary_directory()
         self.__ui.busyProgress.hide()
         context.on_app_close(self.__on_app_closed)
+
+    @pyqtSlot()
+    def __on_advanced_clicked(self):
+        if(self.__advanced.exec() == QDialog.DialogCode.Accepted):
+            new_value = self.__advanced[0]
+            assert new_value is not None, "Settings cannot be None"
+            self.__advanced_options = new_value
 
     def __on_app_closed(self):
         cavity_process = self.__cavity_process
@@ -135,9 +148,12 @@ class CavityFinder(QWidget):
         if structure is None:
             raise ValueError("No structure has been selected!")
 
-        if cavity_process is None or cavity_process.structure != structure:
+        if cavity_process is None \
+            or cavity_process.structure != structure \
+            or cavity_process.advanced_options != self.__advanced_options:
             cavity_process.stop() if cavity_process is not None else None
-            cavity_process = CavityFinderInstance.start(self, structure, self.__working_dir)
+            cavity_process = CavityFinderInstance.start(self, structure, self.__working_dir, self.__advanced_options)
+            self.__cavity_process = cavity_process
 
             # True means the app is busy, false means not busy
             self.__busy_subscription.update(

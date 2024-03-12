@@ -58,17 +58,20 @@ class CavityModel(NamedTuple):
             radii = json_dict[K_RADII]
         )
     
-    def display(self, structure_name: str):
+    def volume(self) -> float:
+        return sum(self.radii)
+    
+    def display(self, structure_name: str, chain: str):
         for i,(pos,size) in enumerate(zip(self.points, self.radii)):
             cmd.pseudoatom(
                 structure_name,
                 pos=pos,
                 elem='C',
-                vdw=size,
+                vdw=size/2,
                 name='C1',
                 resn='CAV',
                 resi=str(i),
-                chain='A',
+                chain=chain,
                 segi='1'
             )
         
@@ -97,8 +100,8 @@ class CavitiesResult(NamedTuple):
 
         for i,cavity in enumerate(cavities):
             name = name.replace("/", "_")
-            structure_name = f"cav_{name}_{i}"
-            cavity.display(structure_name)
+            structure_name = f"cav_{name}"
+            cavity.display(structure_name, f"A{i}")
 
     def display(self):
         for cav in self.cavities:
@@ -123,3 +126,16 @@ class CavitiesInteractiveOutput(NamedTuple):
             cavities_result = None
 
         return CavitiesInteractiveOutput(cavities_result=cavities_result)
+    
+class AdvancedOptions(NamedTuple):
+    empty_treshold: int = 1
+    radii_scale: float = 1
+
+    def to_cmd_args(self):
+
+        return [
+            "--radii-scale",
+            str(self.radii_scale),
+            "--empty-treshold",
+            str(self.empty_treshold)
+        ]

@@ -14,50 +14,6 @@
    <string>Form</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="1" column="0">
-    <widget class="QLabel" name="label_2">
-     <property name="text">
-      <string>Structure</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="7">
-    <widget class="QSpinBox" name="maxSizeSelector">
-     <property name="minimum">
-      <number>1</number>
-     </property>
-     <property name="maximum">
-      <number>999</number>
-     </property>
-     <property name="value">
-      <number>125</number>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="4">
-    <widget class="QLabel" name="label_3">
-     <property name="text">
-      <string>min size (Å)</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="5">
-    <widget class="QSpinBox" name="minSizeSelector">
-     <property name="minimum">
-      <number>1</number>
-     </property>
-     <property name="maximum">
-      <number>999</number>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="8">
-    <widget class="QPushButton" name="findButton">
-     <property name="text">
-      <string>Find</string>
-     </property>
-    </widget>
-   </item>
    <item row="0" column="0" colspan="4">
     <widget class="QLabel" name="label">
      <property name="styleSheet">
@@ -69,10 +25,44 @@ fond-weight: bold;</string>
      </property>
     </widget>
    </item>
-   <item row="2" column="0" colspan="13">
-    <widget class="QTableView" name="cavitiesTable"/>
+   <item row="1" column="4">
+    <widget class="QLabel" name="label_3">
+     <property name="text">
+      <string>min size (Å)</string>
+     </property>
+    </widget>
    </item>
-   <item row="1" column="9" colspan="4">
+   <item row="1" column="7">
+    <widget class="QSpinBox" name="maxSizeSelector">
+     <property name="minimum">
+      <number>1</number>
+     </property>
+     <property name="maximum">
+      <number>999999</number>
+     </property>
+     <property name="value">
+      <number>125</number>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="0" colspan="15">
+    <widget class="QProgressBar" name="busyProgress">
+     <property name="maximum">
+      <number>0</number>
+     </property>
+     <property name="value">
+      <number>-1</number>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="6">
+    <widget class="QLabel" name="label_4">
+     <property name="text">
+      <string>max size (Å)</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="11" colspan="4">
     <spacer name="horizontalSpacer">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
@@ -85,13 +75,20 @@ fond-weight: bold;</string>
      </property>
     </spacer>
    </item>
-   <item row="1" column="1" colspan="2">
-    <widget class="QComboBox" name="structureCombo">
-     <property name="minimumSize">
-      <size>
-       <width>150</width>
-       <height>0</height>
-      </size>
+   <item row="1" column="5">
+    <widget class="QSpinBox" name="minSizeSelector">
+     <property name="minimum">
+      <number>0</number>
+     </property>
+     <property name="maximum">
+      <number>999</number>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="9">
+    <widget class="QPushButton" name="findButton">
+     <property name="text">
+      <string>Find</string>
      </property>
     </widget>
    </item>
@@ -102,20 +99,30 @@ fond-weight: bold;</string>
      </property>
     </widget>
    </item>
-   <item row="1" column="6">
-    <widget class="QLabel" name="label_4">
+   <item row="1" column="0">
+    <widget class="QLabel" name="label_2">
      <property name="text">
-      <string>max size (Å)</string>
+      <string>Structure</string>
      </property>
     </widget>
    </item>
-   <item row="3" column="0" colspan="13">
-    <widget class="QProgressBar" name="busyProgress">
-     <property name="maximum">
-      <number>0</number>
+   <item row="1" column="1" colspan="2">
+    <widget class="QComboBox" name="structureCombo">
+     <property name="minimumSize">
+      <size>
+       <width>150</width>
+       <height>0</height>
+      </size>
      </property>
-     <property name="value">
-      <number>-1</number>
+    </widget>
+   </item>
+   <item row="2" column="0" colspan="15">
+    <widget class="QTableView" name="cavitiesTable"/>
+   </item>
+   <item row="1" column="10">
+    <widget class="QPushButton" name="advancedSettingsButton">
+     <property name="text">
+      <string>Advanced Options</string>
      </property>
     </widget>
    </item>

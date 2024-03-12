@@ -243,7 +243,7 @@ class CbrExtraInteractiveManager(QObject):
         error_obs = qtRx.observer_from_signal(
             self,
             process.error_signal,
-            signal_mapper=lambda e: cast(Exception, e)
+            signal_mapper=lambda e: cast(Exception, e[0])
         )
         self.__status_obs = dsl.observe(exit_obs) \
             .merge(

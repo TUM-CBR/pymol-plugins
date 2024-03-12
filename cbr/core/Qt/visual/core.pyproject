@@ -1,5 +1,6 @@
 {
     "files": [
+        "NamedtupleEditorDialog.ui",
         "editrecords.ui"
     ]
 }
