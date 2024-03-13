@@ -128,8 +128,9 @@ class CavitiesInteractiveOutput(NamedTuple):
         return CavitiesInteractiveOutput(cavities_result=cavities_result)
     
 class AdvancedOptions(NamedTuple):
-    empty_treshold: int = 1
+    empty_treshold: int = 0
     radii_scale: float = 1
+    max_size_multiplier: float = 0.25
 
     def to_cmd_args(self):
 
@@ -137,5 +138,7 @@ class AdvancedOptions(NamedTuple):
             "--radii-scale",
             str(self.radii_scale),
             "--empty-treshold",
-            str(self.empty_treshold)
+            str(self.empty_treshold),
+            "--max_size_multiplier",
+            str(self.max_size_multiplier)
         ]
