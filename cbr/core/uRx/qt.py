@@ -1,8 +1,6 @@
 from typing import Any, Callable, Sequence, Type, cast, List, Optional
 from PyQt5.QtCore import QObject, pyqtBoundSignal, pyqtSlot
 
-from cbr.core.uRx.core import Observer, Subscription
-
 from .core import *
 from .dsl import *
 

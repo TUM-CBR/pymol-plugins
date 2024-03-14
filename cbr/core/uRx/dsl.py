@@ -1,7 +1,5 @@
 from typing import cast, Union
 
-from cbr.core.uRx.core import Subscription
-
 from .core import *
 from .stages import *
 
