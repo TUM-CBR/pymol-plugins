@@ -125,8 +125,10 @@ class CbrExtraProcess(QProcess):
             'uid': -1,
             'entity_type': 'stop'
         })
+
         self.__close_logger()
-        super().close()
+        if not super().waitForFinished(msecs=1000):            
+            super().close()
 
     @pyqtSlot()
     def __on_data_ready(self):

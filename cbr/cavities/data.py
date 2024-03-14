@@ -71,12 +71,12 @@ class CavityModel(NamedTuple):
                 name='C1',
                 resn='CAV',
                 resi=str(i),
-                chain=chain,
+                chain=f"{chain}",
                 segi='1'
             )
         
         cmd.show_as(
-            representation='spheres',
+            representation='mesh',
             selection = f"model {structure_name}"
         )
 
@@ -94,13 +94,17 @@ class CavitiesResult(NamedTuple):
             }
         )
     
+    def get_cavity_name(self, name: str) -> str:
+        name = name.replace("/", "_")
+        return f"cav_{name}"
+    
     def __display_cavity(self, name: str):
 
         cavities = self.cavities[name]
+        structure_name = self.get_cavity_name(name)
+        cmd.delete(structure_name)
 
         for i,cavity in enumerate(cavities):
-            name = name.replace("/", "_")
-            structure_name = f"cav_{name}"
             cavity.display(structure_name, f"A{i}")
 
     def display(self):

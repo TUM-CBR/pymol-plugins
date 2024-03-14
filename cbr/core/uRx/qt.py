@@ -1,4 +1,4 @@
-from typing import Any, Callable, Iterable, Type, cast, List, Optional
+from typing import Any, Callable, Sequence, Type, cast, List, Optional
 from PyQt5.QtCore import QObject, pyqtBoundSignal, pyqtSlot
 
 from cbr.core.uRx.core import Observer, Subscription
@@ -39,6 +39,9 @@ class QtObservableBase(QObject, ObservableBase[TValue]):
         return SubscriptionCallable(
             lambda: self.__unsubscribe(os)
         )
+    
+    def observe(self) -> Dsl[TValue]:
+        return Dsl(self)
 
 class QtSignalObservable(QtObservableBase[TValue]):
 
@@ -71,16 +74,16 @@ class QtSignalObservable(QtObservableBase[TValue]):
             # It is not even possible to use assert to ensure consistency
             os.on_next(cast(TValue, self.__latest))
 
-def default_mapper(args: Iterable[Any]) -> Any:
+def default_mapper(args: Sequence[Any]) -> Any:
     return next(args.__iter__())
 
 def observer_from_signal(
     parent: QObject,
     signal: pyqtBoundSignal,
     slot_args: Optional[List[Type[Any]]] = None,
-    signal_mapper: Callable[[Iterable[Any]], TValue] = default_mapper,
+    signal_mapper: Callable[[Sequence[Any]], TValue] = default_mapper,
     hot: bool = True
-) -> Observable[TValue]:
+) -> QtObservableBase[TValue]:
     
     if slot_args is None:
         slot_args = [object]
@@ -91,7 +94,7 @@ def observer_from_signal(
             self,
             parent: QObject,
             signal: pyqtBoundSignal,
-            mapper: Callable[[Iterable[Any]], TValue]
+            mapper: Callable[[Sequence[Any]], TValue]
         ) -> None:
             super().__init__(parent, hot=hot)
             signal.connect(self.__on_signal)
@@ -110,7 +113,7 @@ def observer_from_signal0(
     parent: QObject,
     signal: pyqtBoundSignal,
     hot: bool = True
-) -> Observable[tuple[()]]:
+) -> QtObservableBase[tuple[()]]:
     return observer_from_signal(
         parent,
         signal,

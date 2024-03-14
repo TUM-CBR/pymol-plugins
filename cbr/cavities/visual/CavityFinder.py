@@ -1,7 +1,7 @@
 import json
 from os import path
 from pymol import cmd
-from PyQt5.QtCore import QObject, pyqtSlot
+from PyQt5.QtCore import QItemSelectionModel, QObject, pyqtSlot
 from PyQt5.QtWidgets import QDialog, QWidget
 from typing import Any, Dict, NamedTuple, Optional
 
@@ -15,6 +15,7 @@ from ...core.uRx import util as rxUtil
 from ...core.visual import as_structure_selector
 from ...extra.CbrExtraInteractiveHandler import CbrExtraInteractiveHandler, CbrExtraInteractiveManager, CbrProcessExit, MessageQueingPolicy, run_interactive
 from ..data import AdvancedOptions, CavitiesInteractiveInput, CavitiesInteractiveOutput, FindCavitiesArgs
+from .CavityResultsModel import CavityResultsModel
 from .Ui_CavityFinder import Ui_CavityFinder
 
 K_CAVITIES = "cavities"
@@ -120,13 +121,48 @@ class CavityFinder(QWidget):
         self.__busy_subscription = rxUtil.UpdatableSubscription()
         self.__result_subscription = rxUtil.UpdatableSubscription()
         self.__status_subscription = rxUtil.UpdatableSubscription()
+        self.__selection_changed_subscription = rxUtil.UpdatableSubscription()
         rx.observe(self.__click_os).for_each(
             lambda _: self.__on_find_button_clicked()
         )
         self.__cavity_process: Optional[CavityFinderInstance] = None
         self.__working_dir = context.create_temporary_directory()
         self.__ui.busyProgress.hide()
+        self.__model : Optional[CavityResultsModel] = None
+
+        qtRx.observer_from_signal0(self, self.__ui.selectAllButton.clicked) \
+            .observe() \
+            .for_each(lambda _: self.__set_visible(True))
+        
+        qtRx.observer_from_signal0(self, self.__ui.selectNoneButton.clicked) \
+            .observe() \
+            .for_each(lambda _: self.__set_visible(False))
+        
+        qtRx.observer_from_signal(
+            self,
+            self.__ui.opacitySlider.valueChanged,
+            slot_args=[int],
+            signal_mapper=lambda vs: vs[0]
+        ).observe().for_each(
+            self.__slider_changed
+        )
+
         context.on_app_close(self.__on_app_closed)
+
+    def __slider_changed(self, value: int):
+        selection = self.__structure_selector.currentSelection
+
+        if selection is None:
+            return
+
+        opacity: Any = (100 - value) / 100
+        cmd.set("transparency", opacity, selection.selection)
+
+    def __set_visible(self, visible: bool):
+        model = self.__model
+
+        if model is not None:
+            model.update_visibility(visible)
 
     @pyqtSlot()
     def __on_advanced_clicked(self):
@@ -171,7 +207,7 @@ class CavityFinder(QWidget):
             self.__result_subscription.update(
                 cavity_process.cavity_handler.observe_values() \
                     .for_each(
-                        self.__on_result,
+                        lambda result: self.__on_result(structure, result),
 
                         # Errors are handled by the previous subscription
                         on_error=lambda _: None
@@ -188,14 +224,47 @@ class CavityFinder(QWidget):
 
         return cavity_process
     
+    def __on_selection_changed(self, model: CavityResultsModel, selection_model: QItemSelectionModel):
+        selection = selection_model.selectedIndexes()
+        model.items_selected(selection, self.__ui.selectionDistance.value())
+
     def __on_quit(self, _result: CbrProcessExit):
         pass
     
-    def __on_result(self, result: CavitiesInteractiveOutput):
+    @with_error_handler()
+    def __on_result(self, structure: StructureSelection, result: CavitiesInteractiveOutput):
         cavities = result.cavities_result
 
         if cavities is not None:
+            self.__model = model = CavityResultsModel(
+                cavities,
+                {
+                    name: structure
+                    for name in cavities.cavities
+                }
+            )
+            self.__ui.cavitiesTable.setModel(model)
+            selection_model = self.__ui.cavitiesTable.selectionModel()
+            assert selection_model, "Selection model must not be None"
+
+            self.__selection_changed_subscription.update(
+                    qtRx.observer_from_signal0(
+                        self,
+                        selection_model.selectionChanged,
+                        hot=False
+                    ).observe()
+                    .merge(qtRx.observer_from_signal0(
+                        self,
+                        self.__ui.selectionDistance.valueChanged,
+                        hot=False
+                    ))
+                    .for_each(lambda _: self.__on_selection_changed(model, selection_model))
+            )
             cavities.display()
+            cmd.show_as(
+                representation = 'surface',
+                selection = structure.selection,
+            )
         else:
             show_exception(self, Exception("Result contains invalid data!"))
 
