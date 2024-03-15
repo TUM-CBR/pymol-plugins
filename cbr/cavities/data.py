@@ -61,7 +61,7 @@ class CavityModel(NamedTuple):
     def volume(self) -> float:
         return sum(self.radii)
     
-    def display(self, structure_name: str, chain: str):
+    def display(self, structure_name: str, chain: str, rep: str):
         for i,(pos,size) in enumerate(zip(self.points, self.radii)):
             cmd.pseudoatom(
                 structure_name,
@@ -76,7 +76,7 @@ class CavityModel(NamedTuple):
             )
         
         cmd.show_as(
-            representation='mesh',
+            representation=rep,
             selection = f"model {structure_name}"
         )
 
@@ -98,18 +98,18 @@ class CavitiesResult(NamedTuple):
         name = name.replace("/", "_")
         return f"cav_{name}"
     
-    def __display_cavity(self, name: str):
+    def __display_cavity(self, name: str, rep: str):
 
         cavities = self.cavities[name]
         structure_name = self.get_cavity_name(name)
         cmd.delete(structure_name)
 
         for i,cavity in enumerate(cavities):
-            cavity.display(structure_name, f"A{i}")
+            cavity.display(structure_name, f"A{i}", rep)
 
-    def display(self):
+    def display(self, rep: str):
         for cav in self.cavities:
-            self.__display_cavity(cav)
+            self.__display_cavity(cav, rep)
 
     
 K_CAVITIES_RESULT = 'cavities_result'

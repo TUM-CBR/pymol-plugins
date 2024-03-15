@@ -101,7 +101,7 @@ APP_DEFINITIONS = [
     ),
     AppDefinition(
          icon = "protodentist.webp",
-         text = "ProtoDentist",
+         text = "Prot o' Dentist",
          init = Cavitites.main
     )
     #AppDefinition(

@@ -17,11 +17,13 @@ class CavityEntry:
     structure: StructureSelection
     cavity: CavityModel
     visible: bool
+    representation: str
 
     def __init__(
         self,
         name: str,
         index: int,
+        representation: str,
         structure: StructureSelection,
         cavity: CavityModel
     ) -> None:
@@ -30,6 +32,7 @@ class CavityEntry:
         self.structure = structure
         self.cavity = cavity
         self.visible = True
+        self.representation = representation
 
     @property
     def selection(self) -> str:
@@ -44,12 +47,21 @@ class CavityEntry:
         self.visible = visible
 
         if visible == True:
-            cmd.show(
-                representation = 'mesh',
+            cmd.show_as(
+                representation = self.representation,
                 selection = self.selection
             )
         else:
             cmd.hide(
+                selection = self.selection
+            )
+
+    def set_representation(self, representation: str) -> None:
+        self.representation = representation
+
+        if self.visible:
+            cmd.show_as(
+                representation = self.representation,
                 selection = self.selection
             )
 
@@ -69,6 +81,7 @@ class CavityResultsModel(QAbstractTableModel):
         self,
         results: CavitiesResult,
         structures: Dict[str, StructureSelection],
+        representation: str,
         parent: Optional[QObject] = None
     ) -> None:
         super().__init__(parent)
@@ -76,6 +89,7 @@ class CavityResultsModel(QAbstractTableModel):
             CavityEntry(
                 results.get_cavity_name(structure),
                 i,
+                representation,
                 structures[structure],
                 cavity,
             )
@@ -182,3 +196,7 @@ class CavityResultsModel(QAbstractTableModel):
             "sele",
             f"byres ({selections})"
         )
+
+    def set_representation(self, representation: str) -> None:
+        for record in self.__cavities:
+            record.set_representation(representation)
