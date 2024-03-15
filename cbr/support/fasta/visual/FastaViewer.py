@@ -11,6 +11,7 @@ from typing import Any, Callable, cast, Dict, Iterable, List, NamedTuple, Option
 
 from ....clustal.Clustal import Clustal
 from ....core.pymol.structure import get_pdb_dominant_color_index, get_selection_sequence_index, StructureSelection
+from ....core.Qt.QtWidgets import with_error_handler
 from ...msa.visual.MsaStructureSelector import MsaStructureSelector
 from ...display.sequence import RESIDUE_COLORS
 from .Ui_FastaViewer import Ui_FastaViewer
@@ -498,6 +499,7 @@ class FastaViewer(QWidget):
         )
 
     @pyqtSlot(QModelIndex)
+    @with_error_handler()
     def __on_select_structure(self, index: QModelIndex):
         self.__select_structure(index)
 

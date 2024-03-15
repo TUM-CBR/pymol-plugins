@@ -1,3 +1,4 @@
+import tempfile
 from Bio import SeqIO
 from Bio import AlignIO
 from Bio.Align import MultipleSeqAlignment
@@ -80,8 +81,17 @@ class Clustal(object):
         out_result : MsaOutput
         ) -> ClustalResult:
 
+        out_file = tempfile.NamedTemporaryFile()
         process = subprocess.Popen(
-            [self.__clustal_executable, '-i', '-', '--force', '--outfmt=clustal'],
+            [
+                self.__clustal_executable,
+                '-i',
+                '-',
+                '--force',
+                '--outfmt=clustal',
+                '-o',
+                out_file.name
+            ],
             text=True,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
@@ -89,6 +99,7 @@ class Clustal(object):
         )
 
         with process \
+            , out_file \
             , Clustal.__get_msa_input(in_msa) as in_msa_stream \
             , Clustal.__get_msa_output(out_result) as out_result_stream:
 
@@ -99,11 +110,12 @@ class Clustal(object):
             else:
                 raise Exception("Failed to open standard input for clustal")
             
-            if process.stdout:
-                for text in process.stdout:
-                    out_result_stream.stream.write(text)
-            else:
-                raise Exception("Failed to open the standard output of clustal")
+            process.wait()
+
+            out_file.seek(0)
+
+            for text in out_file.readlines():
+                out_result_stream.stream.write(text.decode('utf-8'))
 
             if process.wait() != 0:
                 raise ValueError("Invalid input provided to clustal.")
