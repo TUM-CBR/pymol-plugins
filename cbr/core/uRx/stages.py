@@ -1,6 +1,5 @@
 from typing import Any, Generic
 
-from cbr.core.uRx.core import Observer, Subscription
 from .core import *
 
 ForEachAction = Callable[[TValue], Any]
