@@ -1,5 +1,5 @@
 # CBR Bioinformatics Tools
-> Enjoyable Bioinformatics
+> Delightful Bioinformatics
 
 CBR Bioinformatics Tools is a suite of software applications which allow researchers to use various structural and homology related algorithms and models with an intuitive graphical user interface.
 
