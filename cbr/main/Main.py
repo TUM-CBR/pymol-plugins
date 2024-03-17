@@ -97,12 +97,14 @@ APP_DEFINITIONS = [
     AppDefinition(
         icon = "frankenprot.png",
         text = "FrankenProt",
-        init = FrankenProt.frankenprot
+        init = FrankenProt.frankenprot,
+        user_manual = QUrl("https://github.com/TUM-CBR/pymol-plugins/wiki/FrankenProt")
     ),
     AppDefinition(
-         icon = "protodentist.webp",
-         text = "Prot o' Dentist",
-         init = Cavitites.main
+        icon = "protodentist.webp",
+        text = "Prot o' Dentist",
+        init = Cavitites.main,
+        user_manual = QUrl("https://github.com/TUM-CBR/pymol-plugins/wiki/Prot-o'-Dentist")
     )
     #AppDefinition(
     #    icon = "kinetics.png",

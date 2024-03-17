@@ -27,7 +27,7 @@ For information about how to install and use the suite, please refer to the [The
 Information about the applications and features of this suite can be found in the [The CBR Bioinformatics Tools Wiki](https://github.com/TUM-CBR/pymol-plugins/wiki). We will briefly highlight some of the features below:
 
 * [MSA Viewer](https://github.com/TUM-CBR/pymol-plugins/wiki/MSA-Viewer) Is a tool that allows coloring protein structures using statistical information from sequence alignment. Think of it as a "Color By MSA" feature.
-* [Prot 'o Dentist](https://github.com/TUM-CBR/pymol-plugins/wiki/Prot-o'-Dentist) is a tool for identifying cavities in a protein and easily interacting with the residues surrounding the cavities.
+* [Prot o' Dentist](https://github.com/TUM-CBR/pymol-plugins/wiki/Prot-o'-Dentist) is a tool for identifying cavities in a protein and easily interacting with the residues surrounding the cavities.
 * [ProteinMPNN](https://github.com/TUM-CBR/pymol-plugins/wiki/ProteinMPNN) is a graphical user frontend for the [ProteinMPNN](https://github.com/dauparas/ProteinMPNN) AI model.
 * [FrankenProt](https://github.com/TUM-CBR/pymol-plugins/wiki/FrankenProt) Is a tool that allows modifying protein backbones. It is meant to be used alongside [ProteinMPNN](https://github.com/dauparas/ProteinMPNN) to generate sequences that will fold slightly differently than the template backbone.
 * [Cascade BLAST](https://github.com/TUM-CBR/pymol-plugins/wiki/Cascade-BLAST) is a tool that uses BLAST to find organisms having similar enzymatic pathwas as a given input.

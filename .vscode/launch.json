@@ -5,15 +5,6 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Pymol",
-            "type": "python",
-            "request": "launch",
-            "program": "test_pymol.py",
-            "console": "integratedTerminal",
-            "justMyCode": true,
-            "python": "/home/ernesto/code/pymol-open-source/.env/bin/python"
-        },
-        {
             "name": "Pymol37",
             "type": "python",
             "request": "launch",
@@ -24,12 +15,12 @@
             "python": "${workspaceFolder}/.virtualenv/bin/python",
             "env": {
                 "QTHREAD_DEBUGGING": "True",
-                "PATH": "/home/ernesto/code/dssp/dssp/dist/bin:/home/ernesto/code/ACPSICOV/src/:/home/ernesto/code/cbr-tools-extra/dist/cbrtools/:/home/ernesto/code/ProteinMPNN/:$PATH",
+                "PATH": "${workspaceFolder}/bin/:$PATH",
                 "LOG_CBR_EXTRA": "${workspaceFolder}/logs/cbrextra.log"
             }
         },
         {
-            "name": "Pymol37-Winbugs",
+            "name": "Pymol37-Windows",
             "type": "python",
             "request": "launch",
             "args": ["-i", "test_pymol.py"],
@@ -39,7 +30,7 @@
             "python": "${workspaceFolder}\\.virtualenv\\Scripts\\python.exe",
             "env": {
                 "QTHREAD_DEBUGGING": "True",
-                "PATH": "${workspaceFolder}\\..\\pymol-open-source\\external\\dist\\bin"
+                "PATH": "${workspaceFolder}\\bin"
             }
         }
     ]
