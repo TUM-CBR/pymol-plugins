@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import QWidget
 from os import path
 from pymol import cmd
 import re
-from typing import Any, cast, Dict, Iterable, List, Optional
+from typing import Any, Sequence, cast, Dict, Iterable, List, Optional
 
 from ...core.executable import Executable, ExecutableGroupResult, ExecutableProcess, ExecutableProcessGroup
 from ...core.Context import Context
@@ -16,7 +16,6 @@ from ...core.Qt.QtWidgets import show_error
 from ...core.pymol.structure import StructureSelection
 from ...support.fasta.visual.FastaViewer import SequenceStructures
 from ..data import MpnnSpec, mpnn_selection
-from ..dispatch import parse_multiple_chains
 from .Ui_MpnnViewer import Ui_MpnnViewer
 
 KV_RE = re.compile(r"(?P<key>\w+)=(?P<value>[\w\.]+)")
@@ -110,9 +109,6 @@ class MpnnViewer(QWidget):
         QDesktopServices.openUrl(
             QUrl.fromLocalFile(self.__working_directory)
         )
-
-    def __get_chains_jonsl_path(self) -> str:
-        return path.join(self.__working_directory, "chains.jsonl")
     
     def __get_assigned_chains_jonsl_path(self) -> str:
         return path.join(self.__working_directory, "assigned.jsonl")
@@ -131,6 +127,20 @@ class MpnnViewer(QWidget):
     
     def __get_results_location(self) -> str:
         return path.join(self.__working_directory, "results")
+    
+    def __get_model_locations_json(self, models: Sequence[str]) -> str:
+        location = path.join(self.__working_directory, "models.json")
+
+        with open(location, 'w') as location_stream:
+            json.dump(
+                {
+                    self.__get_model_location(model): ''
+                    for model in models
+                },
+                location_stream
+            )
+
+        return location
 
     def __save_models(self, models: Iterable[str]):
 
@@ -140,21 +150,21 @@ class MpnnViewer(QWidget):
                 mpnn_selection(model)
             )
 
-        parse_multiple_chains.main(
-            folder_with_pdbs_path=self.__working_directory,
-            save_path=self.__get_chains_jonsl_path(),
-            ca_only=False
-        )
+    def __models_to_pdb(self):
+        return {
+            model: self.__get_model_location(model)
+            for model in self.__spec.get_models()
+        }
 
     def __save_fixed_chains(self):
         spec = self.__spec
         with open(self.__get_assigned_chains_jonsl_path(), 'w') as jonsl:
-            json.dump(spec.get_chains_jsonl(), jonsl)
+            json.dump(spec.get_chains_jsonl(self.__models_to_pdb()), jonsl)
 
     def __save_fixed_positions(self):
         spec = self.__spec
         with open(self.__get_fixed_positions_jonsl_path(), 'w') as jsonl:
-            json.dump(spec.get_positions_jsonl(), jsonl)
+            json.dump(spec.get_positions_jsonl(self.__models_to_pdb()), jsonl)
 
     def __populate_fasta(self):
 
@@ -202,7 +212,7 @@ class MpnnViewer(QWidget):
         self.__populate_fasta()
 
     def __get_excluded_args(self) -> List[str]:
-        excluded = self.__spec.get_excluded_jonsl()
+        excluded = self.__spec.get_excluded_jonsl(self.__models_to_pdb())
         if len(excluded) < 1:
             return []
         
@@ -210,7 +220,7 @@ class MpnnViewer(QWidget):
         with open(excluded_file, 'w') as out_stream:
             json.dump(excluded, out_stream)
 
-        return ["--omit_AA_jsonl", excluded_file]
+        return ["--omit_AA_per_residue_multi", excluded_file]
     
     def __get_tied_jonsl(self) -> Optional[str]:
 
@@ -228,6 +238,7 @@ class MpnnViewer(QWidget):
     def __run_mpnn(self):
 
         args = self.__spec.mpnn_args
+        models = list(self.__spec.get_models())
 
         tied_jonsl = self.__get_tied_jonsl()
         if tied_jonsl is not None:
@@ -235,25 +246,30 @@ class MpnnViewer(QWidget):
         else:
             tied_args = []
 
-        self.__processess = ExecutableProcessGroup.create(
+        self.__processess = ExecutableProcessGroup.create([
             ExecutableProcess.create_process(
                 self.__mpnn,
                 [
                     #"--pdb_path", self.__get_model_location(model),
                     "--out_folder", self.__get_results_location(),
-                    "--jsonl_path", self.__get_chains_jonsl_path(),
-                    "--chain_id_jsonl", self.__get_assigned_chains_jonsl_path(),
-                    "--fixed_positions_jsonl", self.__get_fixed_positions_jonsl_path(),
-                    "--num_seq_per_target", str(self.__spec.num_seqs),
-                    "--backbone_noise", str(args.backbone_noise),
-                    "--sampling_temp", str(args.sampling_temperature)
+                    "--model_type", "protein_mpnn",
+                    "--pdb_path_multi", self.__get_model_locations_json(models),
+                    "--chains_to_design_multi", self.__get_assigned_chains_jonsl_path(),
+                    #"--jsonl_path", self.__get_chains_jonsl_path(),
+                    #"--chain_id_jsonl", self.__get_assigned_chains_jonsl_path(),
+                    "--fixed_residues_multi", self.__get_fixed_positions_jonsl_path(),
+                    "--batch_size", "1",
+                    "--number_of_batches", str(self.__spec.num_seqs),
+                    #"--num_seq_per_target", str(self.__spec.num_seqs),
+                    #"--backbone_noise", str(args.backbone_noise),
+                    "--temperature", str(args.sampling_temperature)
                 ] \
                 + self.__get_excluded_args() \
-                + (["--use_soluble_model"] if args.use_soluble_model else []) \
-                + tied_args
+                # + (["--use_soluble_model"] if args.use_soluble_model else []) \
+                # + tied_args
             )
-            for _model in self.__spec.get_models()
-        )
+        ])
+
         self.__processess.on_complete.connect(self.__on_complete)
         self.__processess.start()
 

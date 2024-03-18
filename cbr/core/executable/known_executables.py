@@ -63,7 +63,7 @@ def find_windows_executable(
 
 
 unix_binaries = {
-    KnownExecutables.ProteinMPNN: 'protein_mpnn_run.sh'
+    KnownExecutables.ProteinMPNN: 'ligandmpnn'
 }
 
 def find_executable(

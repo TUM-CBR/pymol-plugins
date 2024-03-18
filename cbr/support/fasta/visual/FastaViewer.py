@@ -127,7 +127,7 @@ class SequenceData(NamedTuple):
             )
 
 def get_groups(seq: SeqRecord) -> List[SequenceData]:
-    seqs = seq.seq.rsplit('/')
+    seqs = seq.seq.rsplit(':')
 
     if len(seqs) == 1:
         return [SequenceData(seq)]
@@ -260,7 +260,11 @@ class FastaViewerModel(QAbstractTableModel):
             or self.MEATA_COLS[col] != self.SEQ_STRUCTURE_COL:
             return None
         
-        return self.__get_entry_index(index)
+        entry_ix = self.__get_entry_index(index)
+
+        for i,seqs in enumerate(self.__sequence_groups):
+            if entry_ix in seqs:
+                return i
 
     def set_structure(
         self,

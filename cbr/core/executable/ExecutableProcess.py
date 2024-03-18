@@ -148,7 +148,7 @@ class ExecutableProcessGroup(QObject):
         for connection in self.__connections:
             self.disconnect(connection)
 
-    @pyqtSlot()
+    @pyqtSlot(object)
     def __on_complete(self, result: ExecutableResult):
         self.__ping(result)
 

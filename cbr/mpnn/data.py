@@ -1,4 +1,4 @@
-from typing import cast, Dict, List, NamedTuple, Optional, Set, Tuple, Union
+from typing import Callable, Iterable, cast, Dict, List, NamedTuple, Optional, Set, Tuple
 from pymol import cmd
 
 from ..core.pymol.structure import StructureSelection
@@ -84,10 +84,9 @@ def get_valid_pdb_range(model: str, chain: str) -> PdbRange:
     )
 
 
-PositionsJonsl = Dict[str, Dict[str, List[int]]]
-ExclusionListEntry = List[Union[List[int], str]]
-ExclusionList = List[ExclusionListEntry]
-ExclusionJonsl = Dict[str, Dict[str, ExclusionList]]
+PositionsJonsl = Dict[str, List[str]]
+ExclusionEntry = Dict[str, str]
+ExclusionJonsl = Dict[str, ExclusionEntry]
 
 class MpnnEditSpace(NamedTuple):
     """
@@ -106,25 +105,7 @@ class MpnnEditSpace(NamedTuple):
     residues: Set[int]
     excluded: Dict[int, Set[str]]
 
-    def get_exclusion_jsonl(self) -> ExclusionJonsl:
-        """
-        Get a dict representing the jsonl that MPNN needs as an input for the exluded residues
-        at particular positions. This jsonl looks like:
-        {
-            [model]: {
-                [chain]: [
-                    [position, "XXXXX"]
-                ]
-            }
-        }
-        """
-        return {
-            self.model : {
-                self.chain : self.get_excluded_positions_array()
-            }
-        }
-
-    def get_excluded_positions_array(self) -> ExclusionList:
+    def get_excluded_positions_array(self, pos_mapping: Callable[[int], int]) -> Iterable[Tuple[str, str]]:
 
         valid_range = get_valid_pdb_range(self.model, self.chain)
         combined_exclusions : Dict[str, List[int]] = {}
@@ -138,10 +119,9 @@ class MpnnEditSpace(NamedTuple):
             if valid_range.is_included(position):
                 entry.append(position)
 
-        return [
-            [positions, residues]
-            for residues, positions in combined_exclusions.items()
-        ]
+        for residues, positions in combined_exclusions.items():
+            for position in positions:
+                yield (f"{self.chain}{pos_mapping(position)}", residues)
 
 class MpnnArgs(NamedTuple):
     """
@@ -224,44 +204,28 @@ class MpnnSpec(NamedTuple):
             for space in self.edit_spaces
         )
     
-    def get_excluded_jonsl(self) -> ExclusionJonsl:
+    def get_excluded_jonsl(self, model_to_pdb: Dict[str, str]) -> ExclusionJonsl:
         result : ExclusionJonsl = {}
 
         for space in self.edit_spaces:
-            model = space.model
-            chain = space.chain
-            pdb_to_seq = get_residues(model, chain)
+            model_name = space.model
+            model = model_to_pdb[model_name]
 
-            chain_dict = result.get(model)
-            if chain_dict is None:
-                chain_dict = result[model] = {}
+            entry = result.get(model)
+            if entry is None:
+                entry = result[model] = {}
 
-            def map_to_seq_position(value: ExclusionListEntry) -> ExclusionListEntry:
-                [positions, seq] = value
-                assert isinstance(positions, list), "First value is always an int"
-                positions = [pdb_to_seq[pos].seq_pos + 1 for pos in positions]
-                return [positions, seq]
-
-            chain_dict[chain] = [
-                map_to_seq_position(mapping)
-                for mapping in space.get_excluded_positions_array()
-            ]
-
-        # ProteinMPNN requires that all models and chains have an entry
-        # in the dictionary of excludsions. Hence we must add an empty
-        # list for all models/chains that are not in any of the edit
-        # spaces
-        for model in self.get_models():
-            if model not in result:
-                result[model] = {}
-            chains_dict = result[model]
-            for chain in get_chains(model):
-                if chain not in chains_dict:
-                    chains_dict[chain] = []
+            
+            def position_mapping(pos: int) -> int:
+                # return pdb_to_seq[pos].seq_pos + 1
+                return pos
+            
+            for key,value in space.get_excluded_positions_array(position_mapping):
+                entry[key] = value
 
         return result
     
-    def get_chains_jsonl(self) -> Dict[str, List[List[str]]]:
+    def get_chains_jsonl(self, model_to_pdb: Dict[str, str]) -> Dict[str, str]:
 
         models = self.get_models()
         included : Dict[str, Set[str]] = dict((model, set()) for model in models)
@@ -272,11 +236,11 @@ class MpnnSpec(NamedTuple):
             excluded[space.model].remove(space.chain)
 
         return {
-            model: [list(included[model]), list(excluded[model])]
+            model_to_pdb[model]: ",".join(included[model])
             for model in models
         }
     
-    def get_positions_jsonl(self) -> PositionsJonsl:
+    def get_positions_jsonl(self, model_to_pdb: Dict[str, str]) -> PositionsJonsl:
         """
         Get the dictionary of fixed positions for Protein MPNN. This dictionary is
         given relative to the residue position in the sequence, so we must convert
@@ -296,12 +260,13 @@ class MpnnSpec(NamedTuple):
 
         results : PositionsJonsl = {}
 
-        for model in self.get_models():
-            results[model] = {}
-            for chain in get_chains(model):
-                position_range = get_valid_pdb_range(model, chain)
-                residues = get_residues(model, chain)
-                edit_positions: Optional[Set[int]] = positions_to_be_edited.get((model, chain))
+        for model_name in self.get_models():
+            model = model_to_pdb[model_name]
+            results[model] = []
+            for chain in get_chains(model_name):
+                position_range = get_valid_pdb_range(model_name, chain)
+                residues = get_residues(model_name, chain)
+                edit_positions: Optional[Set[int]] = positions_to_be_edited.get((model_name, chain))
 
                 # If the model/chain combination is not present in the
                 # 'edit_positions' dictionary, it means that no positions
@@ -309,13 +274,13 @@ class MpnnSpec(NamedTuple):
                 if edit_positions is None:
                     edit_positions = set()
                 fixed = [
-                    residue.seq_pos + 1
+                    f"{chain}{residue.resv}"
                     for residue in residues.values()
                         if residue.resv not in edit_positions \
                             and position_range.is_included(residue.resv)
                 ]
                 fixed.sort()
-                results[model][chain] = fixed
+                results[model] += fixed
 
         return results
     
