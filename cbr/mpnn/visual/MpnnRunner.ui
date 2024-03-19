@@ -13,42 +13,34 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout" rowstretch="0,1,0,3,0,0" columnstretch="1,0,0,0,0,0,0,0" rowminimumheight="0,0,0,0,0,0">
-   <item row="5" column="1">
+  <layout class="QGridLayout" name="gridLayout" rowstretch="0,1,0,3,0,0" columnstretch="1,0,0,0,0,0,0,0,0,0" rowminimumheight="0,0,0,0,0,0">
+   <item row="3" column="7" colspan="3">
+    <widget class="QTableView" name="tiedPositionsTable"/>
+   </item>
+   <item row="5" column="3">
     <widget class="QLabel" name="label_2">
      <property name="text">
       <string>Sequences to Generate</string>
      </property>
     </widget>
    </item>
-   <item row="5" column="7">
-    <widget class="QPushButton" name="runButton">
+   <item row="0" column="0" colspan="7">
+    <widget class="QLabel" name="label">
+     <property name="styleSheet">
+      <string notr="true">font-size: 26px;
+font-weight: bold;</string>
+     </property>
      <property name="text">
-      <string>Run</string>
+      <string>ProteinMPNN Runner</string>
      </property>
     </widget>
    </item>
-   <item row="5" column="6">
+   <item row="5" column="8">
     <widget class="QPushButton" name="advancedOptionsButton">
      <property name="text">
       <string>Advanced Options</string>
      </property>
     </widget>
-   </item>
-   <item row="1" column="0" colspan="8">
-    <widget class="QPlainTextEdit" name="plainTextEdit">
-     <property name="readOnly">
-      <bool>true</bool>
-     </property>
-     <property name="plainText">
-      <string>Instructions:
-
-Select the pymol selections you wish to include/exclude for designing. Afterwards hit the &quot;run&quot; button. Use the &quot;refresh&quot; to re-populate the list of selections.</string>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="5" colspan="3">
-    <widget class="QTableView" name="tiedPositionsTable"/>
    </item>
    <item row="5" column="0">
     <spacer name="horizontalSpacer">
@@ -63,7 +55,50 @@ Select the pymol selections you wish to include/exclude for designing. Afterward
      </property>
     </spacer>
    </item>
+   <item row="5" column="7">
+    <widget class="QPushButton" name="refreshButton">
+     <property name="text">
+      <string>Refresh</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0" colspan="10">
+    <widget class="QPlainTextEdit" name="plainTextEdit">
+     <property name="readOnly">
+      <bool>true</bool>
+     </property>
+     <property name="plainText">
+      <string>Instructions:
+
+Select the pymol selections you wish to include/exclude for designing. Afterwards hit the &quot;run&quot; button. Use the &quot;refresh&quot; to re-populate the list of selections.</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="7">
+    <widget class="QLabel" name="label_3">
+     <property name="text">
+      <string>Tied Chains</string>
+     </property>
+    </widget>
+   </item>
    <item row="5" column="2">
+    <widget class="QComboBox" name="modelComboBox">
+     <property name="minimumSize">
+      <size>
+       <width>100</width>
+       <height>0</height>
+      </size>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="9">
+    <widget class="QPushButton" name="runButton">
+     <property name="text">
+      <string>Run</string>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="4">
     <widget class="QSpinBox" name="numSequencesSpinBox">
      <property name="minimum">
       <number>1</number>
@@ -76,33 +111,15 @@ Select the pymol selections you wish to include/exclude for designing. Afterward
      </property>
     </widget>
    </item>
-   <item row="0" column="0" colspan="5">
-    <widget class="QLabel" name="label">
-     <property name="styleSheet">
-      <string notr="true">font-size: 26px;
-font-weight: bold;</string>
-     </property>
-     <property name="text">
-      <string>ProteinMPNN Runner</string>
-     </property>
-    </widget>
-   </item>
-   <item row="5" column="5">
-    <widget class="QPushButton" name="refreshButton">
-     <property name="text">
-      <string>Refresh</string>
-     </property>
-    </widget>
-   </item>
-   <item row="2" column="5">
-    <widget class="QLabel" name="label_3">
-     <property name="text">
-      <string>Tied Chains</string>
-     </property>
-    </widget>
-   </item>
-   <item row="2" column="0" rowspan="2" colspan="5">
+   <item row="2" column="0" rowspan="2" colspan="7">
     <widget class="QTableView" name="selectionsTable"/>
+   </item>
+   <item row="5" column="1">
+    <widget class="QLabel" name="label_4">
+     <property name="text">
+      <string>Model to use</string>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>

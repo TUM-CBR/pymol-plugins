@@ -10,7 +10,7 @@ from ...core.pymol.visual.PymolChainSetEditor import PymolChainSetEditorModel
 from ...core.Qt.QtWidgets import show_exception, with_error_handler
 from ...core.Qt.visual.NamedTupleEditor import FieldOrientation, MetaFieldOverrides, namedtuple_eidtor
 from ...core.sequence import assert_residue
-from ..data import MpnnEditSpace, MpnnSpec, TiedPositionsSpec
+from ..data import MpnnEditSpace, MpnnSpec, models, TiedPositionsSpec
 from .MpnnAdvancedOptionsDialog import MpnnAdvancedOptionsDialog
 from .MpnnViewer import MpnnViewer
 from .Ui_MpnnRunner import Ui_MpnnRunner
@@ -107,6 +107,7 @@ class MpnnRunner(QWidget):
         self.__ui.advancedOptionsButton.clicked.connect(self.__on_advanced_options_clicked)
         self.__chain_set_model = PymolChainSetEditorModel(exclusive=True)
         self.__ui.tiedPositionsTable.setModel(self.__chain_set_model)
+        self.__ui.modelComboBox.addItems(models.keys())
 
     @pyqtSlot()
     def __on_advanced_options_clicked(self):
@@ -184,7 +185,8 @@ class MpnnRunner(QWidget):
             num_seqs=self.__ui.numSequencesSpinBox.value(),
             edit_spaces=[],
             mpnn_args=self.__advanced_settings.value(),
-            tied_positions=TiedPositionsSpec(tied_chains=self.__chain_set_model.values())
+            tied_positions=TiedPositionsSpec(tied_chains=self.__chain_set_model.values()),
+            mpnn_model=models[self.__ui.modelComboBox.currentText()]
         )
 
         spec = with_selection(

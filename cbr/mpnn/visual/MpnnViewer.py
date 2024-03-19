@@ -31,15 +31,16 @@ def render_header_fn(record: SeqRecord, is_group_header: bool) -> str:
     )
 
     sample = attributes.get('id')
+    record_id = record.id.replace(",", "") if record.id is not None else "<unknown>"
 
     # if sample=X is not present, then this is the sequnece
     # of the structure
     if sample is None:
-        return str(record.id)
+        return str(record_id)
     else:
         t = attributes.get('T')
         score = attributes.get('overall_confidence')
-        return f"{record.id}, id={sample}, T={t}, score={score}"
+        return f"{record_id}, id={sample}, T={t}, score={score}"
 
 def clean_id(id: Optional[str]) -> Optional[str]:
 
@@ -153,7 +154,7 @@ class MpnnViewer(QWidget):
         for model in models:
             cmd.save(
                 self.__get_model_location(model),
-                mpnn_selection(model)
+                mpnn_selection(model, include_ligands=self.__spec.mpnn_model.include_ligand)
             )
 
     def __models_to_pdb(self):
@@ -258,7 +259,7 @@ class MpnnViewer(QWidget):
                 [
                     #"--pdb_path", self.__get_model_location(model),
                     "--out_folder", self.__get_results_location(),
-                    "--model_type", "protein_mpnn",
+                    "--model_type", self.__spec.mpnn_model.model_name,
                     "--pdb_path_multi", self.__get_model_locations_json(models),
                     "--chains_to_design_multi", self.__get_assigned_chains_jonsl_path(),
                     #"--jsonl_path", self.__get_chains_jonsl_path(),
@@ -272,7 +273,6 @@ class MpnnViewer(QWidget):
                 ] \
                 + self.__get_excluded_args() \
                 + tied_args
-                # + (["--use_soluble_model"] if args.use_soluble_model else []) \
             )
         ])
 

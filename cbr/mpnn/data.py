@@ -3,7 +3,11 @@ from pymol import cmd
 
 from ..core.pymol.structure import StructureSelection
 
-def mpnn_selection(model: str, chain : Optional[str] = None):
+def mpnn_selection(
+    model: str,
+    chain : Optional[str] = None,
+    include_ligands: bool = False
+):
     model_selection = f"model {model}"
 
     if chain is not None:
@@ -11,7 +15,14 @@ def mpnn_selection(model: str, chain : Optional[str] = None):
     else:
         chain_selection = ""
 
-    return model_selection + chain_selection + " & polymer.protein & backbone"
+    constraints = ["polymer.protein & backbone"]
+
+    if include_ligands:
+        constraints.append("organic")
+
+    constraints_str = " | ".join(f"({constraint})" for constraint in constraints)
+
+    return model_selection + chain_selection + f" & ({constraints_str})"
 
 def get_chains(model: str) -> Set[str]:
 
@@ -141,13 +152,9 @@ class MpnnArgs(NamedTuple):
 
     Attributes:
         sampling_temperature    Sampling temperature for amino acids. Suggested values 0.1, 0.15, 0.2, 0.25, 0.3. Higher values will lead to more diversity.
-        use_soluble_model       Flag to load ProteinMPNN weights trained on soluble proteins only.
-        backbone_noise          Standard deviation of Gaussian noise to add to backbone atoms
     """
 
     sampling_temperature: float = 0.1
-    use_soluble_model: bool = False
-    backbone_noise: float = 0.0
 
 TiedChainsJonsl = Dict[str, List[List[str]]]
 
@@ -203,6 +210,7 @@ class MpnnSpec(NamedTuple):
     num_seqs : int
     mpnn_args: MpnnArgs
     tied_positions: TiedPositionsSpec
+    mpnn_model: 'MpnnModel'
 
     def get_models(self) -> Set[str]:
 
@@ -293,3 +301,13 @@ class MpnnSpec(NamedTuple):
     
     def get_tied_jonsl(self, model_to_pdb: Dict[str, str]) -> TiedChainsJonsl:
         return self.tied_positions.get_tied_chains_jonsl(model_to_pdb)
+    
+class MpnnModel(NamedTuple):
+    model_name: str
+    include_ligand: bool = False
+
+models : Dict[str, MpnnModel] = {
+    "ProteinMPNN": MpnnModel("protein_mpnn"),
+    "Soluble ProteinMPNN": MpnnModel("soluble_mpnn"),
+    "LigandMPNN": MpnnModel("ligand_mpnn", include_ligand=True)
+}
