@@ -224,7 +224,7 @@ class MpnnViewer(QWidget):
     
     def __get_tied_jonsl(self) -> Optional[str]:
 
-        tied_jonsl = self.__spec.get_tied_jonsl()
+        tied_jonsl = self.__spec.get_tied_jonsl(self.__models_to_pdb())
 
         if len(tied_jonsl) == 0:
             return None
@@ -242,7 +242,7 @@ class MpnnViewer(QWidget):
 
         tied_jonsl = self.__get_tied_jonsl()
         if tied_jonsl is not None:
-            tied_args = ["--tied_positions_jsonl", tied_jonsl]
+            tied_args = ["--symmetry_residues_multi", tied_jonsl]
         else:
             tied_args = []
 
@@ -265,8 +265,8 @@ class MpnnViewer(QWidget):
                     "--temperature", str(args.sampling_temperature)
                 ] \
                 + self.__get_excluded_args() \
+                + tied_args
                 # + (["--use_soluble_model"] if args.use_soluble_model else []) \
-                # + tied_args
             )
         ])
 
