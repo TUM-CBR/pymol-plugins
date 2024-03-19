@@ -30,7 +30,7 @@ def render_header_fn(record: SeqRecord, is_group_header: bool) -> str:
         for m in KV_RE.finditer(record.description)
     )
 
-    sample = attributes.get('sample')
+    sample = attributes.get('id')
 
     # if sample=X is not present, then this is the sequnece
     # of the structure
@@ -38,10 +38,8 @@ def render_header_fn(record: SeqRecord, is_group_header: bool) -> str:
         return str(record.id)
     else:
         t = attributes.get('T')
-        score = attributes.get('score')
-        return f"sample{sample}, T={t}, score={score}"
-
-DESIGNED_CHAINS_RE = re.compile(r"designed_chains=\[(?P<designed_chains>('[a-zA-Z]',?\s*)+)\]")
+        score = attributes.get('overall_confidence')
+        return f"{record.id}, id={sample}, T={t}, score={score}"
 
 def clean_id(id: Optional[str]) -> Optional[str]:
 
@@ -51,22 +49,31 @@ def clean_id(id: Optional[str]) -> Optional[str]:
     return id.replace(",", "").upper()
 
 def get_selection(record: SeqRecord) -> Optional[List[StructureSelection]]:
-    model = clean_id(record.id)
-    chains = DESIGNED_CHAINS_RE.search(record.description)
+    record_id = clean_id(record.id)
+
+    if record_id is None:
+        return None
+
     models: List[str] = cmd.get_names()
     model_ix = next(
-        (ix for ix, candidate in enumerate(models) if candidate.upper() == model),
+        (
+            ix
+            for record in record_id.split(",")
+            for ix, candidate in enumerate(models)
+                if candidate.upper() == record.upper()
+        ),
         None
     )
 
-    if model is None \
-        or chains is None \
-        or model_ix is None:
+    if model_ix is None:
         return None
     
     model = models[model_ix]
-    seq_chains = [chain.replace("'", "").upper().strip() for chain in chains.group('designed_chains').split(',')]
-    available_chains = [chain.upper() for chain in cmd.get_chains(model)]
+    available_chains : List[str] = [
+        chain.upper()
+        for chain in cmd.get_chains(f"model {model} & polymer.protein & backbone")
+    ]
+    available_chains.sort()
 
     result = [
         StructureSelection(
@@ -74,8 +81,7 @@ def get_selection(record: SeqRecord) -> Optional[List[StructureSelection]]:
             chain_name=chain,
             segment_identifier=None
         )
-        for chain in seq_chains
-            if chain in available_chains
+        for chain in available_chains
     ]
 
     if len(result) > 0:
