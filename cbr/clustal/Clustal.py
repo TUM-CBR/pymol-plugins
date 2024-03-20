@@ -81,7 +81,8 @@ class Clustal(object):
         out_result : MsaOutput
         ) -> ClustalResult:
 
-        out_file = tempfile.NamedTemporaryFile()
+        out_dir = tempfile.TemporaryDirectory()
+        out_file = os.path.join(out_dir.name, "out.clustal")
         process = subprocess.Popen(
             [
                 self.__clustal_executable,
@@ -90,17 +91,19 @@ class Clustal(object):
                 '--force',
                 '--outfmt=clustal',
                 '-o',
-                out_file.name
+                out_file
             ],
             text=True,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
+            stderr=subprocess.PIPE,
+            creationflags=subprocess.CREATE_NO_WINDOW
         )
 
         with process \
-            , out_file \
+            , out_dir \
             , Clustal.__get_msa_input(in_msa) as in_msa_stream \
+            , StringIO() as error_stream \
             , Clustal.__get_msa_output(out_result) as out_result_stream:
 
             if process.stdin:
@@ -114,11 +117,19 @@ class Clustal(object):
 
             out_file.seek(0)
 
-            for text in out_file.readlines():
-                out_result_stream.stream.write(text.decode('utf-8'))
+            with open(out_file, 'r') as fs:
+                for text in fs.readlines():
+                    out_result_stream.stream.write(text)
+
+            if process.stderr is not None:
+                for text in process.stderr:
+                    error_stream.write(text)
+            else:
+                error_stream.write("Invalid input provided to clustal.")
 
             if process.wait() != 0:
-                raise ValueError("Invalid input provided to clustal.")
+                error_stream.seek(0)
+                raise ValueError(error_stream.read())
             
 
         return ClustalResult()
