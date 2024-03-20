@@ -115,8 +115,6 @@ class Clustal(object):
             
             process.wait()
 
-            out_file.seek(0)
-
             with open(out_file, 'r') as fs:
                 for text in fs.readlines():
                     out_result_stream.stream.write(text)
