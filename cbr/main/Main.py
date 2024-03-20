@@ -2,7 +2,7 @@ from . import resources # pyright: ignore
 
 from PyQt5.QtCore import Qt, QUrl
 from PyQt5.QtGui import QFont, QPixmap
-from PyQt5.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QSizePolicy, QSpacerItem, QWidget, QVBoxLayout
+from PyQt5.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QScrollArea, QSizePolicy, QSpacerItem, QWidget, QVBoxLayout
 from os import path
 from typing import Any, Callable, NamedTuple, Optional
 
@@ -151,18 +151,20 @@ class Main(QWidget):
         title_layout.addItem(
             QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         )
+        main_layout.addLayout(title_layout, 0)
 
-        main_layout.addLayout(title_layout)
+        app_menu = QScrollArea(self)
+        apps_widget = QWidget()
+
 
         apps_layout = QGridLayout()
 
         for i,app_definition in enumerate(APP_DEFINITIONS):
              self.__add_app(i, app_definition, apps_layout)
 
-        main_layout.addLayout(apps_layout)
-        main_layout.addItem(
-            QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        )
+        apps_widget.setLayout(apps_layout)
+        app_menu.setWidget(apps_widget)
+        main_layout.addWidget(app_menu, 1)
 
         self.setLayout(main_layout)
 
