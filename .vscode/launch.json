@@ -21,7 +21,7 @@
         },
         {
             "name": "Pymol37-Windows",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "args": ["-i", "test_pymol.py"],
             "module": "IPython",

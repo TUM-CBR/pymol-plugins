@@ -8,9 +8,9 @@ from .visual.KnownExecutable import KnownExecutableDialog
 windows_known_executables = [
 
     KnownExecutableLocation(
-        name = "ProteinMPNN",
-        location = "https://github.com/TUM-CBR/pymol-plugins-support/releases/download/nightly-20240209/proteinMPNN-20240209-win64.zip",
-        relative_path = "proteinMPNN/proteinMPNN.exe",
+        name = "LigandMPNN",
+        location = "https://github.com/TUM-CBR/pymol-plugins-support/releases/download/nightly-20240320/ligandmpnn-20240320-win64.zip",
+        relative_path = "ligandmpnn/ligandmpnn.exe",
         known_executable = KnownExecutables.ProteinMPNN
     )
 ]
