@@ -20,14 +20,14 @@
             }
         },
         {
-            "name": "Pymol37-Windows",
+            "name": "Pymol-Windows",
             "type": "debugpy",
             "request": "launch",
             "args": ["-i", "test_pymol.py"],
             "module": "IPython",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "python": "${workspaceFolder}\\.virtualenv\\Scripts\\python.exe",
+            "python": "${workspaceFolder}\\PyMOL\\python.exe",
             "env": {
                 "QTHREAD_DEBUGGING": "True",
                 "PATH": "${workspaceFolder}\\bin"
