@@ -1,4 +1,5 @@
-from typing import Callable, Iterable, cast, Dict, List, NamedTuple, Optional, Set, Tuple
+from types import MappingProxyType
+from typing import *
 from pymol import cmd
 
 from ..core.pymol.structure import StructureSelection
@@ -111,6 +112,12 @@ PositionsJonsl = Dict[str, List[str]]
 ExclusionEntry = Dict[str, str]
 ExclusionJonsl = Dict[str, ExclusionEntry]
 
+class MpnnBackbone(NamedTuple):
+    model : str
+    chain : str
+
+ResvToResidueMapping = MappingProxyType[int, Residue]
+
 class MpnnEditSpace(NamedTuple):
     """
     Class representing a section of a protein to be generated using
@@ -118,15 +125,23 @@ class MpnnEditSpace(NamedTuple):
 
 
     Attributes:
-        model       The name of the model
-        chain       The chain within the model
+        backbone    The backbone correspnding to this edit space
         residues    The residues that will be edited. This is the PDB value.
     """
-
-    model: str
-    chain: str
+    backbone: MpnnBackbone
     residues: Set[int]
     excluded: Dict[int, Set[str]]
+
+    @property
+    def model(self) -> str:
+        return self.backbone.model
+    
+    @property
+    def chain(self) -> str:
+        return self.backbone.chain
+
+    def get_residues(self) -> MappingProxyType[int, Residue]:
+        return MappingProxyType(get_residues(self.model, self.chain, state=1))
 
     def get_excluded_positions_array(self, pos_mapping: Callable[[int], int]) -> Iterable[Tuple[str, str]]:
 
@@ -205,12 +220,22 @@ class TiedPositionsSpec(NamedTuple):
 
         return results
 
+BackboneToResiduesMapping = MappingProxyType[MpnnBackbone, ResvToResidueMapping]
+
 class MpnnSpec(NamedTuple):
+    """Object which contains all the information needed to run one of the MPNN models."""
+
     edit_spaces: List[MpnnEditSpace]
     num_seqs : int
     mpnn_args: MpnnArgs
     tied_positions: TiedPositionsSpec
     mpnn_model: 'MpnnModel'
+
+    def get_residues(self) -> BackboneToResiduesMapping:
+        return MappingProxyType({
+            space.backbone : space.get_residues()
+            for space in self.edit_spaces
+        })
 
     def get_models(self) -> Set[str]:
 

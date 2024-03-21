@@ -83,6 +83,12 @@ class Clustal(object):
 
         out_dir = tempfile.TemporaryDirectory()
         out_file = os.path.join(out_dir.name, "out.clustal")
+
+        if os.name == "nt":
+            flags = subprocess.CREATE_NO_WINDOW
+        else:
+            flags = 0
+
         process = subprocess.Popen(
             [
                 self.__clustal_executable,
@@ -97,7 +103,7 @@ class Clustal(object):
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            creationflags=subprocess.CREATE_NO_WINDOW
+            creationflags=flags
         )
 
         with process \

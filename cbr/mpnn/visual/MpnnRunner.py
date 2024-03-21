@@ -10,7 +10,7 @@ from ...core.pymol.visual.PymolChainSetEditor import PymolChainSetEditorModel
 from ...core.Qt.QtWidgets import show_exception, with_error_handler
 from ...core.Qt.visual.NamedTupleEditor import FieldOrientation, MetaFieldOverrides, namedtuple_eidtor
 from ...core.sequence import assert_residue
-from ..data import MpnnEditSpace, MpnnSpec, models, TiedPositionsSpec
+from ..data import *
 from .MpnnAdvancedOptionsDialog import MpnnAdvancedOptionsDialog
 from .MpnnViewer import MpnnViewer
 from .Ui_MpnnRunner import Ui_MpnnRunner
@@ -60,8 +60,10 @@ def with_selection(
 
             if current is None:
                 results[key] = current = MpnnEditSpace(
-                    model=model,
-                    chain=chain,
+                    MpnnBackbone(
+                        model=model,
+                        chain=chain
+                    ),
                     residues=set(),
                     excluded={}
                 )

@@ -20,25 +20,7 @@
    <string>Form</string>
   </property>
   <layout class="QGridLayout" name="gridLayout" rowstretch="0,1,0,0,0">
-   <item row="2" column="2">
-    <widget class="QPushButton" name="resultsFolderButton">
-     <property name="text">
-      <string>Open Results Folder</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="0" colspan="3">
-    <widget class="QLabel" name="label">
-     <property name="styleSheet">
-      <string notr="true">font-size: 26px;
-font-weight: bold;</string>
-     </property>
-     <property name="text">
-      <string>ProteinMPNN Results</string>
-     </property>
-    </widget>
-   </item>
-   <item row="4" column="0" colspan="3">
+   <item row="4" column="0" colspan="4">
     <widget class="QProgressBar" name="progressBar">
      <property name="baseSize">
       <size>
@@ -54,20 +36,17 @@ font-weight: bold;</string>
      </property>
     </widget>
    </item>
-   <item row="2" column="1">
-    <spacer name="horizontalSpacer">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
+   <item row="1" column="1" colspan="3">
+    <widget class="FastaViewer" name="fastaViewer" native="true">
+     <property name="baseSize">
       <size>
        <width>800</width>
-       <height>20</height>
+       <height>0</height>
       </size>
      </property>
-    </spacer>
+    </widget>
    </item>
-   <item row="3" column="0" colspan="3">
+   <item row="3" column="0" colspan="4">
     <widget class="QTextEdit" name="textEdit">
      <property name="baseSize">
       <size>
@@ -126,13 +105,44 @@ li.checked::marker { content: &quot;\2612&quot;; }
      </property>
     </widget>
    </item>
-   <item row="1" column="1" colspan="2">
-    <widget class="FastaViewer" name="fastaViewer" native="true">
-     <property name="baseSize">
+   <item row="2" column="1">
+    <spacer name="horizontalSpacer">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
       <size>
        <width>800</width>
-       <height>0</height>
+       <height>20</height>
       </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="0" column="0" colspan="4">
+    <widget class="QLabel" name="label">
+     <property name="styleSheet">
+      <string notr="true">font-size: 26px;
+font-weight: bold;</string>
+     </property>
+     <property name="text">
+      <string>ProteinMPNN Results</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="3">
+    <widget class="QPushButton" name="resultsFolderButton">
+     <property name="text">
+      <string>Open Results Folder</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="2">
+    <widget class="QCheckBox" name="hideUndesignedCheckbox">
+     <property name="text">
+      <string>hide undesigned</string>
+     </property>
+     <property name="checked">
+      <bool>true</bool>
      </property>
     </widget>
    </item>

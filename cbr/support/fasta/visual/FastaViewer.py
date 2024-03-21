@@ -7,7 +7,7 @@ from pymol import cmd
 from PyQt5.QtCore import pyqtSlot, QAbstractTableModel, QItemSelection, QModelIndex, Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QDialog, QWidget
-from typing import Any, Callable, cast, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
+from typing import Any, Callable, Sequence, cast, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
 
 from ....clustal.Clustal import Clustal
 from ....core.pymol.structure import get_pdb_dominant_color_index, get_selection_sequence_index, StructureSelection
@@ -177,9 +177,12 @@ class FastaViewerModel(QAbstractTableModel):
 
     def rowCount(self, parent: Optional[QModelIndex] = None) -> int:
         return len(self.__sequences)
-    
+
+    def __sequence_columns_offset(self) -> int:
+        return len(self.MEATA_COLS)
+
     def columnCount(self, parent: Optional[QModelIndex] = None) -> int:
-        return self.__length + len(self.MEATA_COLS)
+        return self.__length + self.__sequence_columns_offset()
     
     def headerData(
         self,
@@ -197,7 +200,7 @@ class FastaViewerModel(QAbstractTableModel):
                 entry.sequence,
                 entry.group_header
             )
-        elif section < len(self.MEATA_COLS):
+        elif section < self.__sequence_columns_offset():
             return self.MEATA_COLS[section]
         else:
             return str(section - len(self.MEATA_COLS) + 1)
@@ -286,7 +289,13 @@ class FastaViewerModel(QAbstractTableModel):
 
             updated_index = self.index(ix, self.MEATA_COLS.index(self.SEQ_STRUCTURE_COL))
             self.dataChanged.emit(updated_index, updated_index)
-    
+
+    def sequences(self) -> Sequence[SeqRecord]:
+        return [
+            sequence.sequence
+            for sequence in self.__sequences
+        ]
+
     def set_sequences(
         self,
         sequences: Optional[Iterable[SeqRecord]],
@@ -468,6 +477,13 @@ class FastaViewerModel(QAbstractTableModel):
             return self.__get_background(index)
 
         return None
+    
+    def get_columns_from_mask(self, mask: Sequence[bool]) -> Sequence[bool]:
+        offset = self.__sequence_columns_offset()
+        return [
+            i < offset or mask[i - offset]
+            for i in range(self.columnCount())
+        ]
 
 class FastaViewer(QWidget):
 
@@ -528,6 +544,9 @@ class FastaViewer(QWidget):
 
         self.set_sequences(sequences)
 
+    def sequences(self) -> Sequence[SeqRecord]:
+        return self.__model.sequences()
+
     def set_sequences(
         self,
         sequences: List[SeqRecord],
@@ -554,3 +573,8 @@ class FastaViewer(QWidget):
         for ix, structure in structure_mappings.items():
             self.__model.set_structure(ix, structure)
 
+    def set_fasta_position_mask(self, mask: Sequence[bool]) -> None:
+        sequences_table = self.__ui.sequencesTable
+
+        for column, visible in enumerate(self.__model.get_columns_from_mask(mask)):
+            sequences_table.setColumnHidden(column, not visible)

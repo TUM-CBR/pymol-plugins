@@ -11,6 +11,7 @@
       "python.analysis.diagnosticSeverityOverrides": {
         "reportUnknownMemberType":"warning",
         "reportUnknownVariableType": "warning",
-        "reportMissingTypeStubs": "warning"
+        "reportMissingTypeStubs": "warning",
+        "reportWildcardImportFromLibrary": false
       }
 }

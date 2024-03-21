@@ -103,13 +103,19 @@ class MpnnViewer(QWidget):
         self.__working_directory = self.__context.create_temporary_directory()
         self.__mpnn = mpnn
         self.__spec = spec
+        self.__resv_map = spec.get_residues()
         self.__ui = Ui_MpnnViewer()
         self.__ui.setupUi(self)
         self.__processess : Optional[ExecutableProcessGroup] = None
         self.__ui.resultsFolderButton.clicked.connect(self.__on_results_folder_clicked)
         self.__ui.fastaViewer.set_render_header(render_header_fn)
+        self.__ui.hideUndesignedCheckbox.stateChanged.connect(self.__on_hide_undesigned_checked)
 
         self.__init_widget()
+
+    @pyqtSlot(int)
+    def __on_hide_undesigned_checked(self, state: int):
+        self.__update_visibility()
 
     @pyqtSlot()
     def __on_results_folder_clicked(self):
@@ -197,6 +203,28 @@ class MpnnViewer(QWidget):
                 selections[i] = selection
 
         self.__ui.fastaViewer.set_sequences(seqs, structure_mappings=selections)
+        self.__update_visibility()
+
+    def __update_visibility(self):
+        hide_undesigned = self.__ui.hideUndesignedCheckbox.isChecked()
+        sequences = self.__ui.fastaViewer.sequences()
+        size = max(len(seq) for seq in sequences)
+
+        if not hide_undesigned:
+            mask = [
+                True
+                for _ in range(size)
+            ]
+        else:
+            mask = [False for _ in range(size)]
+
+            for space in self.__spec.edit_spaces:
+                mappings = self.__resv_map[space.backbone]
+                for resi in space.residues:
+                    pos = mappings[resi].seq_pos
+                    mask[pos] = True
+
+        self.__ui.fastaViewer.set_fasta_position_mask(mask)
 
     @pyqtSlot(object)
     def __on_complete(self, result: ExecutableGroupResult):
