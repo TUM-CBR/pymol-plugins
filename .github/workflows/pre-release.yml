@@ -51,7 +51,7 @@ jobs:
       - run: mv devops/tmp/dssp.windows/* cbr/dssp/resources/
 
       # Add the cbrextra executable
-      - run: wget -O devops/tmp/cbrextra.win64.zip https://github.com/TUM-CBR/cbr-tools-extra/releases/download/nightly-20240314/cbr-tools-extra-20240314-win64.zip
+      - run: wget -O devops/tmp/cbrextra.win64.zip https://github.com/TUM-CBR/cbr-tools-extra/releases/download/nightly-20240405/cbr-tools-extra-20240405-win64.zip
       - run: unzip -d cbr/extra/resources/ devops/tmp/cbrextra.win64.zip
 
       - name: Archive Release
