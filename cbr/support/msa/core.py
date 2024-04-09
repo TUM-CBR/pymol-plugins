@@ -1,13 +1,15 @@
+import itertools
 from Bio.Align import MultipleSeqAlignment
 import numpy  as np
 from numpy.typing import NDArray
-from typing import Iterable, List, NamedTuple, cast, Dict, Tuple
+import statistics
+from typing import Iterable, NamedTuple, Dict, List, Sequence, Tuple
 
 Msa = Dict[str, str]
 
 def from_biopython(alignment: MultipleSeqAlignment) -> Msa:
     return dict(
-            cast(Tuple[str, str], (seq.id, str(seq._seq)))
+            (seq.id, str(seq._seq))
             for seq in alignment
         )
 
@@ -35,22 +37,25 @@ class CoEvolving(NamedTuple):
     __________
     alignment : MultipleSequenceAlignment
         The MSA from which this analysis was constructed 
-    positions : List[int]
+    positions : Tuple[int]
         The positions in the multiple sequence alignment where the correlation is observed
-    residues : List[str]
+    residues : Tuple[str]
         The residue for which the co-evolution was observed at the positions above
     occurence : float
         The percentage of sequences where the combination of residues and possitions occurs
     occurence_ratio : float
         The ratio of sequences that contain the co-evolving residues vs the sequences that contain
         any of the residues.
+    symmetry : float
+        How frequently do the same residues occur in the different positions captured by this record.
     """
 
     alignment: MultipleSeqAlignment
-    positions : List[int]
-    residues : List[str]
+    positions : Tuple[int, ...]
+    residues : Tuple[str, ...]
     occurence : float
     occurence_ratio : float
+    symmetry : float
 
 GAPS = ['-']
 
@@ -99,6 +104,8 @@ def enumerate_coevolving(
 
                 reference_column = sequences[:,j]
                 candidates_counts = np.unique(reference_column[current_mask], return_counts=True)
+                symmetry_dict : Dict[Tuple[int,...], float] = {}
+                current_results : List[CoEvolving] = []
 
                 for candidate_res, candidate_count in zip(*candidates_counts):
 
@@ -110,11 +117,39 @@ def enumerate_coevolving(
 
                     candiate_mask = reference_column == candidate_res
                     occurence_ratio = candidate_count / len(reference_column[current_mask | candiate_mask])
+                    residues = (current_res, candidate_res)
 
-                    yield CoEvolving(
-                        alignment=alignment,
-                        positions=[i,j],
-                        residues=[current_res, candidate_res],
-                        occurence=occurence,
-                        occurence_ratio=occurence_ratio
+                    current_results.append(
+                        CoEvolving(
+                            alignment=alignment,
+                            positions=(i,j),
+                            residues=residues,
+                            occurence=occurence,
+                            occurence_ratio=occurence_ratio,
+                            symmetry=0
+                        )
                     )
+                    symmetry_dict[residues] = occurence
+
+                for result in current_results:
+                    symmetry = statistics.stdev(
+                        value if value is not None else 0
+                        for permutation in itertools.permutations(result.positions)
+                        for value in [symmetry_dict.get(permutation)]
+                    )
+
+                    yield result._replace(symmetry=1 - symmetry)
+
+
+class CoEvolutionAnalyzer:
+
+    def __init__(self, entries: Sequence[CoEvolving]):
+
+        self.__entries = entries
+        pos_index = {}
+
+        self.__alignment = entries[0].alignment
+
+        for entry in entries:
+
+            key = entry.positions
