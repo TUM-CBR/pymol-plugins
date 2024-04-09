@@ -1,5 +1,7 @@
 from Bio.Align import MultipleSeqAlignment, SeqRecord
 from enum import Enum
+import numpy as np
+from numpy.typing import NDArray
 from PyQt5.QtCore import pyqtSlot, QAbstractTableModel, QModelIndex, Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QFileDialog, QWidget
@@ -8,6 +10,7 @@ from typing import Any, Callable, Dict, Iterable, Optional, cast, List, NamedTup
 from ...core.Context import (Context)
 from ...core.Qt.QtCore import DictionaryModel
 from ...core.Qt.QtWidgets import show_info, throttle, with_error_handler
+from ..cleanup import ScoreContext
 from ...support import msa
 from ...support.msa.io import save_msa
 from ...support.msa.visual.MsaViewer import MsaViewer
@@ -22,7 +25,7 @@ from .ScoreWithScope import ScoreWithScope
 
 class ScoreEntry(NamedTuple):
     name : str
-    scores : List[float]
+    scores : NDArray[np.float64]
     treshold : Tuple[float, float]
 
     def is_included(self, i :int) -> bool:
@@ -51,9 +54,9 @@ class ScoreMeta(NamedTuple):
 
     def check_state(self, override : ScoreOverride) -> Qt.CheckState:
         if self.override == override:
-            return Qt.Checked
+            return Qt.CheckState.Checked
         else:
-            return Qt.Unchecked
+            return Qt.CheckState.Unchecked
 
     def toggle(self, base_status : ScoreOverride) -> 'ScoreMeta':
 
@@ -109,10 +112,10 @@ class SequenceScoresModel(QAbstractTableModel):
     def headers(self):
         return self.fixed_headers + [score.name for score in self.__scores]
 
-    def rowCount(self, parent = None) -> int:
+    def rowCount(self, parent: Optional[QModelIndex] = None) -> int:
         return len(self.__alignment)
 
-    def columnCount(self, parent = None) -> int:
+    def columnCount(self, parent: Optional[QModelIndex] = None) -> int:
         return len(self.headers)
 
     def set_always_keep(self, index : QModelIndex, keep : bool):
@@ -120,8 +123,8 @@ class SequenceScoresModel(QAbstractTableModel):
         self.__score_meta[row] = self.__score_meta[row]._replace(keep_always = keep)
         self.dataChanged.emit(index, index)
 
-    def headerData(self, section, orientation, role=Qt.DisplayRole):
-        if role == Qt.DisplayRole and orientation == Qt.Horizontal:
+    def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.ItemDataRole.DisplayRole):
+        if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
             headers = self.headers
             if 0 <= section < len(headers):
                 return headers[section]
@@ -145,7 +148,7 @@ class SequenceScoresModel(QAbstractTableModel):
         self.dataChanged.emit(
             index,
             index.siblingAtColumn(self.columnCount() - 1),
-            [Qt.CheckStateRole, Qt.BackgroundColorRole]
+            [Qt.ItemDataRole.CheckStateRole, Qt.ItemDataRole.BackgroundColorRole]
         )
 
     def __is_included(self, index : QModelIndex) -> bool:
@@ -175,19 +178,19 @@ class SequenceScoresModel(QAbstractTableModel):
         else:
             return super().flags(index)
 
-    def setData(self, index: QModelIndex, value: Any, role: int = Qt.DisplayRole) -> bool:
+    def setData(self, index: QModelIndex, value: Any, role: int = Qt.ItemDataRole.DisplayRole) -> bool:
 
-        if index.column() == self.GREENLIST_COLUMN and role == Qt.CheckStateRole:
+        if index.column() == self.GREENLIST_COLUMN and role == Qt.ItemDataRole.CheckStateRole:
             self.toggle_override(index, ScoreOverride.Green)
             return True
 
-        if index.column() == self.REDLIST_COLUMN and role == Qt.CheckStateRole:
+        if index.column() == self.REDLIST_COLUMN and role == Qt.ItemDataRole.CheckStateRole:
             self.toggle_override(index, ScoreOverride.Red)
             return True
 
         return super().setData(index, value, role)
 
-    def data(self, index: QModelIndex, role=Qt.DisplayRole):
+    def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole):
 
         if not index.isValid():
             return None
@@ -195,21 +198,21 @@ class SequenceScoresModel(QAbstractTableModel):
         row_ix = index.row()
         col_ix = index.column()
         sequence = self.__get_seq(row_ix)
-        if role == Qt.DisplayRole:
-            cols : List[str] = [
+        if role == Qt.ItemDataRole.DisplayRole:
+            cols : List[Optional[str]] = [
                 "",
                 "",
                 sequence.id
             ] + [self.fromat_score(score.score(row_ix)) for score in self.__scores]
             return cols[col_ix]
-        elif role == Qt.BackgroundColorRole:
+        elif role == Qt.ItemDataRole.BackgroundColorRole:
             if self.__is_included(index):
                 return None
             else:
                 return QColor(255,0,0,100)
-        elif role == Qt.CheckStateRole and col_ix == self.GREENLIST_COLUMN:
+        elif role == Qt.ItemDataRole.CheckStateRole and col_ix == self.GREENLIST_COLUMN:
             return self.__score_meta[row_ix].check_state(ScoreOverride.Green)
-        elif role == Qt.CheckStateRole and col_ix == self.REDLIST_COLUMN:
+        elif role == Qt.ItemDataRole.CheckStateRole and col_ix == self.REDLIST_COLUMN:
             return self.__score_meta[row_ix].check_state(ScoreOverride.Red)
         else:
             return None
@@ -225,9 +228,9 @@ class MsaCleaner(QWidget):
 
         self.__cleaners : List[Tuple[str, MsaCleanerBase]] = [
             ("Gap Divergence", ScoreWithScope(ScoreByDivergence())),
-            ("Eliminate Long Inserts", ScoreWithScope(ScoreByLongInserts())),
-            ("Eliminate Large Gaps", ScoreWithScope(ScoreByRavines())),
-            ("Sequence Length", ScoreByLength())
+            #("Eliminate Long Inserts", ScoreWithScope(ScoreByLongInserts())),
+            #("Eliminate Large Gaps", ScoreWithScope(ScoreByRavines())),
+            #("Sequence Length", ScoreByLength())
         ]
 
         for name, cleaner in self.__cleaners:
@@ -332,11 +335,12 @@ class MsaCleaner(QWidget):
 
     def __update_alignment(self, alignment: MultipleSeqAlignment):
 
+        context = ScoreContext.from_alignment(alignment)
         model = self.__scores_model
         scores = [
             ScoreEntry.from_result(name, result)
             for name, cleaner in self.__cleaners
-            for result in [cleaner.score_alignment(alignment)] 
+            for result in [cleaner.score_alignment(context)] 
         ]
 
         if model is not None:

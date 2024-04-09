@@ -3,12 +3,11 @@ number of gaps instroduced by a single sequence. The higher the score means that
 gaps are introduced by the sequence.
 """
 
-from Bio.Align import MultipleSeqAlignment
 from typing import cast, Optional
 
 from ..cleanup import score_by_gap_divergence
 from .Ui_ScoreByDivergence import Ui_ScoreByDivergence
-from .ScoreWithScope import ScoreByPosition, ScoreWidget
+from .ScoreWithScope import ScoreByPosition, ScoreContext, ScoreWidget
 
 class ScoreByDivergence(ScoreWidget):
 
@@ -24,8 +23,8 @@ class ScoreByDivergence(ScoreWidget):
     def score(self) -> Optional[ScoreByPosition]:
         return self.__score
 
-    def score_alignment(self, alignment : MultipleSeqAlignment) -> ScoreByPosition:
-        msa_score = score_by_gap_divergence(alignment)
+    def score_alignment(self, context : ScoreContext) -> ScoreByPosition:
+        msa_score = score_by_gap_divergence(context)
         score = cast(ScoreByPosition, msa_score)
         self.__score = score
         return score

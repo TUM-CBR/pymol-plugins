@@ -1,17 +1,18 @@
-from Bio.Align import MultipleSeqAlignment
+import numpy as np
+from numpy.typing import NDArray
 from PyQt5.QtCore import pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QWidget
-from typing import cast, Tuple
+from typing import Tuple
 
 from ...core.Qt.QtCore import block_signals
-from ...core.Qt.QtWidgets import slider_with_label, throttle
+from ...core.Qt.QtWidgets import slider_with_label
 from ..cleanup.support import normalized, ranked
-from .MsaCleanerResult import MsaCleanerBase, MsaCleanerResult
+from .MsaCleanerResult import MsaCleanerBase, MsaCleanerResult, ScoreContext
 from .Ui_ScoreWithScope import Ui_ScoreWithScope
 
-from typing import List, Optional
+from typing import Optional
 
-ScoreByPosition = List[List[float]]
+ScoreByPosition = NDArray[np.float64]
 
 class ScoreWidget(QWidget):
 
@@ -21,7 +22,7 @@ class ScoreWidget(QWidget):
     def score(self) -> Optional[ScoreByPosition]:
         raise NotImplementedError()
 
-    def score_alignment(self, alignment : MultipleSeqAlignment) -> ScoreByPosition:
+    def score_alignment(self, context : ScoreContext) -> ScoreByPosition:
         raise NotImplementedError()
 
 class ScoreWithScope(MsaCleanerBase):
@@ -71,7 +72,7 @@ class ScoreWithScope(MsaCleanerBase):
     def __update_scores_by_position(
         self,
         scores_by_positions: Optional[ScoreByPosition],
-        force_reset_treshold = False
+        force_reset_treshold: bool = False
     ):
 
         self.__scores_by_positions = scores_by_positions
@@ -114,16 +115,13 @@ class ScoreWithScope(MsaCleanerBase):
 
         self.__update_score(self.__score._replace(treshold = self.__treshold))
 
-    def __get_aggregate_scores(self, scores: ScoreByPosition) -> List[float]:
+    def __get_aggregate_scores(self, scores: ScoreByPosition) -> NDArray[np.float64]:
         scope_start = self.__scope_start.value - 1
         scope_end = self.__scope_end.value
 
-        result =  ranked([
-            sum(score[scope_start:scope_end])
-            for score in scores
-        ])
+        result = ranked(np.sum(scores[:,scope_start:scope_end], axis=1))
 
-        return normalized(cast(List[float], result))
+        return normalized(result.astype(np.float64))
 
     @pyqtSlot(name="__on_scope_changed")
     def __on_scope_changed(self):
@@ -146,10 +144,10 @@ class ScoreWithScope(MsaCleanerBase):
     def score(self) -> Optional[MsaCleanerResult]:
         return self.__score
 
-    def score_alignment(self, alignment : MultipleSeqAlignment) -> MsaCleanerResult:
+    def score_alignment(self, context : ScoreContext) -> MsaCleanerResult:
 
         with block_signals(self):
-            score_by_alignment = self.__score_widget.score_alignment(alignment)
+            score_by_alignment = self.__score_widget.score_alignment(context)
             self.__update_scores_by_position(score_by_alignment, force_reset_treshold=True)
 
             assert self.score is not None

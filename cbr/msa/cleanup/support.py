@@ -1,34 +1,41 @@
-from typing import Iterable, List
+from Bio.Align import MultipleSeqAlignment
+import numpy as np
+from numpy.typing import NDArray
+from typing import Iterable, List, NamedTuple, Set, Tuple
 
-def normalized(values : List[float]) -> List[float]:
-    min_v = min(values)
-    max_v = max(values)
+class ScoreContext(NamedTuple):
+    alignment : MultipleSeqAlignment
+    vectorized : NDArray[np.uintc]
+
+    @classmethod
+    def from_alignment(cls, alignment: MultipleSeqAlignment) -> 'ScoreContext':
+        return ScoreContext(
+            alignment=alignment,
+            vectorized=np.stack([list(seq) for seq in alignment])
+        )
+
+def normalized(values : NDArray[np.float64]) -> NDArray[np.float64]:
+    min_v = np.min(values)
+    max_v = np.max(values)
     spread = max_v - min_v
 
     if abs(spread) < 1:
         spread = 1
 
-    return [(value - min_v)/spread for value in values]
+    return (values - min_v) / spread
 
-def ranked(values : List[float]) -> List[int]:
-    sorted_ranks =  sorted(
-        enumerate(values),
-        key=lambda kv: kv[1]
-    )
-
-    result = [0 for _ in range(0, len(values))]
-
-    for score,(index,_) in enumerate(sorted_ranks):
-        result[index] = score
-
+def ranked(values : NDArray[np.float64]) -> NDArray[np.int64]:
+    sorted_indexes = np.argsort(values)
+    result = np.zeros(values.shape, dtype=np.int64)
+    result[sorted_indexes] = np.arange(0, len(sorted_indexes))
     return result
 
 def score_contigous(
     values : Iterable[bool],
-    min_segment_size = 1
+    min_segment_size: int = 1
     ) -> List[int]:
     
-    segments = set()
+    segments: Set[Tuple[int,int]] = set()
     segment_start = -1
     values_len = 0
 
