@@ -1,12 +1,14 @@
-from Bio.Align import MultipleSeqAlignment
+import numpy as np
+from numpy.typing import NDArray
 from PyQt5.QtCore import QRect, Qt, pyqtSlot
-from typing import List, Optional, Tuple
+from typing import Optional, Tuple
 
 from PyQt5.QtGui import QPaintEvent, QPixmap
 from PyQt5.QtWidgets import QWidget
 
 from ...core.Qt.QtGui import paint
 from ..cleanup import score_length
+from ..cleanup.support import ScoreContext
 from .MsaCleanerResult import MsaCleanerBase, MsaCleanerResult
 from .Ui_ScoreByLength import Ui_ScoreByLength
 
@@ -80,9 +82,9 @@ class ScoreByLength(MsaCleanerBase):
     def score(self) -> Optional[MsaCleanerResult]:
         return self.__score
 
-    def __render_length_frequency(self, scores: List[float]):
-        min_range = int(min(scores))
-        max_range = int(max(scores))
+    def __render_length_frequency(self, scores: NDArray[np.int64]):
+        min_range = np.min(scores).astype(int)
+        max_range = np.max(scores).astype(int)
         score_range = max_range - min_range
 
         # On average, we want 20 sequences
@@ -117,9 +119,9 @@ class ScoreByLength(MsaCleanerBase):
 
         return pixmap
 
-    def __set_range(self, scores: List[float]) -> None:
-        min_range = int(min(scores))
-        max_range = int(max(scores))
+    def __set_range(self, scores: NDArray[np.int64]) -> None:
+        min_range = np.min(scores).astype(int)
+        max_range = np.max(scores).astype(int)
 
         self.__freq_canvas.update_pixmap(self.__render_length_frequency(scores))
 
@@ -132,13 +134,13 @@ class ScoreByLength(MsaCleanerBase):
         for (label, slider) in self.__score_widgets:
             label.setText(str(slider.value()))
 
-    def score_alignment(self, alignment : MultipleSeqAlignment) -> MsaCleanerResult:
-        msa_score = score_length(alignment)
+    def score_alignment(self, context : ScoreContext) -> MsaCleanerResult:
+        msa_score = score_length(context)
 
         self.__set_range(msa_score)
 
         result = MsaCleanerResult(
-            scores=msa_score,
+            scores=msa_score.astype(np.float64),
             treshold=self.__treshold
         )
 

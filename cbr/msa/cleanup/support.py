@@ -1,7 +1,8 @@
 from Bio.Align import MultipleSeqAlignment
 import numpy as np
+from numpy.ma import MaskedArray
 from numpy.typing import NDArray
-from typing import Iterable, List, NamedTuple, Set, Tuple
+from typing import Any, NamedTuple
 
 class ScoreContext(NamedTuple):
     alignment : MultipleSeqAlignment
@@ -31,34 +32,34 @@ def ranked(values : NDArray[np.float64]) -> NDArray[np.int64]:
     return result
 
 def score_contigous(
-    values : Iterable[bool],
+    values : NDArray[np.bool_],
     min_segment_size: int = 1
-    ) -> List[int]:
+    ) -> NDArray[np.int64]:
+    """
+    This function accepts an array of boolean values. Each index of the array corresponds to
+    and index in a multiple sequence alignment and True/False indicates wether a property
+    is present or absent at that position.
+
+    This function finds the lenghts of the continous segments which has the value True
+    and replaces the Trues with the lenght of the segment and False with 0.
+
+    Parameters
+    ----------
+    values : NDArray[np.bool_]
+        The array of True/False values
+    min_segment_size : int
+        The minimum  number of contigous values for the replacement to be applied. 0 is used when
+        this treshold is not reached.
+    """
+
+    result = np.zeros(values.shape, dtype=np.int64)
+    result_ma : MaskedArray[np.int64, Any] = np.ma.array(result, mask=np.logical_not(values))
+
+    for slice in np.ma.flatnotmasked_contiguous(result_ma):
+        start = slice.start
+        stop = slice.stop
+        value = stop - start
+
+        result[start:stop] = value
     
-    segments: Set[Tuple[int,int]] = set()
-    segment_start = -1
-    values_len = 0
-
-    for ix,value in enumerate(values):
-        
-        segment_size = ix - segment_start - 1
-
-        if not value and segment_size >= min_segment_size:
-
-            # segment start is set when a 'false' value is
-            # observed. Therefore, it's index should not be
-            # included in the segment
-            segments.add((segment_start + 1, ix))
-            segment_start = ix
-        elif not value:
-            segment_start = ix
-
-        values_len += 1
-
-    result = list(int(0) for _ in range(0, values_len))
-
-    for (start, end) in segments:
-        for ix in range(start, end):
-            result[ix] = end - start
-
     return result

@@ -1,16 +1,15 @@
 """This scoring function is designed to eliminate sequences that contain long inserts in the MSA.
 It has two parameters. The first one "Continuity Treshold" determines the percentage of sequences
 that must have gaps at a given position for two consecutive residues to be considered an "insert".
-The second parameter "Score Treshold" controls how many sequences should be dropped based on the
-score the received."""
-
-from Bio.Align import MultipleSeqAlignment
+"""
+import numpy as np
+from numpy.typing import NDArray
 from PyQt5.QtCore import pyqtSlot
-from typing import cast, List, Optional
+from typing import cast, Optional
 
-from ...core.Qt.QtWidgets import throttle
+from ...core.Qt.QtWidgets import slider_with_label, throttle
 from ..cleanup import score_inserts
-from .ScoreWithScope import ScoreByPosition, ScoreWidget
+from .ScoreWithScope import ScoreByPosition, ScoreContext, ScoreWidget
 from .Ui_ScoreByLongInserts import Ui_ScoreByLongInserts
 
 class ScoreByLongInserts(ScoreWidget):
@@ -26,11 +25,16 @@ class ScoreByLongInserts(ScoreWidget):
 
         assert(__doc__)
         self.__ui.descriptionLabel.setText(__doc__.replace("\n", " "))
-        self.__alignment : Optional[MultipleSeqAlignment] = None
+        self.__alignment : Optional[ScoreContext] = None
+        self.__continuity_treshold_slider = slider_with_label(
+            self.__ui.continuityTresholdSlider,
+            self.__ui.continuityTresholdLabel,
+            factor=1/100
+        )
 
-        self.__ui.continuityTresholdSlider.valueChanged.connect(self.__update_score)
+        self.__continuity_treshold_slider.value_changed.connect(self.__update_score)
 
-    def __set_score(self, score: List[List[int]]) -> ScoreByPosition:
+    def __set_score(self, score: NDArray[np.int64]) -> ScoreByPosition:
         value = cast(ScoreByPosition, score)
         self.__score = value
         return value
@@ -53,12 +57,12 @@ class ScoreByLongInserts(ScoreWidget):
 
     @property
     def __continuity_treshold(self) -> float:
-        return self.__ui.continuityTresholdSlider.value() / 100
+        return self.__continuity_treshold_slider.value
 
-    def score_alignment(self, alignment : MultipleSeqAlignment) -> ScoreByPosition:
+    def score_alignment(self, context : ScoreContext) -> ScoreByPosition:
 
-        self.__alignment = alignment
-        msa_score = score_inserts(alignment, self.__continuity_treshold)
+        self.__alignment = context
+        msa_score = score_inserts(context, self.__continuity_treshold)
         return self.__set_score(msa_score)
 
     @property

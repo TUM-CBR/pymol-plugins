@@ -228,9 +228,9 @@ class MsaCleaner(QWidget):
 
         self.__cleaners : List[Tuple[str, MsaCleanerBase]] = [
             ("Gap Divergence", ScoreWithScope(ScoreByDivergence())),
-            #("Eliminate Long Inserts", ScoreWithScope(ScoreByLongInserts())),
-            #("Eliminate Large Gaps", ScoreWithScope(ScoreByRavines())),
-            #("Sequence Length", ScoreByLength())
+            ("Eliminate Long Inserts", ScoreWithScope(ScoreByLongInserts())),
+            ("Eliminate Large Gaps", ScoreWithScope(ScoreByRavines())),
+            ("Sequence Length", ScoreByLength())
         ]
 
         for name, cleaner in self.__cleaners:

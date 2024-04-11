@@ -1,17 +1,11 @@
-from Bio.Align import MultipleSeqAlignment, SeqRecord
+import numpy as np
+from numpy.typing import NDArray
 
-from typing import List
+from .support import ScoreContext
 
-from ...clustal.msa import is_blank
+def score_length(sequences : ScoreContext) -> NDArray[np.int64]:
 
-def score_length(sequences : MultipleSeqAlignment) -> List[float]:
-
-    def len_no_gaps(seq : SeqRecord) -> int:
-        result = 0
-        for resi in seq:
-            if not is_blank(resi):
-                result += 1
-
-        return result
-
-    return [len_no_gaps(seq) for seq in sequences]
+    msa = sequences.vectorized
+    result = np.zeros(msa.shape, dtype=np.int64)
+    np.putmask(result, msa != '-', 1)
+    return np.sum(result, axis=1)
