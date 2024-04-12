@@ -49,7 +49,8 @@ APP_DEFINITIONS = [
     AppDefinition(
         icon = "msa.png",
         text = "MSA Cleaner",
-        init = Msa.msa_cleaner
+        init = Msa.msa_cleaner,
+        user_manual = QUrl("https://github.com/TUM-CBR/pymol-plugins/wiki/MSA-Cleaner")
     ),
     AppDefinition(
         icon = "chimeras.jpg",

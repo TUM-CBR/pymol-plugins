@@ -296,8 +296,8 @@ class MsaViewerModel(QAbstractTableModel):
             return None
 
 MASK_POSITION_MODE = {
+    "Highlight": MaskPositionMode.HIGHLIGHT,
     "Hide": MaskPositionMode.HIDE,
-    "Highlight": MaskPositionMode.HIGHLIGHT
 }
 
 class MsaViewer(QWidget):

@@ -96,6 +96,9 @@ class ScoreWithScope(MsaCleanerBase):
             if max_scope > msa_length or force_reset_treshold:
                 self.__ui.scopeEndSlider.setValue(msa_length)
 
+        self.__scope_start.reset_label()
+        self.__scope_end.reset_label()
+
         self.__update_score(
             MsaCleanerResult(
                 self.__get_aggregate_scores(scores_by_positions),

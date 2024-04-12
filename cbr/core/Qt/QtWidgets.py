@@ -320,6 +320,10 @@ class SliderWithLabel(QObject):
         self.__slider.valueChanged.connect(self.__on_value_changed)
         self.__slider.sliderReleased.connect(self.slider_released)
 
+    def reset_label(self):
+        value = self.value
+        self.__label.setText(self.__format(value))
+
     @property
     def value(self):
         return self.__slider.value() * self.__factor
@@ -329,8 +333,7 @@ class SliderWithLabel(QObject):
 
     @pyqtSlot()
     def __on_value_changed(self):
-        value = self.value
-        self.__label.setText(self.__format(value))
+        self.reset_label()
         self.value_changed.emit()
 
 slider_with_label = SliderWithLabel
