@@ -1,7 +1,8 @@
 from Bio.Data import IUPACData
 from colorsys import hls_to_rgb, rgb_to_hsv, hsv_to_rgb
 import math
-from typing import cast, List, NamedTuple, Tuple
+from PyQt5.QtGui import QColor
+from typing import cast, List, NamedTuple, Tuple, Union
 
 RgbColor = Tuple[int, int, int]
 
@@ -34,7 +35,13 @@ def to_hex(i : int, desired_length = 2) -> str:
     padding = desired_length - len(value)
     return "0"*padding + value
 
-def to_pymol_color(rgb : RgbColor) -> str:
+def to_pymol_color(color : Union[QColor, RgbColor]) -> str:
+
+    if isinstance(color, QColor):
+        rgb = cast(RgbColor, color.toRgb().getRgb()[0:3])
+    else:
+        rgb = color        
+
     return "0x" + "".join(map(to_hex, rgb))
 
 def pymol_color_tuple_to_pymol_color(colors : Tuple[float, float, float]) -> str:

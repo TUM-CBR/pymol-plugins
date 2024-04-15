@@ -1,5 +1,6 @@
+import pymol
 from pymol import cmd, CmdException
-from typing import NamedTuple
+from typing import Iterable, NamedTuple, Set, Tuple
 
 class ModelAndChain(NamedTuple):
     model: str
@@ -18,3 +19,16 @@ def iter_chains():
             # Some public objects throw errors when
             # iterating their chains
             pass
+
+def iter_segis() -> Iterable[Tuple[str, str, str]]:
+
+    for (name, chain) in iter_chains():
+        segs: Set[str] = set()
+        pymol.cmd.iterate(
+            "model %s and chain %s" % (name, chain),
+            'segs.add(segi)',
+            space={'segs': segs}
+        )
+
+        for seg in segs:
+            yield (name, chain, seg)

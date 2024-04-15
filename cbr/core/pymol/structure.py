@@ -53,6 +53,24 @@ class StructureSelection(NamedTuple):
         )
 
         return result
+    
+    def get_color_indexes(self) -> Dict[int, int]:
+        colors : Dict[int, int] = {}
+
+        def apply(resv: int, color: int):
+            colors[resv] = color
+
+        pymol.cmd.iterate(
+            self.base_query,
+            'apply(resv, color)',
+            space={'apply': apply}
+        )
+
+        return colors
+    
+    def set_colors(self, color_indexes: Dict[int, int]):
+        for resv, color in color_indexes.items():
+            pymol.cmd.color(color, self.residue_selection([resv]))
 
 def get_structure_query(structure_name : str, chain : 'str | None' = None) -> str:
     if chain:
