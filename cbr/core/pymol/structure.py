@@ -7,6 +7,13 @@ class StructureSelection(NamedTuple):
     structure_name : str
     chain_name : Optional[str]
     segment_identifier : Optional[str]
+    residues : Optional[List[int]] = None
+
+    def __residues_query(self, resis: Iterable[int]) -> str:
+        return " or ".join(
+            f"resi {i}" if i >= 0 else f"resi \\-{abs(i)}"
+            for i in resis
+        )
 
     @property
     def base_query(self) -> str:
@@ -15,6 +22,9 @@ class StructureSelection(NamedTuple):
             , self.chain_name and "chain %s" % self.chain_name
             , self.segment_identifier and "segi %s" % self.segment_identifier
             ]
+        
+        if self.residues is not None:
+            selectors += [f"({self.__residues_query(self.residues)})"]
 
         items = " and ".join(s for s in selectors if s)
         return f"{items} and polymer"
@@ -22,6 +32,16 @@ class StructureSelection(NamedTuple):
     @property
     def selection(self) -> str:
         return f"byres ({self.base_query})"
+    
+    def scoped(self, residues: List[int]) -> 'StructureSelection':
+        existing = self. residues
+
+        if existing is not None:
+            scope = [r for r in existing if r in residues]
+        else:
+            scope = residues
+
+        return self._replace(residues = scope)
 
     def show(self):
         return "/".join(
@@ -31,10 +51,7 @@ class StructureSelection(NamedTuple):
         )
     
     def residue_selection(self, resis: Iterable[int]) -> str:
-        resi_selection = " or ".join(
-            f"resi {i}" if i >= 0 else f"resi \\-{abs(i)}"
-            for i in resis
-        )
+        resi_selection = self.__residues_query(resis)
 
         return f"byres ({self.base_query} and ({resi_selection}))"
     

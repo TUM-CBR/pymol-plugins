@@ -67,6 +67,7 @@ class StructuresTableModel(QAbstractTableModel):
                 self.__structures.pop(item)
 
         self.__keys = list(self.__structures.keys())
+        self.__keys.sort(key = lambda k: self.__structures[k].structure.show())
 
         self.modelReset.emit()
 
@@ -84,7 +85,7 @@ class StructuresTableModel(QAbstractTableModel):
         if orientation == Qt.Orientation.Horizontal:
             return self.COLUMNS[section]
         else:
-            return super().headerData(section, orientation, role)
+            return None
         
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:
 
@@ -133,8 +134,8 @@ class StructuresTableModel(QAbstractTableModel):
             return self.__get_data(index)
         elif role == Qt.ItemDataRole.CheckStateRole:
             return self.__get_checked_state(index)
-
-        return super().data(index, role)
+        else:
+            return None
     
     def selected_values(self) -> List[StructureSelection]:
         return [
@@ -166,6 +167,10 @@ class MultiStructureSelector(QDialog):
 
         self.__refresh_structures()
         self.__validate()
+
+    def exec(self) -> int:
+        self.__refresh_structures()
+        return super().exec()
 
     @pyqtSlot()
     def __on_selected_values_changed(self):

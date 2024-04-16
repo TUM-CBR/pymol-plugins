@@ -1,7 +1,7 @@
 import pymol
-from PyQt5.QtCore import Qt, QObject, pyqtSignal, pyqtSlot, QAbstractTableModel
+from PyQt5.QtCore import Qt, QObject, QModelIndex, pyqtSignal, pyqtSlot, QAbstractTableModel
 from PyQt5.QtGui import QColor
-from typing import Dict, List, NamedTuple, Optional
+from typing import Dict, Iterable, List, NamedTuple, Optional
 
 from ...core import color
 from ...core.pymol.structure import StructureSelection
@@ -84,6 +84,34 @@ class AbstractStructureTableModel(QAbstractTableModel):
                 sele
             )
 
+    def __select_by_column(
+        self,
+        selection: StructureSelection,
+        column_mappings: List[int],
+        indexes: List[QModelIndex]
+    ) -> Optional[StructureSelection]:
+        
+        if len(indexes) == 0:
+            return None
+
+        return selection.scoped([
+            column_mappings[i.column()]
+            for i in indexes
+        ])
+
+    def __select_indexes(self, structure: StructureEntry, indexes: List[QModelIndex]) -> Optional[StructureSelection]:
+
+        mapping = structure.mapping
+
+        if mapping.by_column is not None:
+            return self.__select_by_column(
+                mapping.structure,
+                mapping.by_column,
+                indexes
+            )
+        else:
+            raise Exception(f"Missing implementations for the mappings definition {mapping}")
+
     def __apply_structure_coloring(self, structure: StructureEntry):
 
         coloring = structure.mapping
@@ -91,16 +119,19 @@ class AbstractStructureTableModel(QAbstractTableModel):
         if coloring.by_column is not None:
             self.__color_by_column(structure.mapping.structure, coloring.by_column)
 
-    def __apply_coloring(self):
-
+    def __iterate_current_structures(self) -> Iterable[StructureEntry]:
         current_structures = self.__current_structures
 
         if current_structures is None:
             return
 
         for structure in current_structures:
-            self.__apply_structure_coloring(structure)
+            yield structure
 
+    def __apply_coloring(self):
+
+        for structure in self.__iterate_current_structures():
+            self.__apply_structure_coloring(structure)
 
     def __to_structure_entry(self, mapping: StructureMapping) -> StructureEntry:
         colors = mapping.structure.get_color_indexes()
@@ -145,3 +176,17 @@ class AbstractStructureTableModel(QAbstractTableModel):
             return color
         else:
             return None
+        
+    def update_selection(self, indexes: List[QModelIndex], name: str = "sele"):
+
+        selections = (
+            selection.selection
+            for entry in self.__iterate_current_structures()   
+            for selection in [self.__select_indexes(entry, indexes)]
+                if selection is not None
+        )
+
+        pymol.cmd.select(
+            name,
+            " or ".join(selections)
+        )

@@ -26,6 +26,16 @@ class StructureVector(Generic[TValue]):
         self.indexes = indexes
         self.array = array
 
+    def resv_to_position(self, ix: int) -> Dict[int, NDArray[np.float64]]:
+
+        array = self.array[ix] if len(self.array.shape) == 4 else self.array
+
+        return {
+            resv: array[i,0]
+            for i,resv in enumerate(self.indexes[ix])
+        }
+
+
 ERROR_ATOMS = ["CA"]
 ERROR_ATOMS_N = len(ERROR_ATOMS)
 

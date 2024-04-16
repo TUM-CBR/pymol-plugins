@@ -12,6 +12,7 @@ from ..cascades import main as Cascades
 from ..cavities import main as Cavitites
 from ..chimeras import Applications as Chimeras
 from ..coevolution import main as Coevolution
+from ..compare import main as Compare
 from ..dssp import main as Dssp
 from ..frankenprot import main as FrankenProt
 #from ..kinetics import main as Kinetics
@@ -106,6 +107,11 @@ APP_DEFINITIONS = [
         text = "Prot o' Dentist",
         init = Cavitites.main,
         user_manual = QUrl("https://github.com/TUM-CBR/pymol-plugins/wiki/Prot-o'-Dentist")
+    ),
+    AppDefinition(
+         icon = "fasta.png",
+         text = "Protein Compare",
+         init = Compare.main
     )
     #AppDefinition(
     #    icon = "kinetics.png",
