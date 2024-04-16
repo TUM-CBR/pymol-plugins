@@ -1,4 +1,3 @@
-from operator import is_
 from statistics import mean
 from Bio.Align import MultipleSeqAlignment
 from Bio.Seq import Seq
