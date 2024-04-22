@@ -1,10 +1,12 @@
 import pymol
 from PyQt5.QtCore import Qt, QObject, QModelIndex, pyqtSignal, pyqtSlot, QAbstractTableModel
 from PyQt5.QtGui import QColor
-from typing import Dict, Iterable, List, NamedTuple, Optional
+from typing import Callable, Dict, Iterable, List, NamedTuple, Optional, Tuple
 
 from ...core import color
 from ...core.pymol.structure import StructureSelection
+
+PositionMapping = List[Optional[int]]
 
 class StructureMapping(NamedTuple):
     """
@@ -20,9 +22,13 @@ class StructureMapping(NamedTuple):
         Represents a column mapping where each column of the table is mapped to
         a position in the structure. The indexes of the list correspond to the
         column numbers and the value to the structure position (resi).
+    by_row : Optional[List[int]]
+        Represents a mapping where each row of the table is mapped to a
+        position in the structure. 
     """
     structure: StructureSelection
-    by_column : Optional[List[int]]
+    by_column: Optional[PositionMapping] = None
+    by_row:  Optional[PositionMapping] = None
 
 class StructureMappings(NamedTuple):
     """
@@ -71,11 +77,14 @@ class AbstractStructureTableModel(QAbstractTableModel):
         for item in current:
             self.__restore_structure(item)
 
-    def __color_by_column(self, structure: StructureSelection, column_mapping: List[int]):
-
-        for column,resv in enumerate(column_mapping):
+    def __color_structure(
+        self,
+        structure: StructureSelection,
+        iter: Iterable[Tuple[int, Optional[QColor]]]
+    ) -> None:
+        for resv, q_color in iter:
             sele = structure.residue_selection([resv])
-            q_color = self.__get_structure_color__(None, column)
+
             if q_color is None:
                 q_color = BLACK
 
@@ -84,30 +93,68 @@ class AbstractStructureTableModel(QAbstractTableModel):
                 sele
             )
 
-    def __select_by_column(
+    def __color_by_column(self, structure: StructureSelection, column_mapping: PositionMapping) -> None:
+
+        self.__color_structure(
+            structure,
+            (
+                (resv, self.__get_structure_color__(None, col))
+                for col, resv in enumerate(column_mapping)
+                if resv is not None
+            )
+        )
+
+    def __color_by_row(self, structure: StructureSelection, row_mapping: PositionMapping):
+
+        self.__color_structure(
+            structure,
+            (
+                (resv, self.__get_structure_color__(row, None))
+                for row, resv in enumerate(row_mapping)
+                if resv is  not None
+            )
+        )
+
+    def __select_index_by_mapping(
         self,
         selection: StructureSelection,
-        column_mappings: List[int],
-        indexes: List[QModelIndex]
+        indexes: List[QModelIndex],
+        mapper: Callable[[QModelIndex], Optional[int]]
     ) -> Optional[StructureSelection]:
         
         if len(indexes) == 0:
             return None
 
-        return selection.scoped([
-            column_mappings[i.column()]
+
+        scope = [
+            resv
             for i in indexes
-        ])
+            for resv in [mapper(i)]
+            if resv is not None
+        ]
+
+        if len(scope) == 0:
+            return None
+
+        return selection.scoped(scope)
 
     def __select_indexes(self, structure: StructureEntry, indexes: List[QModelIndex]) -> Optional[StructureSelection]:
 
         mapping = structure.mapping
 
         if mapping.by_column is not None:
-            return self.__select_by_column(
+            by_column = mapping.by_column
+            return self.__select_index_by_mapping(
                 mapping.structure,
-                mapping.by_column,
-                indexes
+                indexes,
+                lambda i: by_column[i.column()],
+            )
+        elif mapping.by_row is not None:
+            by_row = mapping.by_row
+            return self.__select_index_by_mapping(
+                mapping.structure,
+                indexes,
+                lambda i: by_row[i.row()],
             )
         else:
             raise Exception(f"Missing implementations for the mappings definition {mapping}")
@@ -118,6 +165,8 @@ class AbstractStructureTableModel(QAbstractTableModel):
 
         if coloring.by_column is not None:
             self.__color_by_column(structure.mapping.structure, coloring.by_column)
+        elif coloring.by_row is  not None:
+            self.__color_by_row(structure.mapping.structure, coloring.by_row)
 
     def __iterate_current_structures(self) -> Iterable[StructureEntry]:
         current_structures = self.__current_structures

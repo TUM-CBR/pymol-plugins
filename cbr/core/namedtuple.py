@@ -63,7 +63,6 @@ def handle_value(type: Type[Any], value: Any) -> Any:
     else:
         raise ValueError(f"Cannot parse type {type} with value {value}")
 
-
 def parse(model: Type[TModel], record: Dict[Any, Any]) -> TModel:
     kwargs = {}
 

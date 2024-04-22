@@ -1,6 +1,7 @@
-from typing import Any, Dict, List, NamedTuple, Optional, Type, TypeVar
+from typing import Any, Dict, List, NamedTuple, Optional
 
-from ..extra.CbrExtraInteractiveHandler import CbrExtraInteractiveHandler, MessageParser, MessageSerializer
+from ..core import namedtuple
+from ..extra.CbrExtraInteractiveHandler import MessageParser, MessageSerializer
 
 class Scoring(NamedTuple):
     """
@@ -65,69 +66,7 @@ class CoevolutionResults(NamedTuple):
 class InteractiveResponse(NamedTuple):
     coevolution: Optional[CoevolutionResults]
 
-def coevolution_entry_parser(value: Any) -> CoevolutionEntry:
-
-    if not isinstance(value, dict):
-        raise ValueError("value: Expected a dictionary")
-    
-    return CoevolutionEntry(
-        residue_1=value["residue_1"],
-        residue_2=value["residue_2"],
-        score=value["score"],
-        score_occurence=value["score_occurence"],
-        score_exclusivity=value["score_exclusivity"],
-        score_conserved=value["score_exclusivity"]
-    )
-
-def coevolution_position_parser(value: Any) -> CoevolutionPosition:
-
-    if not isinstance(value, dict):
-        raise ValueError("value: Expected a dictionary")
-    
-    position = value.get("position")
-    by_position = value.get("by_position")
-
-    if not isinstance(position, int):
-        raise ValueError("value: Expected a position key with an int value")
-    
-    if not isinstance(by_position, dict):
-        raise ValueError("value: Expected a by_position key with a dict value")
-    
-    return CoevolutionPosition(
-        position=position,
-        by_position={
-            k: coevolution_entry_parser(v)
-            for k,v in by_position.items()
-        }
-    )
-
-def coevolution_parser(value: Any) -> CoevolutionResults:
-
-    if not isinstance(value, dict):
-        raise ValueError("value: Expected a dictionary")
-    
-    positions: Any = value.get("positions")
-
-    if not isinstance(positions, dict):
-        raise ValueError("value: Expected to have a 'positions' key.")
-
-    return CoevolutionResults(
-        positions={
-            k: coevolution_position_parser(v)
-            for k,v in positions.items()
-        }
-    )
-
-
 def interactive_response_parser_implementation(value: Dict[Any, Any]) -> InteractiveResponse:
-
-    coevolution = value.get('coevolution')
-
-    if coevolution is not None:
-        return InteractiveResponse(
-            coevolution=
-        )
-    else:
-        raise ValueError("value: Unknown message")
+    return namedtuple.parse(InteractiveResponse, value)
 
 interactive_response_parser : MessageParser[InteractiveResponse] = interactive_response_parser_implementation
