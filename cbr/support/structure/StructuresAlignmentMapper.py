@@ -8,8 +8,9 @@ from ...core.pymol.structure import StructureSelection
 
 K_STRUCTURE_ID = "structure"
 
-class StructureEntry(NamedTuple):
+class StructureAlignmentEntry(NamedTuple):
     structure: StructureSelection
+    reference_sequence_id: str
     structure_sequence: Dict[int, Tuple[int, str]]
     mapper_msa: MultipleSeqAlignment
     target_msa: MultipleSeqAlignment
@@ -29,6 +30,13 @@ class StructureEntry(NamedTuple):
             resv: None if ref_seq_pos < 0 else int(mapper_seq_mappings[ref_seq_pos])
             for resv, (pos, _) in self.structure_sequence.items()
             for ref_seq_pos in [mapper_to_reference_seq[structure_to_mapper[pos]]]
+        }
+    
+    def msa_to_resv(self) -> Dict[int, int]:
+        return {
+            msa: resv
+            for resv, msa in self.resv_to_msa().items()
+            if msa is not None
         }
 
 class StructuresAlignmentMapper(NamedTuple):
@@ -64,9 +72,10 @@ class StructuresAlignmentMapper(NamedTuple):
 
         mapper_msa = self.clustal.run_msa_seqs([structure_record, reference_record])
 
-        entry = StructureEntry(
+        entry = StructureAlignmentEntry(
             structure=structure,
-            structure_sequence={
+            reference_sequence_id=reference_sequence_id,
+            structure_sequence = {
                 resv: (pos, seq_dict[resv])
                 for pos, resv in enumerate(seq_resv)
             },
