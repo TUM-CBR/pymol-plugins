@@ -1,17 +1,22 @@
 from Bio.Align import MultipleSeqAlignment
+from Bio import AlignIO
 import numpy as np
-from typing import Any, Dict, List, NamedTuple, Optional, Sequence
+from os import path
+from typing import Dict, NamedTuple, Optional, Sequence
 
-from PyQt5.QtCore import QModelIndex, Qt
+from PyQt5.QtCore import QModelIndex, QObject, pyqtSlot
+from PyQt5.QtWidgets import QWidget
 from PyQt5.QtGui import QColor
 
 from ...core.pymol.structure import StructureSelection
 from ...core.Context import Context
-from ...clustal.Clustal import Clustal
-from ...support.structure.AbstractStructureTableModel import AbstractStructureTableModel, StructureMapping, StructureMappings
-from ...support.display.sequence import RESIDUE_COLORS
+from ...clustal.Clustal import Clustal, get_clustal_from_context
+from ...extra.CbrExtraInteractiveHandler import CbrExtraInteractiveHandler, CbrExtraInteractiveManager, CbrProcessExit, MessageQueingPolicy, run_interactive
+from ...support.msa.MsaSelector import MsaSelector
+from ...support.structure.AbstractCompositeTableModel import AbstractCompositeTableModel, AbstractRecordView
 from ...support.structure.StructuresAlignmentMapper import StructuresAlignmentMapper
-from ..data import CoevolutionEntry, CoevolutionPosition, CoevolutionResults
+from ...support.structure.StructurePositionView  import PositionEntry, PositionsAndColor, StructurePositionView
+from ..data import *
 from .Ui_coevolution import Ui_Coevolution
 
 class ReferenceStructureEntry(NamedTuple):
@@ -39,237 +44,129 @@ class ReferenceStructureEntry(NamedTuple):
             msa_to_resv
         )
 
-class CoevolutionResultTable(AbstractStructureTableModel):
+SCORE_COLOR_LOW = np.array([128,128,0], dtype=np.int8)
+SCORE_COLOR_HIGH = np.array([0, 255, 0], dtype=np.int8)
+SCORE_COLOR_SPREAD = SCORE_COLOR_HIGH - SCORE_COLOR_LOW
 
-    K_POSITION = "MSA Position"
-    K_RESIDUE_1 = "Local Residue"
-    K_RESIDUE_2 = "Other Residue"
-    K_SCORE = "Confidence"
-    K_SCORE_OCCURENCE = "Occurrence"
-    K_SCORE_EXCLUSIVITY = "Exclusivity"
-    K_SCORE_CONSERVED = "Conserved"
+class CoevolutionResultEntry(NamedTuple):
+    position: int
+    coevolution_result: CoevolutionEntry
 
-    SCORE_COLOR_LOW = np.array([128,128,0], dtype=np.int8)
-    SCORE_COLOR_HIGH = np.array([0, 255, 0], dtype=np.int8)
-
-    COLUMNS = [
-        K_POSITION,
-        K_RESIDUE_1,
-        K_RESIDUE_2,
-        K_SCORE,
-        K_SCORE_EXCLUSIVITY,
-        K_SCORE_CONSERVED
-    ]
-
-    def __init__(
-        self,
-        msa: MultipleSeqAlignment,
-        clustal: Clustal
-    ):
-        self.__msa_mapper = StructuresAlignmentMapper(msa, clustal)
-        self.__positions: List[int] = []
-        self.__structures: Optional[Sequence[ReferenceStructureEntry]] = None
-        self.__results: Optional[CoevolutionPosition] = None
-        self.__structure_positions_columns: List[str] = []
-
-    def columns(self) -> Sequence[str]:
-        return self.__structure_positions_columns + self.COLUMNS
-
-    def set_results(self, results: CoevolutionPosition):
-
-        self.__positions = list(results.by_position.keys())
-        self.__positions.sort(
-            key=lambda pos: results.by_position[pos].score,
-            reverse=True
-        )
-        self.__results = results
-
-    def rowCount(self, parent: Optional[QModelIndex] = None) -> int:
-        return len(self.__positions)
-    
-    def columnCount(self, parent: Optional[QModelIndex] = None) -> int:
-        return len(self.columns())
-    
-    def headerData(
-        self,
-        section: int,
-        orientation: Qt.Orientation,
-        role: int = Qt.ItemDataRole.DisplayRole
-    ) -> Any:
-        
-        if role != Qt.ItemDataRole.DisplayRole:
-            return None
-        
-        if orientation == Qt.Orientation.Vertical:
-            return self.columns()[section]
-        else:
-            return None
-        
-    def __create_structure_mapping(self, structure: ReferenceStructureEntry) -> StructureMapping:
-        msa_to_resv = structure.msa_to_resv
-
-        by_row = [
-            msa_to_resv.get(pos)
-            for pos in self.__positions
-        ]
-
-        return StructureMapping(
-            structure.structure,
-            by_row = by_row
+    @classmethod
+    def color(cls, score: float):
+        result = (SCORE_COLOR_LOW + (SCORE_COLOR_SPREAD * score)).astype(np.int8)
+        return QColor(
+            r = result[0],
+            g = result[1],
+            b = result[2]
         )
 
-    def __get_structure_mappings__(self) -> Optional[StructureMappings]:
+    def to_position_entry(self) -> PositionEntry:
 
-        if self.__structures is None:
-            return None
-        
-        mappings = StructureMappings(
-            mappings = [
-                self.__create_structure_mapping(entry)
-                for entry in self.__structures
+        return PositionEntry(
+            positions_and_colors = [
+                PositionsAndColor(
+                    positions=[self.position],
+                    structure_color=self.color(self.coevolution_result.score)
+                )
             ]
         )
 
-        self.__structure_positions_columns = [
-            f"Position ({mapping.structure.show()})"
-            for mapping in mappings.mappings
+class CoevolutionResultTable(AbstractCompositeTableModel[CoevolutionResultEntry]):
+
+    def __init__(
+        self,
+        clustal: Clustal,
+        msa: Optional[MultipleSeqAlignment] = None,
+        parent: Optional[QObject] = None
+    ) -> None:
+        super().__init__(parent)
+
+        self.__records: Sequence[CoevolutionResultEntry] = []
+
+        self.__structure_view: StructurePositionView[CoevolutionResultEntry] = StructurePositionView(
+            clustal,
+            lambda _msa, model: model.to_position_entry(),
+            msa=msa
+        )
+
+    def __views__(self) -> Sequence[AbstractRecordView[CoevolutionResultEntry]]:
+        return [self.__structure_view]
+    
+    def set_alignment(self, msa: MultipleSeqAlignment):
+        self.__structure_view.set_alignment(msa)
+
+    def set_results(self, results: CoevolutionPosition):
+
+        positions = list(results.by_position.keys())
+        positions.sort(
+            key=lambda pos: results.by_position[pos].score,
+            reverse=True
+        )
+        self.__records = [
+            CoevolutionResultEntry(
+                position=position,
+                coevolution_result=results.by_position[position]
+            )
+            for position in positions
         ]
 
-        return mappings
-    
-    def __get_position(self, index: QModelIndex) -> Optional[int]:
-        row = index.row()
+    def __records__(self) -> Sequence[CoevolutionResultEntry]:
+        return self.__records
 
-        if len(self.__positions) <= row:
-            return None
-        
-        return self.__positions[row]
-    
-    def __get_record(self, index: QModelIndex) -> Optional[CoevolutionEntry]:
+class CoevolutionOverviewEntry(NamedTuple):
+    position: int
 
-        column = index.column()
+    def to_position_entry(self) -> PositionEntry:
 
-        if column < len(self.__structure_positions_columns):
-            return None
-
-        results = self.__results
-        key = self.__get_position(index)
-
-        if key is None or results is None:
-            return None
-
-        return results.by_position[key]
-    
-    def __get_structure_entry(self, index: QModelIndex) -> Optional[ReferenceStructureEntry]:
-
-        column = index.column()
-        structures = self.__structures
-
-        if column >= len(self.__structure_positions_columns) or structures is None:
-            return None
-        
-        return structures[column]
-    
-    def __get_structure_position(self, index: QModelIndex) -> Optional[int]:
-
-        structure_entry = self.__get_structure_entry(index)
-
-        if structure_entry is None:
-            return None
-
-        position = self.__get_position(index)
-
-        return None if position is None else structure_entry.msa_to_resv[position]
-    
-    def __data_display_role(self, index: QModelIndex) -> Any:
-
-        structure_position = self.__get_structure_position(index)
-
-        if structure_position is not None:
-            return structure_position
-
-        column = self.columns()[index.column()]
-
-        if column == self.K_POSITION:
-            return self.__get_position(index)
-
-        record = self.__get_record(index)
-
-        if record is None:
-            return None
-
-        if column == self.K_RESIDUE_1:
-            return record.residue_1
-        elif column == self.K_RESIDUE_2:
-            return record.residue_2
-        elif column == self.K_SCORE:
-            return record.score
-        elif column == self.K_SCORE_OCCURENCE:
-            return record.score_occurence
-        elif column == self.K_SCORE_EXCLUSIVITY:
-            return record.score_exclusivity
-        elif column == self.K_SCORE_CONSERVED:
-            return record.score_conserved
-        else:
-            return None
-    
-    def __get_score_color(self, record: CoevolutionEntry) -> Optional[QColor]:
-
-        color_vector = (
-            self.SCORE_COLOR_LOW + \
-            ((self.SCORE_COLOR_HIGH - self.SCORE_COLOR_LOW) * record.score)
-        ).astype(np.int8)
-
-        return QColor(
-            r = color_vector[0],
-            g = color_vector[1],
-            b = color_vector[2]
+        return PositionEntry(
+            positions_and_colors = [
+                PositionsAndColor(
+                    positions=[self.position]
+                )
+            ]
         )
-    
-    def __get_structure_color__(self, row: Optional[int], col: Optional[int]) -> Optional[QColor]:
 
-        if row is None:
-            return None
-        
-        index = self.index(row, self.columns().index(self.K_SCORE))
-        record = self.__get_record(index)
+class CoevolutionOverviewModel(AbstractCompositeTableModel[CoevolutionOverviewEntry]):
 
-        if record is None:
-            return None
+    def __init__(
+        self,
+        clustal: Clustal,
+        msa: Optional[MultipleSeqAlignment] = None,
+        parent: Optional[QObject] = None
+    ) -> None:
+        super().__init__(parent)
+        self.__records: Sequence[CoevolutionOverviewEntry] = []
+        self.__msa_view: StructurePositionView[CoevolutionOverviewEntry] = StructurePositionView(
+            clustal,
+            lambda _msa, model: model.to_position_entry(),
+            msa=msa
+        )
 
-        return self.__get_score_color(record)
-    
-    def __get_residue_color(self, residue: str)  -> Optional[QColor]:
+    def set_alignment(self, msa: MultipleSeqAlignment):
 
-        return RESIDUE_COLORS.get(residue.upper())
+        self.__records = [
+            CoevolutionOverviewEntry(pos)
+            for pos in range(0, msa.get_alignment_length())
+        ]
 
-    def __data_background_color_role(self, index: QModelIndex) -> Any:
+        self.__msa_view.set_alignment(msa)
 
-        column = self.columns()[index.column()]
-        record = self.__get_record(index)
+    def __records__(self) -> Sequence[CoevolutionOverviewEntry]:
+        return self.__records
 
-        if record is None:
-            return None
+    def __views__(self) -> Sequence[AbstractRecordView[CoevolutionOverviewEntry]]:
+        return [self.__msa_view]
 
-        if column == self.K_SCORE:
-            return self.__get_score_color(index)
-        elif column == self.K_RESIDUE_1:
-            return self.__get_residue_color(record.residue_1)
-        elif column == self.K_RESIDUE_2:
-            return self.__get_residue_color(record.residue_2)
-        else:
-            return None
+CoevolultionHandler = CbrExtraInteractiveHandler[InteractiveResponse, InteractiveRequest]
 
-    def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
+class CoevolutionProcessContext(NamedTuple):
+    manager: CbrExtraInteractiveManager
+    handler: CoevolultionHandler
 
-        if role == Qt.ItemDataRole.DisplayRole:
-            return self.__data_display_role(index)
-        elif role == Qt.ItemDataRole.BackgroundColorRole:
-            return self.__data_background_color_role(index)
-        else:
-            return None
+class Coevolution(QWidget):
 
-class Coevolution(Ui_Coevolution):
+    MSA_FILENAME = "tmp.aln"
 
     def __init__(
         self,
@@ -279,3 +176,90 @@ class Coevolution(Ui_Coevolution):
         self.__ui = Ui_Coevolution()
         self.__ui.setupUi(self)
 
+        clustal = get_clustal_from_context(context)
+
+        self.__msa_seletor = MsaSelector(
+            parent=self,
+            select_file_button=self.__ui.selectAlignmentButton,
+            selected_file_label=self.__ui.selectedAlignmentLabel
+        )
+        self.__msa_seletor.msa_file_selected.connect(self.__on_msa_selected)
+
+        self.__alignment_model = CoevolutionOverviewModel(clustal)
+        self.__ui.alignmentTable.setModel(self.__alignment_model)
+        self.__ui.alignmentTable.doubleClicked.connect(self.__on_position_selected)
+
+        self.__results_model = CoevolutionResultTable(clustal)
+        self.__ui.detailsTable.setModel(self.__results_model)
+
+        self.__working_directory = context.create_temporary_directory()
+
+        self.__coevolution_manager: Optional[CoevolutionProcessContext] = None
+
+        self.__set_busy(False)
+
+    def __set_busy(self, busy: bool):
+
+        self.__ui.busyProgress.setVisible(not busy)
+        self.__ui.alignmentTable.setEnabled(not busy)
+        self.__ui.detailsTable.setEnabled(not busy)
+
+    @pyqtSlot(QModelIndex)
+    def __on_position_selected(self, index: QModelIndex):
+
+        manager = self.__coevolution_manager
+
+        if manager is None:
+            return
+        
+        manager.handler.send_message(
+            InteractiveRequest(
+                query=Query(
+                    
+                )
+            )
+        )
+
+    def __run_interactive_process(self, msa: MultipleSeqAlignment):
+
+        previous = self.__coevolution_manager
+
+        if previous is not None:
+            previous.manager.stop()
+
+        msa_tmp_file = path.join(self.__working_directory, self.MSA_FILENAME)
+
+        AlignIO.write(msa, msa_tmp_file, 'fasta')
+        manager = run_interactive([
+            "coevolution",
+            "interactive",
+            "--input-msa", msa_tmp_file
+        ])
+
+        handler = CbrExtraInteractiveHandler(
+            manager,
+            interactive_response_parser,
+            interactive_request_serializer,
+            MessageQueingPolicy.HANDLE_ALL
+        )
+
+        handler.observe_values() \
+            .for_each(
+                action=self.__on_result,
+                on_error=self.__on_error
+            )
+
+        self.__coevolution_manager = CoevolutionProcessContext(manager, handler)
+
+    def __on_result(self, value: InteractiveResponse):
+        pass
+
+    def __on_error(self, error: Exception):
+        pass
+
+    @pyqtSlot(object)
+    def __on_msa_selected(self, msa: MultipleSeqAlignment):
+
+        self.__alignment_model.set_alignment(msa)
+        self.__results_model.set_alignment(msa)
+        self.__run_interactive_process(msa)

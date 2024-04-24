@@ -1,7 +1,7 @@
 import math
 import pymol
 
-from typing import Dict, Iterable, List, NamedTuple, Optional, Tuple, TypeVar
+from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence, Tuple, TypeVar
 
 class StructureSelection(NamedTuple):
     structure_name : str
@@ -33,7 +33,7 @@ class StructureSelection(NamedTuple):
     def selection(self) -> str:
         return f"byres ({self.base_query})"
     
-    def scoped(self, residues: List[int]) -> 'StructureSelection':
+    def scoped(self, residues: Sequence[int]) -> 'StructureSelection':
         existing = self. residues
 
         if existing is not None:
