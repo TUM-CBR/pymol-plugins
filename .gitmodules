@@ -1,3 +1,6 @@
 [submodule "schema/SCHEMA-RASPP"]
 	path = cbr/schema/raspp
 	url = git@github.com:TUM-CBR/SCHEMA-RASPP.git
+[submodule "python-typings"]
+	path = python-typings
+	url = git@github.com:TUM-CBR/python-typings.git

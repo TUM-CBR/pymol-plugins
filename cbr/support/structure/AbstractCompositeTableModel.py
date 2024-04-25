@@ -120,8 +120,8 @@ class AbstractCompositeTableModel(QAbstractTableModel, Generic[TModelRecord]):
         else:
             return len(self.__records)
         
-    def get_record(self, index: QModelIndex) -> TModelRecord:
-        return self.__records[index]
+    def get_record(self, index: QModelIndex) -> Optional[TModelRecord]:
+        return self.__records.get(index)
         
     def __enumerate_attributes(
         self,

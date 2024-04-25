@@ -1,7 +1,7 @@
 {
     "python.linting.enabled": true,
     "python.analysis.extraPaths": [
-      "${workspaceFolder}/typings"
+      "${workspaceFolder}/python-typings"
     ],
     "python.analysis.autoImportCompletions": true,
     "python.analysis.typeCheckingMode": "strict",

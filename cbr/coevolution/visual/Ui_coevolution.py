@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_Coevolution(object):
     def setupUi(self, Coevolution):
         Coevolution.setObjectName("Coevolution")
-        Coevolution.resize(822, 610)
+        Coevolution.resize(894, 560)
         self.gridLayout = QtWidgets.QGridLayout(Coevolution)
         self.gridLayout.setObjectName("gridLayout")
         self.detailsTable = QtWidgets.QTableView(Coevolution)
@@ -47,6 +47,7 @@ class Ui_Coevolution(object):
         self.gridLayout.addWidget(self.busyProgress, 3, 0, 1, 5)
         self.gridLayout.setColumnStretch(3, 1)
         self.gridLayout.setColumnStretch(4, 2)
+        self.gridLayout.setRowStretch(2, 1)
 
         self.retranslateUi(Coevolution)
         QtCore.QMetaObject.connectSlotsByName(Coevolution)

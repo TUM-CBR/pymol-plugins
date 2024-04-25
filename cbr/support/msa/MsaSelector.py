@@ -96,9 +96,11 @@ class MsaSelector(QObject):
             f"MSA files ({MSA_EXTENSIONS})"
         )
 
-        extension = path.splitext(msa_file)[1][1:]
-        self.__selected_file_label.setText(path.basename(msa_file))
-        self.__set_msa(MSA_PARSERS[extension](msa_file))
+        if path.exists(msa_file):
+
+            extension = path.splitext(msa_file)[1][1:]
+            self.__selected_file_label.setText(path.basename(msa_file))
+            self.__set_msa(MSA_PARSERS[extension](msa_file))
 
     def __set_msa(self, msa : MultipleSeqAlignment):
         self.__msa = msa

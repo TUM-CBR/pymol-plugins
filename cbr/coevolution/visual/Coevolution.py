@@ -4,14 +4,15 @@ import numpy as np
 from os import path
 from typing import Dict, NamedTuple, Optional, Sequence
 
-from PyQt5.QtCore import QModelIndex, QObject, pyqtSlot
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtCore import QModelIndex, QObject, Qt, pyqtSlot
+from PyQt5.QtWidgets import QAbstractItemView, QWidget
 from PyQt5.QtGui import QColor
 
-from ...core.pymol.structure import StructureSelection
 from ...core.Context import Context
+from ...core.Qt.QtWidgets import show_error, show_exception
+from ...core.pymol.structure import StructureSelection
 from ...clustal.Clustal import Clustal, get_clustal_from_context
-from ...extra.CbrExtraInteractiveHandler import CbrExtraInteractiveHandler, CbrExtraInteractiveManager, CbrProcessExit, MessageQueingPolicy, run_interactive
+from ...extra.CbrExtraInteractive import CbrExtraInteractive, CbrProcessExit, MessageQueingPolicy, run_interactive
 from ...support.msa.MsaSelector import MsaSelector
 from ...support.structure.AbstractCompositeTableModel import AbstractCompositeTableModel, AbstractRecordView
 from ...support.structure.StructuresAlignmentMapper import StructuresAlignmentMapper
@@ -56,9 +57,9 @@ class CoevolutionResultEntry(NamedTuple):
     def color(cls, score: float):
         result = (SCORE_COLOR_LOW + (SCORE_COLOR_SPREAD * score)).astype(np.int8)
         return QColor(
-            r = result[0],
-            g = result[1],
-            b = result[2]
+            result[0],
+            result[1],
+            result[2]
         )
 
     def to_position_entry(self) -> PositionEntry:
@@ -72,7 +73,7 @@ class CoevolutionResultEntry(NamedTuple):
             ]
         )
 
-class CoevolutionResultTable(AbstractCompositeTableModel[CoevolutionResultEntry]):
+class CoevolutionResultTableModel(AbstractCompositeTableModel[CoevolutionResultEntry]):
 
     def __init__(
         self,
@@ -95,6 +96,9 @@ class CoevolutionResultTable(AbstractCompositeTableModel[CoevolutionResultEntry]
     
     def set_alignment(self, msa: MultipleSeqAlignment):
         self.__structure_view.set_alignment(msa)
+
+    def __orientation__(self) -> Qt.Orientation:
+        return Qt.Orientation.Horizontal
 
     def set_results(self, results: CoevolutionPosition):
 
@@ -143,6 +147,9 @@ class CoevolutionOverviewModel(AbstractCompositeTableModel[CoevolutionOverviewEn
             msa=msa
         )
 
+    def __orientation__(self) -> Qt.Orientation:
+        return Qt.Orientation.Horizontal
+
     def set_alignment(self, msa: MultipleSeqAlignment):
 
         self.__records = [
@@ -158,11 +165,7 @@ class CoevolutionOverviewModel(AbstractCompositeTableModel[CoevolutionOverviewEn
     def __views__(self) -> Sequence[AbstractRecordView[CoevolutionOverviewEntry]]:
         return [self.__msa_view]
 
-CoevolultionHandler = CbrExtraInteractiveHandler[InteractiveResponse, InteractiveRequest]
-
-class CoevolutionProcessContext(NamedTuple):
-    manager: CbrExtraInteractiveManager
-    handler: CoevolultionHandler
+CoevolultionHandler = CbrExtraInteractive[InteractiveResponse, InteractiveRequest]
 
 class Coevolution(QWidget):
 
@@ -188,19 +191,21 @@ class Coevolution(QWidget):
         self.__alignment_model = CoevolutionOverviewModel(clustal)
         self.__ui.alignmentTable.setModel(self.__alignment_model)
         self.__ui.alignmentTable.doubleClicked.connect(self.__on_position_selected)
+        self.__ui.alignmentTable.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectColumns)
 
-        self.__results_model = CoevolutionResultTable(clustal)
+        self.__results_model = CoevolutionResultTableModel(clustal)
         self.__ui.detailsTable.setModel(self.__results_model)
 
         self.__working_directory = context.create_temporary_directory()
+        self.__coevolution_manager: Optional[CoevolultionHandler] = None
 
-        self.__coevolution_manager: Optional[CoevolutionProcessContext] = None
+        self.__results_by_position: Dict[int, CoevolutionPosition] = {}
 
         self.__set_busy(False)
 
     def __set_busy(self, busy: bool):
 
-        self.__ui.busyProgress.setVisible(not busy)
+        self.__ui.busyProgress.setVisible(busy)
         self.__ui.alignmentTable.setEnabled(not busy)
         self.__ui.detailsTable.setEnabled(not busy)
 
@@ -208,54 +213,95 @@ class Coevolution(QWidget):
     def __on_position_selected(self, index: QModelIndex):
 
         manager = self.__coevolution_manager
+        model = self.__alignment_model
+        record = model.get_record(index)
 
-        if manager is None:
+        if manager is None or record is None:
             return
         
-        manager.handler.send_message(
-            InteractiveRequest(
-                query=Query(
-                    
+        position = record.position
+
+        if position in self.__results_by_position:
+            self.__results_model.set_results(self.__results_by_position[position])
+        else:
+            manager.send_message(
+                InteractiveRequest(
+                    query=Query(
+                        positions=[record.position],
+                        max_results=30
+                    )
                 )
             )
-        )
+
+            self.__set_busy(True)
 
     def __run_interactive_process(self, msa: MultipleSeqAlignment):
 
         previous = self.__coevolution_manager
 
         if previous is not None:
-            previous.manager.stop()
+            previous.stop()
+            previous.dispose_subscriptions()
+            self.__set_busy(False)
 
         msa_tmp_file = path.join(self.__working_directory, self.MSA_FILENAME)
 
         AlignIO.write(msa, msa_tmp_file, 'fasta')
-        manager = run_interactive([
-            "coevolution",
-            "interactive",
-            "--input-msa", msa_tmp_file
-        ])
-
-        handler = CbrExtraInteractiveHandler(
-            manager,
+        self.__coevolution_manager = manager = run_interactive(
+            [
+                "coevolution",
+                "interactive",
+                "--input-msa", msa_tmp_file
+            ],
             interactive_response_parser,
             interactive_request_serializer,
             MessageQueingPolicy.HANDLE_ALL
         )
 
-        handler.observe_values() \
+        manager.observe_status() \
+            .for_each(
+                action=self.__on_status,
+                on_error=self.__on_process_error
+            )
+
+        manager.observe_values() \
             .for_each(
                 action=self.__on_result,
                 on_error=self.__on_error
             )
 
-        self.__coevolution_manager = CoevolutionProcessContext(manager, handler)
+    def __on_status(self, value: CbrProcessExit):
+        self.__set_busy(False)
+
+    def __set_coevolution_results(self, results: CoevolutionResults):
+
+        for position, value in results.positions.items():
+            self.__results_by_position[position] = value
+
+        index = self.__ui.alignmentTable.selectedIndexes()
+
+        self.__set_busy(False)
+
+        if len(index) > 0:
+            self.__on_position_selected(index[0])
 
     def __on_result(self, value: InteractiveResponse):
-        pass
+
+        if value.coevolution is not None:
+            self.__set_coevolution_results(value.coevolution)
+        else:
+            show_error(
+                self,
+                "Unknown Response",
+                "Received an unknown reply when running coevolution."
+            )
+
+    def __on_process_error(self, error: Exception):
+        show_exception(self, error)
 
     def __on_error(self, error: Exception):
-        pass
+        show_exception(self, error)
+        self.__set_busy(False)
 
     @pyqtSlot(object)
     def __on_msa_selected(self, msa: MultipleSeqAlignment):

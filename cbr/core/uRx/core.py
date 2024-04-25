@@ -61,8 +61,15 @@ class SubscriptionComposite(SubscriptionBase):
             except Exception as e:
                 exn = e
 
+        self.__subscriptions = []
+
         if exn is not None:
             raise exn
+        
+    def append(self, *subscriptions: SubscriptionBase) -> None:
+
+        for subscription in subscriptions:
+            self.__subscriptions.append(subscription)
 
 class ObservableBase(Generic[TValue]):
 
