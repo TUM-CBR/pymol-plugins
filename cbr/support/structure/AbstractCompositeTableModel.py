@@ -88,6 +88,7 @@ class AbstractCompositeTableModel(QAbstractTableModel, Generic[TModelRecord]):
         super().__init__(parent)
         self.__views: Sequence[AbstractRecordView[TModelRecord]] = []
         self.__records: Dict[ModelKey, TModelRecord] = {}
+        self.__records_count: int = 0
         self.__headers: Sequence[ViewHeaderSpec] = []
         self.__orientation: Qt.Orientation = Qt.Orientation.Vertical
         self.__qt_attributes: Dict[ModelKey, ViewRecordAttributes] = {}
@@ -128,7 +129,7 @@ class AbstractCompositeTableModel(QAbstractTableModel, Generic[TModelRecord]):
         self.__ensure_data_version()
 
         if self.__orientation == Qt.Orientation.Vertical:
-            return len(self.__records)
+            return self.__records_count
         else:
             return len(self.__headers)
         
@@ -139,7 +140,7 @@ class AbstractCompositeTableModel(QAbstractTableModel, Generic[TModelRecord]):
         if self.__orientation == Qt.Orientation.Vertical:
             return len(self.__headers)
         else:
-            return len(self.__records)
+            return self.__records_count
         
     def __get_key(self, index: QModelIndex) -> ModelKey:
         return (index.row(), index.column())
@@ -218,7 +219,8 @@ class AbstractCompositeTableModel(QAbstractTableModel, Generic[TModelRecord]):
             for header in attributes.headers
         ]
         self.__orientation = self.__orientation__()
-        self.__records = records_dict = {} 
+        self.__records = records_dict = {}
+        self.__records_count = len(records)
         self.__qt_attributes = qt_dict = {}
 
         for state in self.__structures_state.values():

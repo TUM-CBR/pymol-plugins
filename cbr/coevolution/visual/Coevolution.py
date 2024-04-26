@@ -2,9 +2,9 @@ from Bio.Align import MultipleSeqAlignment
 from Bio import AlignIO
 import numpy as np
 from os import path
-from typing import Dict, NamedTuple, Optional, Sequence
+from typing import Dict, List, NamedTuple, Optional, Sequence
 
-from PyQt5.QtCore import QModelIndex, QObject, Qt, pyqtSlot
+from PyQt5.QtCore import QModelIndex, QObject, pyqtSlot
 from PyQt5.QtWidgets import QAbstractItemView, QWidget
 from PyQt5.QtGui import QColor
 
@@ -13,8 +13,10 @@ from ...core.Qt.QtWidgets import show_error, show_exception
 from ...core.pymol.structure import StructureSelection
 from ...clustal.Clustal import Clustal, get_clustal_from_context
 from ...extra.CbrExtraInteractive import CbrExtraInteractive, CbrProcessExit, MessageQueingPolicy, run_interactive
+from ...support.display.sequence import RESIDUE_COLORS
 from ...support.msa.MsaSelector import MsaSelector
-from ...support.structure.AbstractCompositeTableModel import AbstractCompositeTableModel, AbstractRecordView
+from ...support.structure.AbstractCompositeTableModel import DEFAULT_PYMOL_ATTRIBUTES, AbstractCompositeTableModel, AbstractRecordView, PymolRecordAttributes, ViewHeaderSpec, ViewRecords, ViewRecordAttributes
+from ...support.structure.MultiStructureSelector import MultiStructureSelector
 from ...support.structure.StructuresAlignmentMapper import StructuresAlignmentMapper
 from ...support.structure.StructurePositionView  import PositionEntry, PositionsAndColor, StructurePositionView
 from ..data import *
@@ -73,6 +75,59 @@ class CoevolutionResultEntry(NamedTuple):
             ]
         )
 
+class CoevolutionScoreView(AbstractRecordView[CoevolutionResultEntry]):
+
+    K_RESIDUE_1 = "local residue"
+    K_RESIDUE_2 = "other residue"
+    K_SCORE = "score"
+    K_OCCURRENCE = "occurrence"
+    K_EXCLUSIVITY = "exclusivity score"
+    K_SYMMETRY = "symmetry score"
+    K_CONFIDENCE = "confidence score"
+
+    HEADERS = [
+        K_RESIDUE_1,
+        K_RESIDUE_2,
+        K_SCORE,
+        K_OCCURRENCE,
+        K_EXCLUSIVITY,
+        K_SYMMETRY,
+        K_CONFIDENCE
+    ]
+
+    SCORE_LOW = np.array([255, 0, 0, 128])
+    SCORE_HIGH = np.array([0, 255, 0, 128])
+    SCORE_SPREAD = SCORE_HIGH - SCORE_LOW
+
+    PYMOL_ATTRIBUTES = [DEFAULT_PYMOL_ATTRIBUTES] * len(HEADERS)
+
+    def __get_score_color(self, score: float) -> QColor:
+        score = min(1, max(0, score))
+        return QColor(*(self.SCORE_LOW + self.SCORE_SPREAD*score))
+
+    def __to_qt_attributes(self, record: CoevolutionResultEntry) -> List[ViewRecordAttributes]:
+        entry = record.coevolution_result
+        return [
+            ViewRecordAttributes(entry.residue_1, RESIDUE_COLORS[entry.residue_1.upper()]),
+            ViewRecordAttributes(entry.residue_2, RESIDUE_COLORS[entry.residue_2.upper()]),
+            ViewRecordAttributes(entry.score, self.__get_score_color(entry.score)),
+            ViewRecordAttributes(entry.score_occurence, self.__get_score_color(entry.score_occurence)),
+            ViewRecordAttributes(entry.score_exclusivity, self.__get_score_color(entry.score_exclusivity)),
+            ViewRecordAttributes(entry.score_symmetry, self.__get_score_color(entry.score_symmetry)),
+            ViewRecordAttributes(entry.score_confidence, self.__get_score_color(entry.score_confidence))
+        ]
+    
+    def __to_pymol_attributes(self, _record: CoevolutionResultEntry) -> List[PymolRecordAttributes]:
+        return self.PYMOL_ATTRIBUTES
+
+    def attributes(self, records: Sequence[CoevolutionResultEntry]) -> ViewRecords:
+        return ViewRecords(
+            headers=[ViewHeaderSpec(h) for h in self.HEADERS],
+            qt_attributes=[self.__to_qt_attributes(r) for r in records],
+            pymol_attributes=[self.__to_pymol_attributes(r) for r in records]
+        )
+
+
 class CoevolutionResultTableModel(AbstractCompositeTableModel[CoevolutionResultEntry]):
 
     def __init__(
@@ -88,11 +143,14 @@ class CoevolutionResultTableModel(AbstractCompositeTableModel[CoevolutionResultE
         self.__structure_view: StructurePositionView[CoevolutionResultEntry] = StructurePositionView(
             clustal,
             lambda _msa, model: model.to_position_entry(),
-            msa=msa
+            msa=msa,
+            parent=self
         )
 
+        self.__score_view = CoevolutionScoreView(self)
+
     def __views__(self) -> Sequence[AbstractRecordView[CoevolutionResultEntry]]:
-        return [self.__structure_view]
+        return [self.__structure_view, self.__score_view]
     
     def set_alignment(self, msa: MultipleSeqAlignment):
         self.__structure_view.set_alignment(msa)
@@ -183,6 +241,7 @@ class Coevolution(QWidget):
             selected_file_label=self.__ui.selectedAlignmentLabel
         )
         self.__msa_seletor.msa_file_selected.connect(self.__on_msa_selected)
+        self.__msa: Optional[MultipleSeqAlignment] = None
 
         self.__alignment_model = CoevolutionOverviewModel(clustal)
         self.__ui.alignmentTable.setModel(self.__alignment_model)
@@ -196,8 +255,20 @@ class Coevolution(QWidget):
         self.__coevolution_manager: Optional[CoevolultionHandler] = None
 
         self.__results_by_position: Dict[int, CoevolutionPosition] = {}
+        self.__structure_selector: MultiStructureSelector = MultiStructureSelector(1, None)
+        self.__ui.selectStructureButton.clicked.connect(self.__on_slelect_structure)
 
         self.__set_busy(False)
+
+    @pyqtSlot()
+    def __on_slelect_structure(self):
+
+        msa = self.__msa
+
+        if msa is None:
+            show_error(self, "Missing Alignment", "You must first select an alignment")
+        else:
+            self.__structure_selector.exec_with_sequences([seq.id for seq in msa])
 
     def __set_busy(self, busy: bool):
 
@@ -305,6 +376,7 @@ class Coevolution(QWidget):
     @pyqtSlot(object)
     def __on_msa_selected(self, msa: MultipleSeqAlignment):
 
+        self.__msa = msa
         self.__alignment_model.set_alignment(msa)
         self.__results_model.set_alignment(msa)
         self.__run_interactive_process(msa)
