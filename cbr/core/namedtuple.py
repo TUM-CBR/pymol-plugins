@@ -39,8 +39,24 @@ def get_list_arg(type: Type[Any]) -> Optional[Type[Any]]:
     else:
         return None
     
-def is_namedtuple(type: Type[Any]) -> bool:
-    return issubclass(type, tuple) and hasattr(cast(Any, type), "__annotations__")
+def get_dict_args(test_type: Type[Any]) -> Optional[Tuple[Type[Any], Type[Any]]]:
+
+    targs = get_targs(test_type)
+
+    if targs is None or len(targs) != 2:
+        return None
+    
+    targ0, targ1 = targs
+
+    if test_type == Dict[targ0, targ1]:
+        return targs
+    else:
+        return None
+    
+def is_namedtuple(test_type: Type[Any]) -> bool:
+    return isinstance(test_type, type) \
+        and issubclass(test_type, tuple) \
+        and hasattr(cast(Any, test_type), "__annotations__")
 
 def handle_value(type: Type[Any], value: Any) -> Any:
 
@@ -53,13 +69,20 @@ def handle_value(type: Type[Any], value: Any) -> Any:
 
     primitive = PRIMITIVES.get(type)
     list_type = get_list_arg(type)
+    dict_types = get_dict_args(type)
 
     if primitive is not None:
         return primitive(value)
-    elif is_namedtuple(type) and isinstance(value, dict):
-        return parse(cast(Any, type), cast(Any, value))
     elif list_type is not None and isinstance(value, list):
         return [handle_value(list_type, cast(Any, v)) for v in value]
+    elif dict_types is not None and isinstance(value, dict):
+        t_key, t_value = dict_types
+        return {
+            handle_value(t_key, k): handle_value(t_value, v)
+            for k,v in value.items()
+        }
+    elif is_namedtuple(type) and isinstance(value, dict):
+        return parse(cast(Any, type), cast(Any, value))
     else:
         raise ValueError(f"Cannot parse type {type} with value {value}")
 

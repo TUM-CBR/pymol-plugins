@@ -11,9 +11,9 @@ class Scoring(NamedTuple):
     provided here.
     """
 
-    occurence_weight: float = 1
     exclusivity_weight: float = 1
-    conserved_weight: float = 1
+    confidence_weight: float = 1
+    symmetry_weight: float = 1
 
 class Query(NamedTuple):
     positions: List[int]
@@ -25,9 +25,9 @@ class InteractiveRequest(NamedTuple):
 
 def scoring_serialize(scoring: Scoring) -> Dict[Any, Any]:
     return {
-        "occurence_weight": scoring.conserved_weight,
+        "symmetry_weight": scoring.symmetry_weight,
         "exclusivity_weight": scoring.exclusivity_weight,
-        "conserved_weight": scoring.conserved_weight
+        "confidence_weight": scoring.confidence_weight
     }
 
 def query_serializer(query: Query) -> Dict[Any, Any]:
@@ -54,7 +54,8 @@ class CoevolutionEntry(NamedTuple):
     score: float
     score_occurence: float
     score_exclusivity: float
-    score_conserved: float
+    score_confidence: float
+    score_symmetry: float
 
 class CoevolutionPosition(NamedTuple):
     position: int
@@ -67,6 +68,7 @@ class InteractiveResponse(NamedTuple):
     coevolution: Optional[CoevolutionResults]
 
 def interactive_response_parser_implementation(value: Dict[Any, Any]) -> InteractiveResponse:
+    print("starting the parser...")
     return namedtuple.parse(InteractiveResponse, value)
 
 interactive_response_parser : MessageParser[InteractiveResponse] = interactive_response_parser_implementation

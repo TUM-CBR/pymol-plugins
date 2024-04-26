@@ -1,7 +1,6 @@
 from abc import abstractmethod
 from enum import Enum
-from multiprocessing import process
-from typing import Any, Callable, cast, Dict, Generic, List, NamedTuple, Optional, TypeVar
+from typing import Any, Callable, cast, Dict, Generic, List, NamedTuple, Optional, Tuple, TypeVar
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QProcess
 
 from ..core.uRx.core import Observable
@@ -129,6 +128,12 @@ class CbrExtraInteractiveHandlerBase(QObject):
     def __should_handle__(self, message: InteractiveOutput) -> bool:
         return True
     
+    def __run_parser(self, payload: Dict[Any, Any]) -> Tuple[Any, Any]:
+        try:
+            return (self.__parse_message_base__(payload), None)
+        except Exception as e:
+            return (None, e)
+
     def on_message(self, message: InteractiveOutput):
 
         if not self.__should_handle__(message):
@@ -136,14 +141,17 @@ class CbrExtraInteractiveHandlerBase(QObject):
         
         value = message.value
         input_uids = []
+        parse_error = None
         if value is not None:
             input_uids = value.input_uids
-            payload = self.__parse_message_base__(value.payload)
+            (payload, parse_error) = self.__run_parser(value.payload)
         else:
             payload = None
 
         error = message.error
-        if error is not None:
+        if parse_error is not None:
+            error_message = str(parse_error)
+        elif error is not None:
             input_uids = error.input_uids
             error_message = error.message
         else:

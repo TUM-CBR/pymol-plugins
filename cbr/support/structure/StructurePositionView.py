@@ -171,6 +171,8 @@ class AbstractStructurePositionView(AbstractRecordView[TModelRecord]):
             for entry in self.__structures
         ])
 
+        self.content_changed.emit(self)
+
     def __record_to_position__(self, msa: MultipleSeqAlignment, record: TModelRecord) -> Optional[PositionEntry]:
         raise NotImplementedError("The function __record_to_position__ must be implemented.")
     

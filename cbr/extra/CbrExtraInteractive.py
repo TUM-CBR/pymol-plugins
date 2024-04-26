@@ -16,7 +16,7 @@ class CbrExtraInteractive(Generic[TMessageIn, TMessageOut]):
         queing_policy: MessageQueingPolicy
     ):
         self.__manager: CbrExtraInteractiveManager = manager
-        self.__handler: CbrExtraInteractiveHandler[TMessageIn, TMessageOut] = CbrExtraInteractiveHandler(manager, parser, serializer, queing_policy)
+        self.__handler: CbrExtraInteractiveHandler[TMessageIn, TMessageOut] = manager.message_handler(parser, serializer, queing_policy)
         self.__subscriptions = SubscriptionComposite([])
 
     def stop(self) -> None:

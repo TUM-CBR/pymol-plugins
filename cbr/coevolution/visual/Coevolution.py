@@ -97,9 +97,6 @@ class CoevolutionResultTableModel(AbstractCompositeTableModel[CoevolutionResultE
     def set_alignment(self, msa: MultipleSeqAlignment):
         self.__structure_view.set_alignment(msa)
 
-    def __orientation__(self) -> Qt.Orientation:
-        return Qt.Orientation.Horizontal
-
     def set_results(self, results: CoevolutionPosition):
 
         positions = list(results.by_position.keys())
@@ -114,6 +111,8 @@ class CoevolutionResultTableModel(AbstractCompositeTableModel[CoevolutionResultE
             )
             for position in positions
         ]
+
+        self.records_reset.emit()
 
     def __records__(self) -> Sequence[CoevolutionResultEntry]:
         return self.__records
@@ -146,9 +145,6 @@ class CoevolutionOverviewModel(AbstractCompositeTableModel[CoevolutionOverviewEn
             lambda _msa, model: model.to_position_entry(),
             msa=msa
         )
-
-    def __orientation__(self) -> Qt.Orientation:
-        return Qt.Orientation.Horizontal
 
     def set_alignment(self, msa: MultipleSeqAlignment):
 
@@ -191,7 +187,7 @@ class Coevolution(QWidget):
         self.__alignment_model = CoevolutionOverviewModel(clustal)
         self.__ui.alignmentTable.setModel(self.__alignment_model)
         self.__ui.alignmentTable.doubleClicked.connect(self.__on_position_selected)
-        self.__ui.alignmentTable.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectColumns)
+        self.__ui.alignmentTable.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
 
         self.__results_model = CoevolutionResultTableModel(clustal)
         self.__ui.detailsTable.setModel(self.__results_model)
@@ -243,6 +239,9 @@ class Coevolution(QWidget):
             previous.stop()
             previous.dispose_subscriptions()
             self.__set_busy(False)
+
+        self.__alignment_model.set_alignment(msa)
+        self.__results_model.set_alignment(msa)
 
         msa_tmp_file = path.join(self.__working_directory, self.MSA_FILENAME)
 

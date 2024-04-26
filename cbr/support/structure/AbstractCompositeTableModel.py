@@ -1,7 +1,7 @@
 import pymol
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, QAbstractTableModel, QModelIndex, QObject, Qt
 from PyQt5.QtGui import QColor
-from typing import Any, Dict, Generic, Iterator, NamedTuple, Optional, Sequence, TypeVar, Union
+from typing import Any, Dict, Generic, Iterator, NamedTuple, Optional, Sequence, Tuple, TypeVar, Union
 
 from ...core.color import to_pymol_color
 from ...core.pymol.structure import StructureSelection
@@ -72,25 +72,31 @@ class AbstractRecordView(QObject, Generic[TModelRecord]):
             pymol_attributes=[self.EMPTY_PYMOL_RECORDS for _record in records]
         )
 
+ModelKey = Tuple[int, int]
+
 class IndexEntry(NamedTuple):
-    entry_index: QModelIndex
+    entry_index: ModelKey
     view_attributes: ViewRecordAttributes
     pymol_attribtues: PymolRecordAttributes
     record: Any
 
 class AbstractCompositeTableModel(QAbstractTableModel, Generic[TModelRecord]):
 
+    records_reset = pyqtSignal()
+
     def __init__(self, parent: Optional[QObject] = None) -> None:
         super().__init__(parent)
         self.__views: Sequence[AbstractRecordView[TModelRecord]] = []
-        self.__records: Dict[QModelIndex, TModelRecord] = {}
+        self.__records: Dict[ModelKey, TModelRecord] = {}
         self.__headers: Sequence[ViewHeaderSpec] = []
         self.__orientation: Qt.Orientation = Qt.Orientation.Vertical
-        self.__qt_attributes: Dict[QModelIndex, ViewRecordAttributes] = {}
+        self.__qt_attributes: Dict[ModelKey, ViewRecordAttributes] = {}
         self.__structures_state: Dict[str, PymolStructureState] = {}
 
         self.__view_data_version = 1
         self.__current_data_version = 0
+
+        self.records_reset.connect(self.__on_records_reset)
 
     def __records__(self) -> Sequence[TModelRecord]:
         raise NotImplementedError("The function __records__ must have an implementation.")
@@ -106,8 +112,20 @@ class AbstractCompositeTableModel(QAbstractTableModel, Generic[TModelRecord]):
         """
 
         return Qt.Orientation.Vertical
+    
+    def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
+
+        if role != Qt.ItemDataRole.DisplayRole:
+            return
+
+        if self.__orientation != orientation:
+            return self.__headers[section].name
+        else:
+            return None
 
     def rowCount(self, parent: Optional[QModelIndex] = None) -> int:
+
+        self.__ensure_data_version()
 
         if self.__orientation == Qt.Orientation.Vertical:
             return len(self.__records)
@@ -115,13 +133,20 @@ class AbstractCompositeTableModel(QAbstractTableModel, Generic[TModelRecord]):
             return len(self.__headers)
         
     def columnCount(self, parent: Optional[QModelIndex] = None) -> int:
+
+        self.__ensure_data_version()
+
         if self.__orientation == Qt.Orientation.Vertical:
             return len(self.__headers)
         else:
             return len(self.__records)
         
+    def __get_key(self, index: QModelIndex) -> ModelKey:
+        return (index.row(), index.column())
+
     def get_record(self, index: QModelIndex) -> Optional[TModelRecord]:
-        return self.__records.get(index)
+        key = self.__get_key(index)
+        return self.__records.get(key)
         
     def __enumerate_attributes(
         self,
@@ -152,16 +177,23 @@ class AbstractCompositeTableModel(QAbstractTableModel, Generic[TModelRecord]):
                 for i_header,(qt_attributes, pymol_attributes) in enumerate(zip(qt_attribute_list, pymol_attribute_list)):
 
                     if self.__orientation == Qt.Orientation.Vertical:
-                        index = self.index(i_record, i_header + i_header_offset)
+                        index = (i_record, i_header + i_header_offset)
                     else:
-                        index = self.index(i_header + i_header_offset, i_record)
+                        index = (i_header + i_header_offset, i_record)
 
                     yield IndexEntry(index, qt_attributes, pymol_attributes, record)
 
             i_header_offset += headers_len
 
+    @pyqtSlot()
+    def __on_records_reset(self):
+        self.__full_reset()
+
     @pyqtSlot(QObject)
     def __on_content_changed(self, view: AbstractRecordView[TModelRecord]):
+        self.__full_reset()
+
+    def __full_reset(self):
         self.__setup()
         self.modelReset.emit()
     
@@ -195,7 +227,7 @@ class AbstractCompositeTableModel(QAbstractTableModel, Generic[TModelRecord]):
         self.__structures_state = {}
 
         for entry in self.__enumerate_attributes(records, views_attributes):
-            index = entry.index
+            index = entry.entry_index
             qt_dict[index] = entry.view_attributes
             records_dict[index] = entry.record
             pymol_attributes = entry.pymol_attribtues
@@ -225,9 +257,8 @@ class AbstractCompositeTableModel(QAbstractTableModel, Generic[TModelRecord]):
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
 
-        self.__ensure_data_version()
-
-        record = self.__qt_attributes.get(index)
+        key = self.__get_key(index)
+        record = self.__qt_attributes.get(key)
 
         if record is None:
             return None
