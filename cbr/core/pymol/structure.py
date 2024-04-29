@@ -3,6 +3,13 @@ import pymol
 
 from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence, Tuple, TypeVar
 
+class ColorIndex(NamedTuple):
+    resv: int
+    name: str
+    chain: str
+
+StructureColors = Dict[ColorIndex, int]
+
 class StructureSelection(NamedTuple):
     structure_name : str
     chain_name : Optional[str]
@@ -71,23 +78,32 @@ class StructureSelection(NamedTuple):
 
         return result
     
-    def get_color_indexes(self) -> Dict[int, int]:
-        colors : Dict[int, int] = {}
+    def get_color_indexes(self) -> Dict[ColorIndex, int]:
+        colors : Dict[ColorIndex, int] = {}
 
-        def apply(resv: int, color: int):
-            colors[resv] = color
+        def apply(resv: int, name: str, chain: str, color: int):
+            colors[ColorIndex(resv, name, chain)] = color
 
         pymol.cmd.iterate(
             self.base_query,
-            'apply(resv, color)',
+            'apply(resv, name, chain, color)',
             space={'apply': apply}
         )
 
         return colors
     
-    def set_colors(self, color_indexes: Dict[int, int]):
-        for resv, color in color_indexes.items():
-            pymol.cmd.color(color, self.residue_selection([resv]))
+    def set_colors(self, color_indexes: Dict[ColorIndex, int]):
+
+        def apply(resv: int, name: str, chain: str, color: int):
+            return color_indexes.get(ColorIndex(resv, name, chain), color)
+
+        pymol.cmd.alter(
+            self.base_query,
+            'color = apply(resv, name, chain, color)',
+            space = {'apply': apply}
+        )
+
+        pymol.cmd.recolor(self.base_query)
 
 def get_structure_query(structure_name : str, chain : 'str | None' = None) -> str:
     if chain:

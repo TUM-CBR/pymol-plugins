@@ -5,7 +5,7 @@ from os import path
 from typing import Dict, List, NamedTuple, Optional, Sequence
 
 from PyQt5.QtCore import QModelIndex, QObject, pyqtSlot
-from PyQt5.QtWidgets import QAbstractItemView, QWidget
+from PyQt5.QtWidgets import QAbstractItemView, QDialog, QWidget
 from PyQt5.QtGui import QColor
 
 from ...core.Context import Context
@@ -18,7 +18,7 @@ from ...support.msa.MsaSelector import MsaSelector
 from ...support.structure.AbstractCompositeTableModel import DEFAULT_PYMOL_ATTRIBUTES, AbstractCompositeTableModel, AbstractRecordView, PymolRecordAttributes, ViewHeaderSpec, ViewRecords, ViewRecordAttributes
 from ...support.structure.MultiStructureSelector import MultiStructureSelector
 from ...support.structure.StructuresAlignmentMapper import StructuresAlignmentMapper
-from ...support.structure.StructurePositionView  import PositionEntry, PositionsAndColor, StructurePositionView
+from ...support.structure.StructurePositionView  import PositionEntry, PositionsWithAttributes, SetStructureArg, StructurePositionView
 from ..data import *
 from .Ui_coevolution import Ui_Coevolution
 
@@ -47,8 +47,8 @@ class ReferenceStructureEntry(NamedTuple):
             msa_to_resv
         )
 
-SCORE_COLOR_LOW = np.array([128,128,0], dtype=np.int8)
-SCORE_COLOR_HIGH = np.array([0, 255, 0], dtype=np.int8)
+SCORE_COLOR_LOW = np.array([128,128,0], dtype=np.uint8)
+SCORE_COLOR_HIGH = np.array([0, 255, 0], dtype=np.uint8)
 SCORE_COLOR_SPREAD = SCORE_COLOR_HIGH - SCORE_COLOR_LOW
 
 class CoevolutionResultEntry(NamedTuple):
@@ -57,7 +57,7 @@ class CoevolutionResultEntry(NamedTuple):
 
     @classmethod
     def color(cls, score: float):
-        result = (SCORE_COLOR_LOW + (SCORE_COLOR_SPREAD * score)).astype(np.int8)
+        result = (SCORE_COLOR_LOW + (SCORE_COLOR_SPREAD * score)).astype(np.uint8)
         return QColor(
             result[0],
             result[1],
@@ -67,8 +67,8 @@ class CoevolutionResultEntry(NamedTuple):
     def to_position_entry(self) -> PositionEntry:
 
         return PositionEntry(
-            positions_and_colors = [
-                PositionsAndColor(
+            positions_with_attributes = [
+                PositionsWithAttributes(
                     positions=[self.position],
                     structure_color=self.color(self.coevolution_result.score)
                 )
@@ -149,6 +149,9 @@ class CoevolutionResultTableModel(AbstractCompositeTableModel[CoevolutionResultE
 
         self.__score_view = CoevolutionScoreView(self)
 
+    def set_structures(self, structures: Sequence[SetStructureArg]):
+        self.__structure_view.set_structures(structures)
+
     def __views__(self) -> Sequence[AbstractRecordView[CoevolutionResultEntry]]:
         return [self.__structure_view, self.__score_view]
     
@@ -181,8 +184,8 @@ class CoevolutionOverviewEntry(NamedTuple):
     def to_position_entry(self) -> PositionEntry:
 
         return PositionEntry(
-            positions_and_colors = [
-                PositionsAndColor(
+            positions_with_attributes = [
+                PositionsWithAttributes(
                     positions=[self.position]
                 )
             ]
@@ -212,6 +215,9 @@ class CoevolutionOverviewModel(AbstractCompositeTableModel[CoevolutionOverviewEn
         ]
 
         self.__msa_view.set_alignment(msa)
+
+    def set_structures(self, structures: Sequence[SetStructureArg]):
+        self.__msa_view.set_structures(structures)
 
     def __records__(self) -> Sequence[CoevolutionOverviewEntry]:
         return self.__records
@@ -267,8 +273,14 @@ class Coevolution(QWidget):
 
         if msa is None:
             show_error(self, "Missing Alignment", "You must first select an alignment")
-        else:
-            self.__structure_selector.exec_with_sequences([seq.id for seq in msa])
+        elif self.__structure_selector.exec_with_sequences([seq.id for seq in msa]) == QDialog.DialogCode.Accepted:
+
+            selected = [
+                SetStructureArg(seq.structure, seq.sequence)
+                for seq in self.__structure_selector.selected_sequences()
+            ]
+            self.__alignment_model.set_structures(selected)
+            self.__results_model.set_structures(selected)
 
     def __set_busy(self, busy: bool):
 
@@ -363,7 +375,7 @@ class Coevolution(QWidget):
             show_error(
                 self,
                 "Unknown Response",
-                "Received an unknown reply when running coevolution."
+                "Received an unknown result when running coevolution."
             )
 
     def __on_process_error(self, error: Exception):

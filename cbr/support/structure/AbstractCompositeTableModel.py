@@ -4,7 +4,7 @@ from PyQt5.QtGui import QColor
 from typing import Any, Dict, Generic, Iterator, NamedTuple, Optional, Sequence, Tuple, TypeVar, Union
 
 from ...core.color import to_pymol_color
-from ...core.pymol.structure import StructureSelection
+from ...core.pymol.structure import StructureColors, StructureSelection
 
 TModelRecord = TypeVar('TModelRecord')
 
@@ -40,7 +40,7 @@ DEFAULT_QT_ATTRIBUTES = ViewRecordAttributes()
 
 class PymolStructureState(NamedTuple):
     structure: StructureSelection
-    original_colors: Dict[int, int]
+    original_colors: StructureColors
 
     def restore(self):
         self.structure.set_colors(self.original_colors)

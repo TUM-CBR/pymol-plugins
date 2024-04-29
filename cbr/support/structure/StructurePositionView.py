@@ -1,93 +1,153 @@
 from Bio.Align import MultipleSeqAlignment
+from Bio.Seq import Seq
 from PyQt5.QtCore import QObject
 from PyQt5.QtGui import QColor
 from typing import Callable, Dict, Iterable, List, NamedTuple, Optional, Sequence
 
 from ...clustal.Clustal import Clustal
+from ...core.extensions import biopython as BioExtra
 from ...core.pymol.structure import StructureSelection
+from ...support.display.sequence import RESIDUE_COLORS
 
 from .AbstractCompositeTableModel import *
-from .StructuresAlignmentMapper import StructureAlignmentEntry, StructuresAlignmentMapper
+from .StructuresAlignmentMapper import StructureAlignmentEntry, StructureResidue, StructuresAlignmentMapper
 
 class SetStructureArg(NamedTuple):
     structure: StructureSelection
     reference_sequence_id: str
 
-class PositionsAndColor(NamedTuple):
+class PositionView(NamedTuple):
+    positions: Sequence[int]
+    structure_color: Optional[QColor]
+    residues: Sequence[str]
+
+class PositionsWithAttributes(NamedTuple):
     positions: Sequence[int]
     structure_color: Optional[QColor] = None
 
-    def map_to_structure(self, msa_mapping: Dict[int, int]) -> Optional['PositionsAndColor']:
+    def as_view(self, msa_mapping: Dict[int, StructureResidue]) -> Optional['PositionView']:
 
         mapped_positions = [msa_mapping[p] for p in self.positions if p in msa_mapping]
 
         if len(mapped_positions) == 0:
             return None
         else:
-            return self._replace(positions=mapped_positions)
+            return PositionView(
+                positions = [p.resv for p in mapped_positions],
+                structure_color = self.structure_color, # type: ignore
+                residues = [p.resv_name for p in mapped_positions]
+            )
 
 class PositionEntry(NamedTuple):
-    positions_and_colors: Sequence[PositionsAndColor]
+    positions_with_attributes: Sequence[PositionsWithAttributes]
 
     @property
     def positions(self) -> Sequence[int]:
         return [
             position
-            for entry in self.positions_and_colors
+            for entry in self.positions_with_attributes
             for position in entry.positions
         ]
     
-    def map_positions_and_colors(self, msa_mapping: Dict[int, int]) -> Iterable[PositionsAndColor]:
+    def map_positions(self, msa_mapping: Dict[int, StructureResidue]) -> Iterable[PositionView]:
 
         return (
             mapped
-            for p in self.positions_and_colors
-            for mapped in [p.map_to_structure(msa_mapping)]
+            for p in self.positions_with_attributes
+            for mapped in [p.as_view(msa_mapping)]
             if mapped is not None
         )
     
-    def as_view_attribute(self, msa_mapping: Optional[Dict[int, int]] = None) -> ViewRecordAttributes:
+    def view_msa(
+        self,
+        consensus: Seq
+    ) -> List[ViewRecordAttributes]:
+        
+        positions = [
+            pos
+            for attributes in self.positions_with_attributes
+            for pos in attributes.positions
+        ]
 
-        if msa_mapping is None:
-            records = self.positions_and_colors
+        names = [
+            consensus[p]
+            for p in positions
+        ]
+
+        if len(names) == 1:
+            background_color = RESIDUE_COLORS[names[0]]
         else:
-            records = self.map_positions_and_colors(msa_mapping)
+            background_color = None
 
-        display = [
-            str(p)
+        return [
+            ViewRecordAttributes(
+                display=",".join(str(p) for p in positions)
+            ),
+            ViewRecordAttributes(
+                display=",".join(n for n in names),
+                background_color=background_color
+            )
+        ]
+    
+    def view_structure(
+        self,
+        msa_mapping: Dict[int, StructureResidue]
+    ) -> List[ViewRecordAttributes]:
+
+        records = list(self.map_positions(msa_mapping))
+
+        positions = [
+            p
             for mapped in records
             for p in mapped.positions
         ]
 
-        if len(display) == 0:
-            return ViewRecordAttributes.default()
+        names = [
+            p
+            for mapped in records
+            for p in mapped.residues
+        ]
 
-        return  ViewRecordAttributes(
-            display=",".join(display)
-        )
+        assert len(positions) == len(names)
+
+        return [
+            ViewRecordAttributes(
+                display=",".join(str(p) for p in positions)
+            ),
+            ViewRecordAttributes(
+                display=",".join(n for n in names)
+            )
+        ]
     
     def as_pymol_attribute(
         self,
         structure: StructureSelection,
-        msa_mapping: Dict[int, int]
-    ) -> PymolRecordAttributes:
+        msa_mapping: Dict[int, StructureResidue]
+    ) -> List[PymolRecordAttributes]:
 
         selections: List[StructureSelection] = []
         colors: List[Optional[QColor]] = []
 
-        for mapped in self.map_positions_and_colors(msa_mapping):
+        for mapped in self.map_positions(msa_mapping):
             selections.append(structure.scoped(mapped.positions))
             colors.append(mapped.structure_color) # type: ignore
 
         assert len(selections) == len(colors), "Algorithm is inconsistent"
 
         if len(selections) == 0:
-            return PymolRecordAttributes.default()
+            attributes = [PymolRecordAttributes.default()] * AbstractStructurePositionView.attributes_per_record()
         else:
-            return PymolRecordAttributes(
-                selections=selections,
-                colors=colors
-            )
+            attributes = [
+                PymolRecordAttributes(
+                    selections=selections,
+                    colors=colors
+                ),
+                PymolRecordAttributes.default()
+            ]
+
+        assert len(attributes) == AbstractStructurePositionView.attributes_per_record()
+
+        return attributes
 
 class AbstractStructurePositionView(AbstractRecordView[TModelRecord]):
     """
@@ -103,9 +163,11 @@ class AbstractStructurePositionView(AbstractRecordView[TModelRecord]):
 
     __mapper: Optional[StructuresAlignmentMapper]
     __structures: Sequence[StructureAlignmentEntry]
-    __msa_to_resv: Sequence[Dict[int, int]]
+    __msa_to_resv: Sequence[Dict[int, StructureResidue]]
 
-    K_POSITION = "Position (msa)"
+    K_POSITION = "Position"
+    K_RES_NAME = "Residue"
+    K_RECORD_HEADERS = [K_POSITION, K_RES_NAME]
 
     def __init__(
         self,
@@ -123,15 +185,25 @@ class AbstractStructurePositionView(AbstractRecordView[TModelRecord]):
         if msa is not None:
             self.set_alignment(msa)
 
+    @classmethod
+    def attributes_per_record(cls):
+        return len(cls.K_RECORD_HEADERS)
+
     def __headers(self) -> Sequence[ViewHeaderSpec]:
         structure_headers = [
-            f"Position ({structure.structure.show()})"
+            f"{structure_header} ({structure.structure.show()})"
             for structure in self.__structures
+            for structure_header in self.K_RECORD_HEADERS
+        ]
+
+        msa_headers = [
+            f"{self.K_POSITION} (msa)",
+            f"{self.K_RES_NAME} (msa consensus)"
         ]
 
         return [
             ViewHeaderSpec(name)
-            for name in [self.K_POSITION] + structure_headers
+            for name in msa_headers + structure_headers
         ]
 
     def set_structures(self, structures: Sequence[SetStructureArg]):
@@ -176,7 +248,12 @@ class AbstractStructurePositionView(AbstractRecordView[TModelRecord]):
     def __record_to_position__(self, msa: MultipleSeqAlignment, record: TModelRecord) -> Optional[PositionEntry]:
         raise NotImplementedError("The function __record_to_position__ must be implemented.")
     
-    def __get_record_attributes(self, mapper: StructuresAlignmentMapper, record: TModelRecord) -> Sequence[ViewRecordAttributes]:
+    def __get_record_attributes(
+        self,
+        mapper: StructuresAlignmentMapper,
+        consensus: Seq,
+        record: TModelRecord
+    ) -> Sequence[ViewRecordAttributes]:
 
         position = self.__record_to_position__(mapper.msa, record)
 
@@ -185,27 +262,35 @@ class AbstractStructurePositionView(AbstractRecordView[TModelRecord]):
             structures_view = [self.DEFAULT_QT_ATTRIBUTES for _ in self.__msa_to_resv]
             return [position_view] + structures_view
 
-        position_view = position.as_view_attribute()
+        position_view = position.view_msa(consensus)
 
         structures_view = [
-            position.as_view_attribute(mapping)
+            attr
             for mapping in self.__msa_to_resv
+            for attr in position.view_structure(mapping)
         ]
 
-        return [position_view] + structures_view
+        return position_view + structures_view
     
     def __get_pymol_attributes(self, mapper: StructuresAlignmentMapper, record: TModelRecord) -> Sequence[PymolRecordAttributes]:
 
         position = self.__record_to_position__(mapper.msa, record)
 
-        if position is None:
-            return [self.DEFAULT_PYMOL_ATTRIBUTES] \
-                + [self.DEFAULT_PYMOL_ATTRIBUTES for _ in self.__msa_to_resv]
+        default_record_attributes = [self.DEFAULT_PYMOL_ATTRIBUTES] * self.attributes_per_record()
 
-        return [self.DEFAULT_PYMOL_ATTRIBUTES] + \
+        if position is None:
+            return default_record_attributes \
+                + [
+                    attr
+                    for _ in self.__msa_to_resv
+                    for attr in default_record_attributes
+                ]
+
+        return default_record_attributes + \
             [
-                position.as_pymol_attribute(structure.structure, mapping)
+                attr
                 for structure, mapping in zip(self.__structures, self.__msa_to_resv)
+                for attr in position.as_pymol_attribute(structure.structure, mapping)
             ]
 
     def attributes(self, records: Sequence[TModelRecord]) -> ViewRecords:
@@ -217,9 +302,10 @@ class AbstractStructurePositionView(AbstractRecordView[TModelRecord]):
         
         qt_attributes: Sequence[Sequence[ViewRecordAttributes]] = []
         pymol_attributes: Sequence[Sequence[PymolRecordAttributes]] = []
+        consensus = BioExtra.consensus(mapper.msa)
 
         for record in records:
-            qt_attributes.append(self.__get_record_attributes(mapper, record))
+            qt_attributes.append(self.__get_record_attributes(mapper, consensus, record))
             pymol_attributes.append(self.__get_pymol_attributes(mapper, record))
 
         return ViewRecords(
