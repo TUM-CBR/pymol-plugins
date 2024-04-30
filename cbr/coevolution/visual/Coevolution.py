@@ -10,6 +10,7 @@ from PyQt5.QtGui import QColor
 
 from ...core.Context import Context
 from ...core.Qt.QtWidgets import show_error, show_exception
+from ...core.Qt.visual.NamedTupleEditor import FieldOrientation, namedtuple_eidtor
 from ...core.pymol.structure import StructureSelection
 from ...clustal.Clustal import Clustal, get_clustal_from_context
 from ...extra.CbrExtraInteractive import CbrExtraInteractive, CbrProcessExit, MessageQueingPolicy, run_interactive
@@ -17,7 +18,7 @@ from ...support.display.sequence import RESIDUE_COLORS
 from ...support.msa.MsaSelector import MsaSelector
 from ...support.structure.AbstractCompositeTableModel import DEFAULT_PYMOL_ATTRIBUTES, AbstractCompositeTableModel, AbstractRecordView, PymolRecordAttributes, ViewHeaderSpec, ViewRecords, ViewRecordAttributes
 from ...support.structure.MultiStructureSelector import MultiStructureSelector
-from ...support.structure.StructuresAlignmentMapper import StructuresAlignmentMapper
+from ...support.structure.StructuresAlignmentMapper import StructuresAlignmentMapper, StructureAlignmentEntry
 from ...support.structure.StructurePositionView  import PositionEntry, PositionsWithAttributes, SetStructureArg, StructurePositionView
 from ..data import *
 from .Ui_coevolution import Ui_Coevolution
@@ -101,6 +102,17 @@ class CoevolutionScoreView(AbstractRecordView[CoevolutionResultEntry]):
 
     PYMOL_ATTRIBUTES = [DEFAULT_PYMOL_ATTRIBUTES] * len(HEADERS)
 
+    def __init__(self, parent: Optional[QObject] = None) -> None:
+        super().__init__(parent)
+        self.__scoped_position : Optional[int] = None
+        self.__structure_alignments: Sequence[StructureAlignmentEntry] = []
+
+    def set_structure_alignments(self, alignments: Sequence[StructureAlignmentEntry]):
+        self.__structure_alignments = alignments
+
+    def set_scoped_position(self, position: int):
+        self.__scoped_position = position
+
     def __get_score_color(self, score: float) -> QColor:
         score = min(1, max(0, score))
         return QColor(*(self.SCORE_LOW + self.SCORE_SPREAD*score))
@@ -117,14 +129,33 @@ class CoevolutionScoreView(AbstractRecordView[CoevolutionResultEntry]):
             ViewRecordAttributes(entry.score_confidence, self.__get_score_color(entry.score_confidence))
         ]
     
-    def __to_pymol_attributes(self, _record: CoevolutionResultEntry) -> List[PymolRecordAttributes]:
-        return self.PYMOL_ATTRIBUTES
+    def __to_pymol_attributes(self, i: int, record: CoevolutionResultEntry) -> List[PymolRecordAttributes]:
+
+        attrs = self.PYMOL_ATTRIBUTES
+
+        if i == 0 and self.__scoped_position is not None:
+
+            selections = [
+                alignment.structure.scoped([resv.resv])
+                for alignment in self.__structure_alignments
+                for resv in [alignment.msa_to_resv().get(self.__scoped_position)]
+                    if resv is not None
+            ]
+
+            colors = [QColor(0,0,255)] * len(selections)
+
+            attrs[0] = PymolRecordAttributes(
+                selections=selections,
+                colors=colors
+            )
+
+        return attrs
 
     def attributes(self, records: Sequence[CoevolutionResultEntry]) -> ViewRecords:
         return ViewRecords(
             headers=[ViewHeaderSpec(h) for h in self.HEADERS],
             qt_attributes=[self.__to_qt_attributes(r) for r in records],
-            pymol_attributes=[self.__to_pymol_attributes(r) for r in records]
+            pymol_attributes=[self.__to_pymol_attributes(i,r) for i,r in enumerate(records)]
         )
 
 
@@ -139,6 +170,7 @@ class CoevolutionResultTableModel(AbstractCompositeTableModel[CoevolutionResultE
         super().__init__(parent)
 
         self.__records: Sequence[CoevolutionResultEntry] = []
+        self.__scoped_position: Optional[int] = None
 
         self.__structure_view: StructurePositionView[CoevolutionResultEntry] = StructurePositionView(
             clustal,
@@ -151,6 +183,7 @@ class CoevolutionResultTableModel(AbstractCompositeTableModel[CoevolutionResultE
 
     def set_structures(self, structures: Sequence[SetStructureArg]):
         self.__structure_view.set_structures(structures)
+        self.__score_view.set_structure_alignments(self.__structure_view.structures())
 
     def __views__(self) -> Sequence[AbstractRecordView[CoevolutionResultEntry]]:
         return [self.__structure_view, self.__score_view]
@@ -158,7 +191,7 @@ class CoevolutionResultTableModel(AbstractCompositeTableModel[CoevolutionResultE
     def set_alignment(self, msa: MultipleSeqAlignment):
         self.__structure_view.set_alignment(msa)
 
-    def set_results(self, results: CoevolutionPosition):
+    def set_results(self, scoped_position: int, results: CoevolutionPosition):
 
         positions = list(results.by_position.keys())
         positions.sort(
@@ -172,8 +205,13 @@ class CoevolutionResultTableModel(AbstractCompositeTableModel[CoevolutionResultE
             )
             for position in positions
         ]
+        self.__scoped_position = scoped_position
+        self.__score_view.set_scoped_position(scoped_position)
 
         self.records_reset.emit()
+
+    def scoped_position(self) -> Optional[int]:
+        return self.__scoped_position
 
     def __records__(self) -> Sequence[CoevolutionResultEntry]:
         return self.__records
@@ -256,6 +294,8 @@ class Coevolution(QWidget):
 
         self.__results_model = CoevolutionResultTableModel(clustal)
         self.__ui.detailsTable.setModel(self.__results_model)
+        self.__ui.detailsTable.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.__ui.detailsTable.setSelectionModel(self.__results_model.selection_model())
 
         self.__working_directory = context.create_temporary_directory()
         self.__coevolution_manager: Optional[CoevolultionHandler] = None
@@ -263,6 +303,15 @@ class Coevolution(QWidget):
         self.__results_by_position: Dict[int, CoevolutionPosition] = {}
         self.__structure_selector: MultiStructureSelector = MultiStructureSelector(1, None)
         self.__ui.selectStructureButton.clicked.connect(self.__on_slelect_structure)
+
+        self.__coevolution_parameters = namedtuple_eidtor(
+            self.__ui.parametersTable,
+            Scoring(),
+            fields_orientation=FieldOrientation.Horizontal
+        )
+
+        self.__coevolution_parameters.dataChanged.connect(self.__on_parameters_changed)
+        self.__ui.resultsNumberBox.editingFinished.connect(self.__on_result_count_changed)
 
         self.__set_busy(False)
 
@@ -282,11 +331,54 @@ class Coevolution(QWidget):
             self.__alignment_model.set_structures(selected)
             self.__results_model.set_structures(selected)
 
+    @pyqtSlot(QModelIndex, QModelIndex)
+    def __on_parameters_changed(self, _start: QModelIndex, _end: QModelIndex):
+        self.__invalidate_and_update_results()
+
+    @pyqtSlot()
+    def __on_result_count_changed(self):
+        self.__invalidate_and_update_results()
+
+    def __invalidate_and_update_results(self):
+
+        # All previous results are invalidated when parameters
+        # get changed
+        self.__results_by_position = {}
+
+        scoped_position = self.__results_model.scoped_position()
+
+        if scoped_position is not None:
+            self.__query([scoped_position])
+
     def __set_busy(self, busy: bool):
 
         self.__ui.busyProgress.setVisible(busy)
         self.__ui.alignmentTable.setEnabled(not busy)
         self.__ui.detailsTable.setEnabled(not busy)
+
+    def __scoring(self):
+        score = self.__coevolution_parameters.current_values
+        assert len(score) == 1 and score[0] is not None, "Only one score should be possible"
+        return score[0]
+
+    def __query(self, positions: List[int]):
+            
+        manager = self.__coevolution_manager
+
+        if manager is None:
+            return
+
+        manager.send_message(
+            InteractiveRequest(
+                query=Query(
+                    positions=positions,
+                    max_results=self.__ui.resultsNumberBox.value(),
+                    scoring=self.__scoring()
+                ),
+            )
+        )
+
+        self.__set_busy(True)
 
     @pyqtSlot(QModelIndex)
     def __on_position_selected(self, index: QModelIndex):
@@ -301,18 +393,9 @@ class Coevolution(QWidget):
         position = record.position
 
         if position in self.__results_by_position:
-            self.__results_model.set_results(self.__results_by_position[position])
+            self.__results_model.set_results(position, self.__results_by_position[position])
         else:
-            manager.send_message(
-                InteractiveRequest(
-                    query=Query(
-                        positions=[record.position],
-                        max_results=30
-                    )
-                )
-            )
-
-            self.__set_busy(True)
+            self.__query([position])
 
     def __run_interactive_process(self, msa: MultipleSeqAlignment):
 

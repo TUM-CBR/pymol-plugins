@@ -1,7 +1,7 @@
 import pymol
-from PyQt5.QtCore import pyqtSignal, pyqtSlot, QAbstractTableModel, QModelIndex, QObject, Qt
+from PyQt5.QtCore import pyqtSignal, pyqtSlot, QAbstractItemModel, QAbstractTableModel, QItemSelection, QItemSelectionModel, QModelIndex, QObject, Qt
 from PyQt5.QtGui import QColor
-from typing import Any, Dict, Generic, Iterator, NamedTuple, Optional, Sequence, Tuple, TypeVar, Union
+from typing import Any, Dict, Generic, Iterator, List, NamedTuple, Optional, Sequence, TypeVar, Union
 
 from ...core.color import to_pymol_color
 from ...core.pymol.structure import StructureColors, StructureSelection
@@ -72,13 +72,60 @@ class AbstractRecordView(QObject, Generic[TModelRecord]):
             pymol_attributes=[self.EMPTY_PYMOL_RECORDS for _record in records]
         )
 
-ModelKey = Tuple[int, int]
+class ModelKey(NamedTuple):
+    row : int
+    column : int
+
+    @classmethod
+    def from_qmodel_index(cls, index: QModelIndex) -> 'ModelKey':
+        return ModelKey(index.row(), index.column())
 
 class IndexEntry(NamedTuple):
     entry_index: ModelKey
     view_attributes: ViewRecordAttributes
     pymol_attribtues: PymolRecordAttributes
     record: Any
+
+class CompositeTableSelectionModel(QItemSelectionModel):
+
+    def __init__(self,
+            selection_name: str = "sele",
+            model: Optional[QAbstractItemModel] = None,
+            parent: Optional[QObject] = None,
+            pymol_attributes: Optional[Dict[ModelKey, PymolRecordAttributes]] = None
+        ) -> None:
+        super().__init__(model, parent)
+
+        self.__pymol_attributes = {} if pymol_attributes is None else pymol_attributes
+        self.__selection_name = selection_name
+
+        self.selectionChanged.connect(self.__on_selection_changed)
+
+    def update_pymol_attributes(self, attributes: Dict[ModelKey, PymolRecordAttributes]):
+        self.__pymol_attributes = attributes
+
+
+    @pyqtSlot(QItemSelection, QItemSelection)
+    def __on_selection_changed(self, deselected: QItemSelection, selected: QItemSelection):
+        
+        selection = self.selection()
+
+        selectors = [
+            f"({selection.selection})"
+            for index in selection.indexes()
+            for key in [ModelKey.from_qmodel_index(index)]
+            for selection in [self.__pymol_attributes.get(key)]
+                if selection is not None and selection.selections is not None
+            for selection in selection.selections
+        ]
+
+        if len(selectors) == 0:
+            return
+
+        pymol.cmd.select(
+            self.__selection_name,
+            " or ".join(selectors)
+        )
 
 class AbstractCompositeTableModel(QAbstractTableModel, Generic[TModelRecord]):
 
@@ -93,11 +140,15 @@ class AbstractCompositeTableModel(QAbstractTableModel, Generic[TModelRecord]):
         self.__orientation: Qt.Orientation = Qt.Orientation.Vertical
         self.__qt_attributes: Dict[ModelKey, ViewRecordAttributes] = {}
         self.__structures_state: Dict[str, PymolStructureState] = {}
+        self.__selection_model: CompositeTableSelectionModel = CompositeTableSelectionModel(model=self)
 
         self.__view_data_version = 1
         self.__current_data_version = 0
 
         self.records_reset.connect(self.__on_records_reset)
+
+    def selection_model(self) -> QItemSelectionModel:
+        return self.__selection_model
 
     def __records__(self) -> Sequence[TModelRecord]:
         raise NotImplementedError("The function __records__ must have an implementation.")
@@ -143,7 +194,7 @@ class AbstractCompositeTableModel(QAbstractTableModel, Generic[TModelRecord]):
             return self.__records_count
         
     def __get_key(self, index: QModelIndex) -> ModelKey:
-        return (index.row(), index.column())
+        return ModelKey.from_qmodel_index(index)
 
     def get_record(self, index: QModelIndex) -> Optional[TModelRecord]:
         key = self.__get_key(index)
@@ -178,9 +229,9 @@ class AbstractCompositeTableModel(QAbstractTableModel, Generic[TModelRecord]):
                 for i_header,(qt_attributes, pymol_attributes) in enumerate(zip(qt_attribute_list, pymol_attribute_list)):
 
                     if self.__orientation == Qt.Orientation.Vertical:
-                        index = (i_record, i_header + i_header_offset)
+                        index = ModelKey(i_record, i_header + i_header_offset)
                     else:
-                        index = (i_header + i_header_offset, i_record)
+                        index = ModelKey(i_header + i_header_offset, i_record)
 
                     yield IndexEntry(index, qt_attributes, pymol_attributes, record)
 
@@ -222,6 +273,7 @@ class AbstractCompositeTableModel(QAbstractTableModel, Generic[TModelRecord]):
         self.__records = records_dict = {}
         self.__records_count = len(records)
         self.__qt_attributes = qt_dict = {}
+        pymol_attributes_dict: Dict[ModelKey, PymolRecordAttributes] = {}
 
         for state in self.__structures_state.values():
             state.restore()
@@ -232,7 +284,7 @@ class AbstractCompositeTableModel(QAbstractTableModel, Generic[TModelRecord]):
             index = entry.entry_index
             qt_dict[index] = entry.view_attributes
             records_dict[index] = entry.record
-            pymol_attributes = entry.pymol_attribtues
+            pymol_attributes_dict[index] = pymol_attributes = entry.pymol_attribtues
             pymol_selections = pymol_attributes.selections
             pymol_colors = pymol_attributes.colors
 
@@ -250,6 +302,8 @@ class AbstractCompositeTableModel(QAbstractTableModel, Generic[TModelRecord]):
                     to_pymol_color(color),
                     selection.selection
                 )
+
+        self.__selection_model.update_pymol_attributes(pymol_attributes_dict)
 
     def __ensure_data_version(self):
 

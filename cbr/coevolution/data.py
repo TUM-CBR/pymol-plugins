@@ -11,9 +11,13 @@ class Scoring(NamedTuple):
     provided here.
     """
 
+    occurrence_weight: float = 1
     exclusivity_weight: float = 1
-    confidence_weight: float = 1
     symmetry_weight: float = 1
+    confidence_weight: float = 1
+    confidence_treshold: float = 0.025
+    confidence_center: float = 0.5
+    confidence_concaveness: float = 8
 
 class Query(NamedTuple):
     positions: List[int]
@@ -27,7 +31,11 @@ def scoring_serialize(scoring: Scoring) -> Dict[Any, Any]:
     return {
         "symmetry_weight": scoring.symmetry_weight,
         "exclusivity_weight": scoring.exclusivity_weight,
-        "confidence_weight": scoring.confidence_weight
+        "confidence_weight": scoring.confidence_weight,
+        "occurrence_weight": scoring.occurrence_weight,
+        "confidence_treshold": scoring.confidence_treshold,
+        "confidence_center": scoring.confidence_center,
+        "confidence_concaveness": scoring.confidence_concaveness
     }
 
 def query_serializer(query: Query) -> Dict[Any, Any]:

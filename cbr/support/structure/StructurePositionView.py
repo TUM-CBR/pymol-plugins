@@ -58,6 +58,15 @@ class PositionEntry(NamedTuple):
             if mapped is not None
         )
     
+    @classmethod
+    def __get_color_from_residues(cls, names: Sequence[str]):
+        if len(names) == 1:
+            background_color = RESIDUE_COLORS[names[0]]
+        else:
+            background_color = None
+
+        return background_color
+
     def view_msa(
         self,
         consensus: Seq
@@ -74,18 +83,13 @@ class PositionEntry(NamedTuple):
             for p in positions
         ]
 
-        if len(names) == 1:
-            background_color = RESIDUE_COLORS[names[0]]
-        else:
-            background_color = None
-
         return [
             ViewRecordAttributes(
                 display=",".join(str(p) for p in positions)
             ),
             ViewRecordAttributes(
                 display=",".join(n for n in names),
-                background_color=background_color
+                background_color=self.__get_color_from_residues(names)
             )
         ]
     
@@ -115,7 +119,8 @@ class PositionEntry(NamedTuple):
                 display=",".join(str(p) for p in positions)
             ),
             ViewRecordAttributes(
-                display=",".join(n for n in names)
+                display=",".join(n for n in names),
+                background_color=self.__get_color_from_residues(names)
             )
         ]
     
@@ -205,6 +210,9 @@ class AbstractStructurePositionView(AbstractRecordView[TModelRecord]):
             ViewHeaderSpec(name)
             for name in msa_headers + structure_headers
         ]
+
+    def structures(self) -> Sequence[StructureAlignmentEntry]:
+        return self.__structures
 
     def set_structures(self, structures: Sequence[SetStructureArg]):
 
