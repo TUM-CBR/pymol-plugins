@@ -19,7 +19,7 @@ def pdb2pqr_bin():
         return os.path.join(
             os.path.dirname(__file__),
             "resources",
-            "pdb2pqr.windows",
+            "pdb2pqr",
             "pdb2pqr.exe"
         )
 
