@@ -18,8 +18,8 @@ from ...support.display.sequence import RESIDUE_COLORS
 from ...support.msa.MsaSelector import MsaSelector
 from ...support.structure.AbstractCompositeTableModel import DEFAULT_PYMOL_ATTRIBUTES, AbstractCompositeTableModel, AbstractRecordView, PymolRecordAttributes, ViewHeaderSpec, ViewRecords, ViewRecordAttributes
 from ...support.structure.MultiStructureSelector import MultiStructureSelector
-from ...support.structure.StructuresAlignmentMapper import StructuresAlignmentMapper, StructureAlignmentEntry
-from ...support.structure.StructurePositionView  import PositionEntry, PositionsWithAttributes, SetStructureArg, StructurePositionView
+from ...support.structure.StructuresAlignmentMapper import StructuresAlignmentMapper, StructureAlignmentEntry, StructureResidue
+from ...support.structure.StructurePositionView import PositionEntry, PositionsWithAttributes, SetStructureArg, StructurePositionView
 from ..data import *
 from .Ui_coevolution import Ui_Coevolution
 
@@ -244,6 +244,7 @@ class CoevolutionOverviewModel(AbstractCompositeTableModel[CoevolutionOverviewEn
             lambda _msa, model: model.to_position_entry(),
             msa=msa
         )
+        self.__structure_maps : Dict[str, Dict[int, StructureResidue]] = {}
 
     def set_alignment(self, msa: MultipleSeqAlignment):
 
@@ -256,6 +257,17 @@ class CoevolutionOverviewModel(AbstractCompositeTableModel[CoevolutionOverviewEn
 
     def set_structures(self, structures: Sequence[SetStructureArg]):
         self.__msa_view.set_structures(structures)
+        self.__structure_maps = {
+            structure.structure.show(): structure.msa_to_resv()
+            for structure in self.__msa_view.structures()
+        }
+
+    def get_structures_residues_at(self, msa_position: int) -> List[str]:
+        return [
+            resi.resv_name
+            for mapping in self.__structure_maps.values()
+            for resi in [mapping.get(msa_position)] if resi is not None
+        ]
 
     def __records__(self) -> Sequence[CoevolutionOverviewEntry]:
         return self.__records
@@ -312,6 +324,7 @@ class Coevolution(QWidget):
 
         self.__coevolution_parameters.dataChanged.connect(self.__on_parameters_changed)
         self.__ui.resultsNumberBox.editingFinished.connect(self.__on_result_count_changed)
+        self.__ui.onlyStructureCombo.stateChanged.connect(self.__on_only_structure_changed)
 
         self.__set_busy(False)
 
@@ -338,6 +351,11 @@ class Coevolution(QWidget):
     @pyqtSlot()
     def __on_result_count_changed(self):
         self.__invalidate_and_update_results()
+
+    @pyqtSlot(int)
+    def __on_only_structure_changed(self, state: int):
+        self.__invalidate_and_update_results()
+
 
     def __invalidate_and_update_results(self):
 
@@ -367,13 +385,24 @@ class Coevolution(QWidget):
 
         if manager is None:
             return
+        
+        if self.__ui.onlyStructureCombo.isChecked():
+            included_residues = {
+                pos: residues
+                for pos in positions
+                for residues in [self.__alignment_model.get_structures_residues_at(pos)]
+                    if len(residues) > 0
+            }
+        else:
+            included_residues = None
 
         manager.send_message(
             InteractiveRequest(
                 query=Query(
                     positions=positions,
                     max_results=self.__ui.resultsNumberBox.value(),
-                    scoring=self.__scoring()
+                    scoring=self.__scoring(),
+                    included_residues=included_residues
                 ),
             )
         )

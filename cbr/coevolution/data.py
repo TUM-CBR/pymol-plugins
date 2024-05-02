@@ -23,6 +23,7 @@ class Query(NamedTuple):
     positions: List[int]
     max_results: int
     scoring: Scoring = Scoring()
+    included_residues: Optional[Dict[int, List[str]]] = None
 
 class InteractiveRequest(NamedTuple):
     query: Optional[Query]
@@ -42,7 +43,8 @@ def query_serializer(query: Query) -> Dict[Any, Any]:
     return {
         "positions": query.positions,
         "max_results": query.max_results,
-        "scoring": scoring_serialize(query.scoring)
+        "scoring": scoring_serialize(query.scoring),
+        "included_residues": query.included_residues
     }
 
 def interactive_request_serializer_implementation(value: InteractiveRequest) -> Dict[Any, Any]:
