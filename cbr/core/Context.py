@@ -38,13 +38,22 @@ class Context(object):
         os.mkdir(directory)
         return directory
 
-    def __get_application_directory(self):
+    def __get_application_directory(self) -> str:
         return self.__ensure_directory_exists(self.__application_directory)
 
     def __components_directory(self):
         return self.__ensure_directory_exists(
             path.join(self.__get_application_directory(), "components")
         )
+    
+    def get_config_directory(self, name: str):
+
+        dir = path.join(
+            self.__get_application_directory(),
+            name
+        )
+
+        return self.__ensure_directory_exists(dir)
 
     def create_temporary_directory(self) -> str:
         directory = TemporaryDirectory()
@@ -120,6 +129,10 @@ class Context(object):
         self.__child_contexts.append(ctx)
 
         return ctx
+    
+    def close_app(self):
+        for widet in self.__widgets:
+            widet.close()
 
     def run_widget(
         self,

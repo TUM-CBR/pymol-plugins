@@ -1,9 +1,10 @@
 from io import StringIO
 import json
+from optparse import Option
 from PyQt5.QtCore import QIODevice, QObject, QProcess, pyqtSignal, pyqtSlot
 import os
 import subprocess
-from typing import Any, Callable, Dict, List, Optional, TextIO, TypeVar
+from typing import Any, Callable, Dict, List, NamedTuple, Optional, Sequence, TextIO, TypeVar
 
 NOT_FOUND_ERROR="""Only windows binaries are currently provided with 'cbr-tools'. The feature you
 are trying to use requires 'cbr-tools-extra'. Plese obtain a copy at https://github.com/TUM-CBR/cbr-tools-extra
@@ -200,3 +201,87 @@ def run_cbr_tools(
             return out_handler(out_stream)
 
     return None
+
+class CommandResult(NamedTuple):
+    std_out: StringIO
+    std_error: StringIO
+    exit_code: int
+
+class CommandInput(NamedTuple):
+    args: Sequence[str]
+    input: Optional[TextIO]
+
+class CBRCommandRunner(QObject):
+
+    command_done_signal = pyqtSignal(object)
+    command_run_signal = pyqtSignal(object)
+
+    def __init__(self, parent: Optional[QObject] = None) -> None:
+        super().__init__(parent)
+
+        self.command_run_signal.connect(self.__on_run_process)
+
+    @pyqtSlot(object)
+    def __on_run_process(self, cmd: CommandInput):
+
+        std_err = StringIO()
+        std_out = StringIO()
+
+        if os.name == "nt":
+            flags = subprocess.CREATE_NO_WINDOW
+        else:
+            flags = 0
+
+        args: List[str] = [cbrtools_bin()] + list(cmd.args)
+
+        cbr_process = subprocess.Popen(
+            args,
+            text = True,
+            stdin = subprocess.PIPE,
+            stdout = subprocess.PIPE,
+            stderr = subprocess.PIPE,
+            creationflags = flags
+        )
+
+        with cbr_process:
+
+            assert cbr_process.stdin, "Standard input is expected to be open."
+            if cmd.input is not None:
+                for text in cmd.input:
+                    cbr_process.stdin.write(text)
+            cbr_process.stdin.close()
+
+            assert cbr_process.stdout, "Standard output is expected to be open"
+            for text in cbr_process.stdout:
+                std_out.write(text)
+
+            assert cbr_process.stderr, "Standard error is expected to be open"
+            for text in cbr_process.stderr:
+                std_err.write(text)
+
+            cbr_process.wait()
+
+            result = cbr_process.returncode
+
+        std_out.seek(0)
+        std_err.seek(0)
+        self.command_done_signal.emit(
+            CommandResult(
+                std_out,
+                std_err,
+                result
+            )
+        )
+
+    def run_command(
+        self,
+        args: Sequence[str],
+        input: Optional[TextIO] = None
+    ):
+        
+        self.command_run_signal.emit(
+            CommandInput(
+                args = args,
+                input = input
+            )
+        )

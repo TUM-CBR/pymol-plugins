@@ -1,4 +1,5 @@
-from typing import Any, Callable, cast, Dict, List, NamedTuple, Optional, Tuple, Type, TypeVar
+import json
+from typing import Any, Callable, TextIO, cast, Dict, List, NamedTuple, Optional, Tuple, Type, TypeVar
 
 TModel = TypeVar('TModel', bound=NamedTuple)
 
@@ -97,3 +98,9 @@ def parse(model: Type[TModel], record: Dict[Any, Any]) -> TModel:
     ctor = cast(Any, model)
 
     return ctor(**kwargs)
+
+def load(model: Type[TModel], stream: TextIO) -> TModel:
+    return parse(
+        model,
+        json.load(stream)
+    )
