@@ -88,6 +88,10 @@ class QueryResultModel(QAbstractTableModel):
             return self.__display_role(index)
 
 class SequenceSearchWidget(QWidget):
+    """
+    This widget is the main user interface used to search for DNA material that
+    matches an input protein sequence.
+    """
 
     def __init__(
         self,
