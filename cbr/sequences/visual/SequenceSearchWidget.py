@@ -173,6 +173,9 @@ class SequenceSearchWidget(QWidget):
             )
 
     def __scan(self, search_folders: Optional[Sequence[str]] = None):
+        """
+        Run a scanning of folder to find updates for the blast database.
+        """
 
         database = self.__database
 
