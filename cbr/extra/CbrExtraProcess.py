@@ -5,6 +5,7 @@ import os
 import subprocess
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Sequence, TextIO, TypeVar
 
+
 NOT_FOUND_ERROR="""Only windows binaries are currently provided with 'cbr-tools'. The feature you
 are trying to use requires 'cbr-tools-extra'. Plese obtain a copy at https://github.com/TUM-CBR/cbr-tools-extra
 and ensure it is in your PATH.
@@ -235,6 +236,20 @@ class CBRCommandRunner(QObject):
 
     @pyqtSlot(object)
     def __on_run_process(self, cmd: CommandInput):
+
+        try:
+            self.__run_process(cmd)
+        except Exception as e:
+            self.command_done_signal.emit(
+                CommandResult(
+                    std_out = StringIO(),
+                    std_error = StringIO(str(e)),
+                    exit_code = -1,
+                    command_id=cmd.command_id
+                )
+            )
+
+    def __run_process(self, cmd: CommandInput):
 
         std_err = StringIO()
         std_out = StringIO()

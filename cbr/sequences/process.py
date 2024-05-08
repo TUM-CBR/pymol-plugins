@@ -6,6 +6,7 @@ from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 from typing import Dict, Optional, Sequence
 from warnings import warn
 
+from ..blast.blast import Blast
 from ..core import namedtuple
 from ..extra.CbrExtraProcess import CBRCommandRunner, CommandResult
 
@@ -47,9 +48,14 @@ class SequenceCommandRunner(CBRCommandRunner):
     scan_done_signal = pyqtSignal(object)
     query_done_signal = pyqtSignal(object)
 
-    def __init__(self, parent: Optional[QObject] = None) -> None:
+    def __init__(
+        self,
+        blast: Blast,
+        parent: Optional[QObject] = None
+    ) -> None:
         super().__init__(parent)
 
+        self.__blast = blast
         self.command_done_signal.connect(self.__on_command_done)
 
     @pyqtSlot(object)
@@ -72,8 +78,8 @@ class SequenceCommandRunner(CBRCommandRunner):
 
     def __default_env__(self) -> Optional[Dict[str, str]]:
         return {
-            'CBR_MAKEBLAST_DB': 'makeblastdb',
-            'CBR_TBLASTN': 'tblastn'
+            'CBR_MAKEBLAST_DB': self.__blast.makeblastdb,
+            'CBR_TBLASTN': self.__blast.tblastn
         }
 
     def run_scan(

@@ -54,8 +54,13 @@ jobs:
       - run: mv devops/tmp/dssp.windows/* cbr/dssp/resources/
 
       # Add the cbrextra executable
-      - run: wget -O devops/tmp/cbrextra.win64.zip https://github.com/TUM-CBR/cbr-tools-extra/releases/download/nightly-20240502/cbr-tools-extra-20240502-win64.zip
+      - run: wget -O devops/tmp/cbrextra.win64.zip https://github.com/TUM-CBR/cbr-tools-extra/releases/download/nightly-20240508/cbr-tools-extra-20240508-win64.zip
       - run: unzip -d cbr/extra/resources/ devops/tmp/cbrextra.win64.zip
+
+      # Add the blast executables
+      - run: wget -O devops/tmp/ncbi-blast.tar.gz https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/2.15.0/ncbi-blast-2.15.0+-x64-win64.tar.gz
+      - run: tar -xvf devops/tmp/ncbi-blast.tar.gz -O devops/tmp/
+      - run: mv devops/tmp/ncbi-blast-2.15.0+/* cbr/blast/resources/
 
       - name: Archive Release
         uses: thedoctor0/zip-release@0.7.1

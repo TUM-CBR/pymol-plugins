@@ -3,7 +3,6 @@ from warnings import warn
 
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
-from glob import glob
 import json
 from os import path
 from PyQt5.QtCore import QModelIndex, QObject, Qt, pyqtSlot, QAbstractTableModel, QThread
@@ -11,6 +10,7 @@ from PyQt5.QtWidgets import QDialog, QWidget
 import re
 from typing import Any, Optional, Sequence
 
+from ...blast.blast import Blast
 from ...core import namedtuple
 from ...core.Context import Context
 from ...core.Qt.QtWidgets import show_error
@@ -113,7 +113,7 @@ class SequenceSearchWidget(QWidget):
         self.__open_dialog = OpenOrCreateDialog(self.__databases_directory())
 
         self.__command_thread = QThread(self)
-        self.__command_runner = SequenceCommandRunner()
+        self.__command_runner = SequenceCommandRunner(Blast(context))
         self.__command_runner.moveToThread(self.__command_thread)
         self.__command_thread.start()
         context.on_app_close(self.__on_app_close)
@@ -137,9 +137,9 @@ class SequenceSearchWidget(QWidget):
     def __databases_directory(self):
         return self.__config_directory
     
-    def __list_databases(self) -> Sequence[str]:
-        pattern = path.join(self.__databases_directory(), '*.sqlite')
-        return list(glob(pattern))
+    #def __list_databases(self) -> Sequence[str]:
+    #    pattern = path.join(self.__databases_directory(), '*.sqlite')
+    #    return list(glob(pattern))
     
     def __write_config(self, config: SequencesConfig):
         with open(self.__config_file, 'w') as config_stream:
