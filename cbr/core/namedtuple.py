@@ -1,5 +1,5 @@
 import json
-from typing import Any, Callable, TextIO, cast, Dict, List, NamedTuple, Optional, Tuple, Type, TypeVar
+from typing import Any, Callable, Sequence, TextIO, cast, Dict, List, NamedTuple, Optional, Tuple, Type, TypeVar
 
 TModel = TypeVar('TModel', bound=NamedTuple)
 
@@ -35,7 +35,8 @@ def get_list_arg(type: Type[Any]) -> Optional[Type[Any]]:
     
     targ = targs[0]
 
-    if type == List[targ]:
+    if type == List[targ] \
+        or type == Sequence[targ]:
         return targ
     else:
         return None

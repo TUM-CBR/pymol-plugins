@@ -1,6 +1,5 @@
 from io import StringIO
 import json
-from optparse import Option
 from PyQt5.QtCore import QIODevice, QObject, QProcess, pyqtSignal, pyqtSlot
 import os
 import subprocess
@@ -11,7 +10,7 @@ are trying to use requires 'cbr-tools-extra'. Plese obtain a copy at https://git
 and ensure it is in your PATH.
 """
 
-def cbrtools_bin():
+def cbrtools_bin() -> str:
 
     if os.name == 'nt':
         return os.path.join(
@@ -23,8 +22,9 @@ def cbrtools_bin():
 
     else:
         import shutil
-        if shutil.which("cbrtools"):
-            return "cbrtools"
+        cbrtools_cmd = shutil.which("cbrtools")
+        if cbrtools_cmd is not None:
+            return cbrtools_cmd
         else:
             raise Exception(NOT_FOUND_ERROR)
 
@@ -114,7 +114,7 @@ class CbrExtraProcess(QProcess):
 
     def run_cbr_process(self, args : List[str]):
         self.setArguments(args)
-        self.start(QIODevice.ReadWrite | QIODevice.Text)
+        self.start(QIODevice.ReadWrite | QIODevice.Text) # type: ignore
 
     def write_json_dict(self, value: Dict[Any, Any]):
         message = f"{json.dumps(value)}\n"
@@ -206,10 +206,22 @@ class CommandResult(NamedTuple):
     std_out: StringIO
     std_error: StringIO
     exit_code: int
+    command_id: Any = None
+
+    def __enter__(self, *args: Any, **kwargs: Any) -> 'CommandResult':
+        self.std_out.__enter__(*args, **kwargs)
+        self.std_error.__enter__(*args, **kwargs)
+        return self
+    
+    def __exit__(self, *args: Any, **kwargs: Any):
+        self.std_out.__exit__(*args, **kwargs)
+        self.std_error.__exit__(*args, **kwargs)
 
 class CommandInput(NamedTuple):
+    command_id: Any
     args: Sequence[str]
     input: Optional[TextIO]
+    env: Optional[Dict[str, str]] = None
 
 class CBRCommandRunner(QObject):
 
@@ -233,6 +245,7 @@ class CBRCommandRunner(QObject):
             flags = 0
 
         args: List[str] = [cbrtools_bin()] + list(cmd.args)
+        print(args)
 
         cbr_process = subprocess.Popen(
             args,
@@ -240,15 +253,17 @@ class CBRCommandRunner(QObject):
             stdin = subprocess.PIPE,
             stdout = subprocess.PIPE,
             stderr = subprocess.PIPE,
-            creationflags = flags
+            creationflags = flags,
+            env = cmd.env
         )
 
-        with cbr_process:
+        std_in = cmd.input if cmd.input is not None else StringIO()
+
+        with cbr_process, std_in:
 
             assert cbr_process.stdin, "Standard input is expected to be open."
-            if cmd.input is not None:
-                for text in cmd.input:
-                    cbr_process.stdin.write(text)
+            for text in  std_in:
+                cbr_process.stdin.write(text)
             cbr_process.stdin.close()
 
             assert cbr_process.stdout, "Standard output is expected to be open"
@@ -269,19 +284,36 @@ class CBRCommandRunner(QObject):
             CommandResult(
                 std_out,
                 std_err,
-                result
+                result,
+                command_id=cmd.command_id
             )
         )
+
+    def __default_env__(self) -> Optional[Dict[str, str]]:
+        return None
+
+    def __create_env(self, env: Optional[Dict[str, str]]) -> Dict[str, str]:
+
+        return {
+            k:v
+            for current_env in [self.__default_env__(), env]
+                if current_env is not None
+            for k,v in current_env.items()
+        }
 
     def run_command(
         self,
         args: Sequence[str],
-        input: Optional[TextIO] = None
+        input: Optional[TextIO] = None,
+        command_id: Any = None,
+        env: Optional[Dict[str, str]] = None
     ):
         
         self.command_run_signal.emit(
             CommandInput(
                 args = args,
-                input = input
+                input = input,
+                command_id = command_id,
+                env=self.__create_env(env)
             )
         )

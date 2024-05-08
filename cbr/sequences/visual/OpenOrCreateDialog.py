@@ -1,13 +1,13 @@
 from os import path
-from PyQt5.QtCore import pyqtSlot, QRegularExpression
+from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QDialog, QFileDialog, QWidget
-from PyQt5.QtGui import QRegExpValidator
+import re
 from typing import List, NamedTuple, Optional, Sequence
 
 from ...core.Qt.QtWidgets import show_error
 from .Ui_CreateDatabaseDialog import Ui_CreateDatabaseDialog
 
-FILENAME_RE = r"(\w\d)+"
+FILENAME_RE = re.compile(r"(\w|\d)+")
 
 class OpenOrCreateResult(NamedTuple):
     db_file: str
@@ -26,7 +26,6 @@ class OpenOrCreateDialog(QDialog):
 
         self.__search_folders: List[str] = []
         self.__db_directory: str = db_directory
-        self.__ui.nameLineEdit.setValidator(QRegExpValidator(QRegularExpression(FILENAME_RE)))
         self.__result: Optional[OpenOrCreateResult] = None
 
         self.__ui.createButton.clicked.connect(self.__on_create_clicked)
@@ -55,14 +54,18 @@ class OpenOrCreateDialog(QDialog):
     def __on_create_clicked(self):
 
         name = self.__ui.nameLineEdit.text()
-        db_file = path.join(self.__db_directory, f"{name}.sqlite")
+        if not FILENAME_RE.fullmatch(name):
+            show_error(self, "New Database Error", f"Only letters and numbers are allowed in the database name.")
+            return
 
+        db_file = path.join(self.__db_directory, f"{name}.sqlite")
         if path.exists(db_file):
             show_error(self, "New Database Error", f"The database {name} already exits!")
             return
         
-        if len(self.__search_folders):
+        if len(self.__search_folders) < 1:
             show_error(self, "Search Folder Error", f"You must select one search folder to create the database.")
+            return
 
         self.__result = OpenOrCreateResult(db_file, self.__search_folders)
 

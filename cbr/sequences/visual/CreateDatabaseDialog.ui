@@ -6,14 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>909</width>
-    <height>580</height>
+    <width>1083</width>
+    <height>625</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout" rowstretch="0,0,0,0,0,0,0" columnstretch="0,0,0,1,0">
+  <layout class="QGridLayout" name="gridLayout" rowstretch="0,0,0,0,0,1,0" columnstretch="0,0,0,1,0">
    <item row="1" column="4">
     <widget class="QLabel" name="label_5">
      <property name="styleSheet">

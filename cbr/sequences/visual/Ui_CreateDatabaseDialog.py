@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_CreateDatabaseDialog(object):
     def setupUi(self, CreateDatabaseDialog):
         CreateDatabaseDialog.setObjectName("CreateDatabaseDialog")
-        CreateDatabaseDialog.resize(909, 580)
+        CreateDatabaseDialog.resize(1083, 625)
         self.gridLayout = QtWidgets.QGridLayout(CreateDatabaseDialog)
         self.gridLayout.setObjectName("gridLayout")
         self.label_5 = QtWidgets.QLabel(CreateDatabaseDialog)
@@ -61,6 +61,7 @@ class Ui_CreateDatabaseDialog(object):
         self.databasesTable.setObjectName("databasesTable")
         self.gridLayout.addWidget(self.databasesTable, 2, 3, 4, 2)
         self.gridLayout.setColumnStretch(3, 1)
+        self.gridLayout.setRowStretch(5, 1)
 
         self.retranslateUi(CreateDatabaseDialog)
         QtCore.QMetaObject.connectSlotsByName(CreateDatabaseDialog)

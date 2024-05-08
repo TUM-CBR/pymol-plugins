@@ -19,6 +19,7 @@ from ..frankenprot import main as FrankenProt
 from ..mpnn import main as Mpnn
 from ..msa import Applications as Msa
 from ..primer import Applications as Primer
+from ..sequences import main as  Sequences
 from ..schema import Applications as Schema
 from .AppIcon import AppIcon
 
@@ -112,6 +113,11 @@ APP_DEFINITIONS = [
          icon = "fasta.png",
          text = "Protein Compare",
          init = Compare.main
+    ),
+    AppDefinition(
+        icon = "cascades.png",
+        text = "DNA Databases",
+        init = Sequences.sequence_search_main
     )
     #AppDefinition(
     #    icon = "kinetics.png",
