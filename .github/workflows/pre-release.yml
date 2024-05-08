@@ -59,7 +59,7 @@ jobs:
 
       # Add the blast executables
       - run: wget -O devops/tmp/ncbi-blast.tar.gz https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/2.15.0/ncbi-blast-2.15.0+-x64-win64.tar.gz
-      - run: tar -xvf devops/tmp/ncbi-blast.tar.gz -O devops/tmp/
+      - run: tar -xvf devops/tmp/ncbi-blast.tar.gz -C devops/tmp/
       - run: mv devops/tmp/ncbi-blast-2.15.0+/* cbr/blast/resources/
 
       - name: Archive Release
