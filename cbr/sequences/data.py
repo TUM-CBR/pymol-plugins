@@ -24,3 +24,10 @@ class QueryResult(NamedTuple):
 
 class QueryResults(NamedTuple):
     results: Sequence[QueryResult]
+
+class ErrorResult(NamedTuple):
+    message: str
+    offending_file: str
+
+class ErrorResults(NamedTuple):
+    results: Sequence[ErrorResult]

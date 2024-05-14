@@ -269,7 +269,12 @@ class CBRCommandRunner(QObject):
             stdout = subprocess.PIPE,
             stderr = subprocess.PIPE,
             creationflags = flags,
-            env = cmd.env
+            env = {
+                k:v
+                for env_vars in [os.environ, cmd.env]
+                    if env_vars is not None
+                for k,v in env_vars.items()
+            }
         )
 
         std_in = cmd.input if cmd.input is not None else StringIO()

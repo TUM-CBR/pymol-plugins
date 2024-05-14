@@ -39,14 +39,30 @@ class RunSearchResult(NamedTuple):
         else:
             return RunSearchResult(error=result.std_error.read())
 
+class RunErrorsResult(NamedTuple):
+    results: Optional[ErrorResults] = None
+    error: Optional[str] = None
+
+    @classmethod
+    def from_command_result(cls, result: CommandResult) -> 'RunErrorsResult':
+
+        if result.exit_code == 0:
+            return RunErrorsResult(
+                results = namedtuple.load(ErrorResults, result.std_out)
+            )
+        else:
+            return RunErrorsResult(error=result.std_error.read())
+
 class CommandId(Enum):
     Scan = 0
     Query = 1
+    Errors = 2
 
 class SequenceCommandRunner(CBRCommandRunner):
 
     scan_done_signal = pyqtSignal(object)
     query_done_signal = pyqtSignal(object)
+    errors_done_signal = pyqtSignal(object)
 
     def __init__(
         self,
@@ -69,6 +85,10 @@ class SequenceCommandRunner(CBRCommandRunner):
             elif result.command_id == CommandId.Query:
                 self.query_done_signal.emit(
                     RunSearchResult.from_command_result(result)
+                )
+            elif result.command_id == CommandId.Errors:
+                self.errors_done_signal.emit(
+                    RunErrorsResult.from_command_result(result)
                 )
             else:
                 warn(
@@ -123,4 +143,16 @@ class SequenceCommandRunner(CBRCommandRunner):
             ],
             input = input_seqs,
             command_id = CommandId.Query
+        )
+
+    def run_query_errors(
+        self,
+        db_file: str
+    ):
+        self.run_command(
+            [
+                "sequences", "errors",
+                "--db-file", db_file
+            ],
+            command_id = CommandId.Errors
         )

@@ -14,13 +14,21 @@
    <string>Form</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="1" column="0" colspan="5">
-    <widget class="QSplitter" name="splitter">
-     <property name="orientation">
-      <enum>Qt::Orientation::Vertical</enum>
+   <item row="2" column="2">
+    <widget class="QPushButton" name="changeDatabase">
+     <property name="text">
+      <string>Change Databse</string>
      </property>
-     <widget class="QPlainTextEdit" name="sequenceText"/>
-     <widget class="QTableView" name="resultsTable"/>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QProgressBar" name="scanProgress">
+     <property name="maximum">
+      <number>0</number>
+     </property>
+     <property name="value">
+      <number>-1</number>
+     </property>
     </widget>
    </item>
    <item row="0" column="0" colspan="3">
@@ -34,34 +42,33 @@ font-weight: bold;</string>
      </property>
     </widget>
    </item>
-   <item row="2" column="4">
+   <item row="1" column="0" colspan="6">
+    <widget class="QSplitter" name="splitter">
+     <property name="orientation">
+      <enum>Qt::Orientation::Vertical</enum>
+     </property>
+     <widget class="QPlainTextEdit" name="sequenceText"/>
+     <widget class="QTableView" name="resultsTable"/>
+    </widget>
+   </item>
+   <item row="2" column="5">
     <widget class="QPushButton" name="searchButton">
      <property name="text">
       <string>Search</string>
      </property>
     </widget>
    </item>
-   <item row="2" column="2">
-    <widget class="QPushButton" name="changeDatabase">
-     <property name="text">
-      <string>Change Databse</string>
-     </property>
-    </widget>
-   </item>
-   <item row="2" column="3">
+   <item row="2" column="4">
     <widget class="QPushButton" name="rescanButton">
      <property name="text">
       <string>Rescan Files</string>
      </property>
     </widget>
    </item>
-   <item row="2" column="1">
-    <widget class="QProgressBar" name="scanProgress">
-     <property name="maximum">
-      <number>0</number>
-     </property>
-     <property name="value">
-      <number>-1</number>
+   <item row="2" column="3">
+    <widget class="QPushButton" name="showErrorsButton">
+     <property name="text">
+      <string>Show Errors</string>
      </property>
     </widget>
    </item>

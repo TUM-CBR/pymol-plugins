@@ -14,8 +14,9 @@ from ...blast.blast import Blast
 from ...core import namedtuple
 from ...core.Context import Context
 from ...core.Qt.QtWidgets import show_error
-from ..data import QueryResult, QueryResults, SequencesConfig
-from ..process import RunScanResult, RunSearchResult, SequenceCommandRunner
+from ...core.Qt.visual.NamedtupleEditorDialog import namedtuple_dialog, FieldOrientation
+from ..data import ErrorResult, QueryResult, QueryResults, SequencesConfig
+from ..process import RunErrorsResult, RunScanResult, RunSearchResult, SequenceCommandRunner
 from .OpenOrCreateDialog import OpenOrCreateDialog
 from .Ui_SequenceSearchWidget import Ui_SequenceSearchWidget
 
@@ -109,6 +110,7 @@ class SequenceSearchWidget(QWidget):
         self.__ui.searchButton.clicked.connect(self.__on_query_clicked)
         self.__ui.rescanButton.clicked.connect(self.__on_rescan_clicked)
         self.__ui.changeDatabase.clicked.connect(self.__on_change_database)
+        self.__ui.showErrorsButton.clicked.connect(self.__on_show_errors_clicked)
 
         self.__results_model = QueryResultModel()
         self.__ui.resultsTable.setModel(self.__results_model)
@@ -121,8 +123,11 @@ class SequenceSearchWidget(QWidget):
         self.__command_runner.moveToThread(self.__command_thread)
         self.__command_thread.start()
         context.on_app_close(self.__on_app_close)
+        
+        # CBR Extra command handler
         self.__command_runner.scan_done_signal.connect(self.__on_scan_done)
         self.__command_runner.query_done_signal.connect(self.__on_query_done)
+        self.__command_runner.errors_done_signal.connect(self.__on_show_errors_done)
 
 
         # This is always called last in the constructro
@@ -137,6 +142,7 @@ class SequenceSearchWidget(QWidget):
         self.__ui.rescanButton.setEnabled(not busy)
         self.__ui.searchButton.setEnabled(not busy)
         self.__ui.changeDatabase.setEnabled(not busy)
+        self.__ui.showErrorsButton.setEnabled(not busy)
 
     def __databases_directory(self):
         return self.__config_directory
@@ -241,6 +247,37 @@ class SequenceSearchWidget(QWidget):
     @pyqtSlot()
     def __on_query_clicked(self):
         self.__query()
+
+    @pyqtSlot(object)
+    def __on_show_errors_done(self, result: RunErrorsResult):
+
+        self.__set_busy(False)
+        results = result.results
+        errors = result.error
+
+        if results is not None:
+            errors_dialog = namedtuple_dialog(
+                *results.results,
+                tuple_type=ErrorResult,
+                fields_orientation=FieldOrientation.Horizontal
+            )
+            errors_dialog.exec()
+        elif errors is not None:
+            show_error(self, "Command Error", errors)
+
+    def __show_errors(self):
+
+        database = self.__database
+        if database is None:
+            show_error(self, "Database Error", "No database has been selected")
+            return
+
+        self.__set_busy(True)
+        self.__command_runner.run_query_errors(database)
+
+    @pyqtSlot()
+    def __on_show_errors_clicked(self):
+        self.__show_errors()
 
     def __open_or_create_database(self) -> bool:
 
