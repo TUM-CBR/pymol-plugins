@@ -128,6 +128,11 @@ class SequenceCommandRunner(CBRCommandRunner):
         db_file: str,
         sequences: Sequence[SeqRecord]
     ):
+        """
+        Query the DNA database using cbrextra tools. This is a tblastx query
+        meaning that a peptide fasta file is provided which will be used to
+        search for genes coding the sequences in said files.
+        """
         
         if len(sequences) < 1:
             raise ValueError("At least one sequence must be provided")
