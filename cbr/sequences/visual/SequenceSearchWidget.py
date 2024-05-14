@@ -5,8 +5,9 @@ from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 import json
 from os import path
-from PyQt5.QtCore import QModelIndex, QObject, Qt, pyqtSlot, QAbstractTableModel, QThread
+from PyQt5.QtCore import QModelIndex, QObject, Qt, pyqtSlot, QAbstractTableModel, QThread, QUrl
 from PyQt5.QtWidgets import QDialog, QWidget
+from PyQt5.QtGui import QDesktopServices
 import re
 from typing import Any, Optional, Sequence
 
@@ -83,6 +84,9 @@ class QueryResultModel(QAbstractTableModel):
         else:
             warn(f"SequenceSearchWidget.py: The column '{column}' is unknown")
 
+    def get_item(self, index: QModelIndex) -> QueryResult:
+        return self.__get_record(index)
+
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
 
         if role == Qt.ItemDataRole.DisplayRole:
@@ -114,6 +118,7 @@ class SequenceSearchWidget(QWidget):
 
         self.__results_model = QueryResultModel()
         self.__ui.resultsTable.setModel(self.__results_model)
+        self.__ui.resultsTable.doubleClicked.connect(self.__on_result_selected)
 
         self.__database: Optional[str] = None
         self.__open_dialog = OpenOrCreateDialog(self.__databases_directory())
@@ -146,11 +151,7 @@ class SequenceSearchWidget(QWidget):
 
     def __databases_directory(self):
         return self.__config_directory
-    
-    #def __list_databases(self) -> Sequence[str]:
-    #    pattern = path.join(self.__databases_directory(), '*.sqlite')
-    #    return list(glob(pattern))
-    
+
     def __write_config(self, config: SequencesConfig):
         with open(self.__config_file, 'w') as config_stream:
             return json.dump(
@@ -243,6 +244,16 @@ class SequenceSearchWidget(QWidget):
 
         self.__set_busy(True)
         self.__command_runner.run_query(database, seqs)
+
+    @pyqtSlot(QModelIndex)
+    def __on_result_selected(self, index: QModelIndex):
+        record = self.__results_model.get_item(index)
+
+        if record.file_location is not None:
+            directory = path.dirname(record.file_location)
+            QDesktopServices.openUrl(
+                QUrl(f"file:///{directory}")
+            )
 
     @pyqtSlot()
     def __on_query_clicked(self):
