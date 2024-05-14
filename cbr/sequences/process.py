@@ -154,6 +154,7 @@ class SequenceCommandRunner(CBRCommandRunner):
         self,
         db_file: str
     ):
+        """Query the DNA database in order to get a list of errors that occured while scanning the files."""
         self.run_command(
             [
                 "sequences", "errors",
