@@ -1,6 +1,6 @@
 from os import path
-from PyQt5.QtCore import pyqtSlot
-from PyQt5.QtWidgets import QDialog, QFileDialog, QWidget
+from PyQt5.QtCore import pyqtSlot, QModelIndex
+from PyQt5.QtWidgets import QAbstractTableModel, QDialog, QFileDialog, QWidget
 import re
 from typing import List, NamedTuple, Optional, Sequence
 
@@ -12,6 +12,15 @@ FILENAME_RE = re.compile(r"(\w|\d)+")
 class OpenOrCreateResult(NamedTuple):
     db_file: str
     search_folders: Sequence[str]
+
+class DbListModel(QAbstractTableModel):
+
+    def __init__(self, files: Sequence[str], parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.__files = files
+
+    def rowCount()
+
 
 class OpenOrCreateDialog(QDialog):
 
@@ -43,6 +52,7 @@ class OpenOrCreateDialog(QDialog):
 
         if path.exists(folder):
             self.__search_folders = [folder]
+            self.__ui.selectedFileLabel.setText(path.basename(folder))
 
     @pyqtSlot()
     def __on_cancel(self):
