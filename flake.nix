@@ -1,5 +1,5 @@
 {
-  description = "A very basic flake";
+  description = "Run pymol with cbr-tools installed.";
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-24.05";
     flake-parts.url = "github:hercules-ci/flake-parts";
@@ -27,15 +27,19 @@
       let
 	nixGL = nixGL-flake.outputs.packages.${system}.default;
 	cbr-tools-extra = cbr-tools-extra-flake.outputs.packages.${system}.default;
-	cbr-tools = import ./default.nix {
+	callPackage = pkgs.newScope {
 	  nixpkgs = pkgs;
 	  inherit nixGL cbr-tools-extra raspp-src;
 	};
+	cbr-tools = callPackage ./default.nix { };
       in
       {
 	packages = {
 	  inherit cbr-tools;
 	  default = cbr-tools;
+	};
+	devShells = {
+	  default = callPackage ./shell.nix { };
 	};
       };
     };
