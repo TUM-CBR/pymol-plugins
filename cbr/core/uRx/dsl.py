@@ -22,7 +22,7 @@ class DslContext(NamedTuple):
         if self.subscribe_callback is None:
             return
         
-        for cb  in self.subscribe_callback:
+        for cb in self.subscribe_callback:
             cb(s)
 
     def add_callback(self, *cb: SubscribeCallback) -> 'DslContext':

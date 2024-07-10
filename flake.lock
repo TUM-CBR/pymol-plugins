@@ -267,12 +267,30 @@
         "type": "indirect"
       }
     },
+    "raspp-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1707473203,
+        "narHash": "sha256-UiiiJiU/QzvH3Nu9eQKYEsKki+vadKxeOMLmxj5qKEA=",
+        "owner": "TUM-CBR",
+        "repo": "SCHEMA-RASPP",
+        "rev": "bd3befee0e99b97c28200b385f242e2e3abf9ec6",
+        "type": "github"
+      },
+      "original": {
+        "owner": "TUM-CBR",
+        "ref": "bd3befee0e99b97c28200b385f242e2e3abf9ec6",
+        "repo": "SCHEMA-RASPP",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "cbr-tools-extra-flake": "cbr-tools-extra-flake",
         "flake-parts": "flake-parts_3",
         "nixGL-flake": "nixGL-flake",
-        "nixpkgs": "nixpkgs_2"
+        "nixpkgs": "nixpkgs_2",
+        "raspp-src": "raspp-src"
       }
     },
     "systems": {

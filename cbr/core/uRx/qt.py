@@ -1,6 +1,7 @@
 from typing import Any, Callable, Sequence, Type, cast, List, Optional
 from PyQt5.QtCore import QObject, pyqtBoundSignal, pyqtSlot
 
+from . import dsl
 from .core import *
 from .dsl import *
 
@@ -39,7 +40,7 @@ class QtObservableBase(QObject, ObservableBase[TValue]):
         )
     
     def observe(self) -> Dsl[TValue]:
-        return Dsl(self)
+        return dsl.observe(self)
 
 class QtSignalObservable(QtObservableBase[TValue]):
 
