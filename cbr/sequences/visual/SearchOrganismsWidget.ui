@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SearchOrganismsWidget</class>
+ <widget class="QWidget" name="SearchOrganismsWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1298</width>
+    <height>698</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">.QComboBox {
+	min-width: 100px;
+}</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout" rowstretch="0,1,0,0">
+   <item row="3" column="1" colspan="2">
+    <widget class="QComboBox" name="taxid_combo"/>
+   </item>
+   <item row="0" column="0" colspan="3">
+    <widget class="QLabel" name="label">
+     <property name="styleSheet">
+      <string notr="true">font-size: 26px;
+font-weight: bold;</string>
+     </property>
+     <property name="text">
+      <string>Search Organisms</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="5">
+    <spacer name="horizontalSpacer">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>40</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="2" column="0">
+    <widget class="QLabel" name="label_2">
+     <property name="text">
+      <string>Name Column</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="1" colspan="2">
+    <widget class="QComboBox" name="name_combo"/>
+   </item>
+   <item row="3" column="0">
+    <widget class="QLabel" name="label_3">
+     <property name="text">
+      <string>TaxID Column</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0" colspan="9">
+    <widget class="QSplitter" name="splitter">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <widget class="QTableView" name="search_input_table"/>
+     <widget class="QTableView" name="results_table"/>
+    </widget>
+   </item>
+   <item row="2" column="3">
+    <widget class="QLabel" name="label_4">
+     <property name="text">
+      <string>Accession Column</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="4">
+    <widget class="QComboBox" name="accession_combo"/>
+   </item>
+   <item row="3" column="3" colspan="2">
+    <widget class="QPushButton" name="search_button">
+     <property name="text">
+      <string>Search</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="6" colspan="3">
+    <widget class="QPushButton" name="add_to_database_button">
+     <property name="text">
+      <string>Add Selected to Database</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="5" colspan="4">
+    <widget class="QProgressBar" name="busy_progress">
+     <property name="value">
+      <number>24</number>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

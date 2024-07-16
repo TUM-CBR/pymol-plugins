@@ -1,6 +1,7 @@
 {
     "files": [
         "CreateDatabaseDialog.ui",
+        "SearchOrganismsWidget.ui",
         "SequenceSearchWidget.ui"
     ]
 }

@@ -20,12 +20,12 @@ let
       src = ./cbr;
       inherit raspp-src;
       installPhase = ''
-	plugin_folder="$out/${python.sitePackages}/pymol/pymol_path/data/startup/"
-	mkdir -p $plugin_folder
-	cp -r "$PWD" $plugin_folder/
-	raspp_folder="$plugin_folder/cbr/schema/raspp"
-	cp -r "${raspp-src}" $raspp_folder 
-	ls $plugin_folder/cbr/schema/raspp
+      plugin_folder="$out/${python.sitePackages}/pymol/pymol_path/data/startup/"
+      mkdir -p $plugin_folder
+      cp -r "$PWD" $plugin_folder/
+      raspp_folder="$plugin_folder/cbr/schema/raspp"
+      cp -r "${raspp-src}" $raspp_folder 
+      ls $plugin_folder/cbr/schema/raspp
       '';
     };
 

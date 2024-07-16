@@ -1,5 +1,6 @@
 from typing import Any, Callable, Sequence, Type, cast, List, Optional
 from PyQt5.QtCore import QObject, pyqtBoundSignal, pyqtSlot
+from PyQt5.QtWidgets import QWidget
 
 from . import dsl
 from .core import *
@@ -122,4 +123,15 @@ def observer_from_signal0(
     )
 
 def dsl_from_signal(parent: QObject, signal: pyqtBoundSignal) -> Dsl[Any]:
-    return Dsl(observer_from_signal(parent, signal))
+    return Dsl(observer_from_signal(parent, signal), DslContext())
+
+class QtRx:
+
+    @classmethod
+    def catch_ui(cls, widget: QWidget) -> ErrorAction: 
+        from ..Qt.QtWidgets import show_exception
+        return lambda exn: show_exception(widget, exn)
+
+    @classmethod
+    def observe_signal(cls, parent: QObject, signal: pyqtBoundSignal) -> Dsl[Any]:
+        return Dsl(observer_from_signal(parent, signal), DslContext())

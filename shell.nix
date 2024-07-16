@@ -2,8 +2,8 @@
   nixpkgs ? import (fetchTarball "https://github.com/NixOS/nixpkgs/archive/refs/tags/24.05.tar.gz") { },
   python3 ? nixpkgs.python3,
   fetchFromGitHub ? nixpkgs.fetchFromGitHub,
-  nixGL ? import (fetchGit { url = "https://github.com/nix-community/nixGL.git"; rev = "310f8e49a149e4c9ea52f1adf70cdc768ec53f8a"; }) { },
-
+  nixGL ? import (fetchGit { url = "https://github.com/nix-community/nixGL.git"; rev = "310f8e49a149e4c9ea52f1adf70cdc768ec53f8a"; }) { pkgs = nixpkgs; },
+  cbr-tools-extra ? import (fetchGit { url = "https://github.com/TUM-CBR/cbr-tools-extra.git"; rev = "3d596be414e290e073c01e858b31da2dc13445ec";}) { inherit nixpkgs; }
 }:
 let
   pymol-src = python3.pkgs.buildPythonPackage {
@@ -34,15 +34,22 @@ let
       debugpy
       setuptools
       wheel
+      python-lsp-server
+      jedi
+      pyflakes
+      jedi-language-server
     ]
   );
 in
 nixpkgs.mkShell {
   name = "cbr-tools";
-  packages = [
+  packages = with nixpkgs; [
     python-pymol-dev
-    nixGL
-    nixpkgs.qt5.full
+    qt5.full 
+    cbr-tools-extra
+    nixGL.nixGLMesa
+    qtcreator
+    pyright
   ];
 
   shellHook = ''
