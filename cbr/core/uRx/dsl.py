@@ -1,4 +1,4 @@
-from typing import NamedTuple, cast, Union
+from typing import cast, NamedTuple, Union
 
 from .core import *
 from .stages import *
@@ -94,6 +94,9 @@ class Dsl(ObservableBase[TValue], Generic[TValue]):
             raise mapper(v)
         
         return self.map(error_mapper)
+
+    def scan(self, seed: TState, accumulator: Callable[[TState, TValue], TState]) -> 'Dsl[TState]':
+        return Dsl(Scan(self.__obs, seed, accumulator), self.__context)
     
 def observe(os: Observable[TValue]) -> Dsl[TValue]:
     return Dsl(os, DslContext())

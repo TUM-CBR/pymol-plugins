@@ -1,7 +1,7 @@
 from concurrent.futures import Future
 from PyQt5.QtCore import QAbstractTableModel, QObject, pyqtSlot, QModelIndex, Qt, QTimer, QThread, QObject, pyqtSignal, pyqtSlot
 import os
-from typing import Any, Callable, Dict, List, TypeVar
+from typing import Any, Callable, Dict, Generic, List, TypeVar
 
 class Throttle(QObject):
 
@@ -107,3 +107,42 @@ class BlockSignalsContextManager(object):
             obj.blockSignals(False)
 
 block_signals = BlockSignalsContextManager
+
+TKey = TypeVar("TKey")
+TModel = TypeVar("TModel")
+
+class AbstractRecordTableModel(QAbstractTableModel, Generic[TKey, TModel]):
+
+    def __init__(
+        self,
+        values: List[TModel]
+        ) -> None:
+        super().__init__()
+
+        kv = [(self.get_uid(v), v) for v in values]
+        self.__keys = [k for k, _v in kv]
+        self.__values = dict(kv)
+
+    def get_record(self, ix: int) -> TModel:
+        return self.__values[self.__keys[ix]]
+
+    def get_record_count(self) -> int:
+        return len(self.__keys)
+
+    def add_records(self, *records: TModel):
+        for record in records:
+            uid = self.get_uid(record)
+
+            if uid not in self.__values:
+                self.__keys.append(uid)
+            
+            self.__values[uid] = record
+
+    def clear(self) -> None:
+        self.beginResetModel()
+        self.__keys = []
+        self.__values = {}
+        self.endResetModel()
+
+    def get_uid(self, value : TModel) -> TKey:
+        raise NotImplementedError("RecordModel requires an implementation of get_uid")

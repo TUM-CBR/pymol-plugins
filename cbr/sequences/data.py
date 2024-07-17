@@ -1,4 +1,4 @@
-from typing import NamedTuple, Optional, Sequence
+from typing import Any, Dict, List, NamedTuple, Optional, Sequence
 
 class SequencesConfig(NamedTuple):
     selected_database: Optional[str] = None
@@ -31,3 +31,90 @@ class ErrorResult(NamedTuple):
 
 class ErrorResults(NamedTuple):
     results: Sequence[ErrorResult]
+
+class SearchArg(NamedTuple):
+    search_id: str
+    tax_ids: Optional[List[int]] = None
+    names: Optional[List[str]] = None
+    accession: Optional[str] = None
+
+    def to_json_dict(self) -> Dict[Any, Any]:
+        return {
+            'search_id': self.search_id,
+            'tax_ids': self.tax_ids,
+            'names': self.names,
+            'accession': self.accession
+        }
+
+class SearchArgs(NamedTuple):
+    searches: List[SearchArg]
+
+    def to_json_dict(self) -> Dict[Any, Any]:
+        return {
+            'searches': [search.to_json_dict() for search in self.searches]
+        }
+
+class InteractiveInput(NamedTuple):
+    """Class representing the input that is provided to the
+    "sequences" mode of the cbr-extra-process.
+    """
+
+    search: Optional[SearcArgs] = None
+
+    def to_json_dict(self) -> Dict[Any, Any]:
+        return {
+            'search': self.search.to_json_dict() if self.search is not None else None
+        }
+
+class Organism(NamedTuple):
+    taxid: int
+    name: str
+
+    @classmethod
+    def from_json(cls, json_dict: Dict[str, Any]) -> 'Organism':
+        return Organism(
+            taxid = json_dict['taxid'],
+            name = json_dict['name']
+        )
+
+class SearchResultRecord(NamedTuple):
+    accession: str
+    organism: Organism
+
+    @classmethod
+    def from_json(cls, json_dict: Dict[str, Any]) -> 'SearchResultRecord':
+        return SearchResultRecord(
+            accession = json_dict['accession'],
+            organism = Organism.from_json(json_dict['organism'])
+        )
+
+class SearchResultError(NamedTuple):
+    message: str
+
+    @classmethod
+    def from_json(cls, json_dict: Dict[str, Any]) -> 'SearchResultError':
+        return SearchResultError(
+            message = json_dict['message']
+        )
+
+class SearchResult(NamedTuple):
+    search_id: str
+    records: List[SearchResultRecord]
+    errors: List[SearchResultError]
+
+    @classmethod
+    def from_json(cls, json_dict: Dict[str, Any]) -> 'SearchResult':
+        return SearchResult(
+            search_id = json_dict['search_id'],
+            records = [SearchResultRecord.from_json(record) for record in json_dict['records']],
+            errors = [SearchResultError.from_json(error) for error in json_dict['errors']]
+        )
+
+class InteractiveOutput(NamedTuple):
+    search_result: Optional[SearchResult] = None
+
+    @classmethod
+    def from_json(cls, json_dict: Dict[str, Any]) -> 'InteractiveOutput':
+        return InteractiveOutput(
+            search_result = SearchResult.from_json(json_dict['search_result']) if 'search_result' in json_dict else None
+        )

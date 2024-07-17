@@ -10,5 +10,8 @@
 
     "reportFunctionMemberAccess" : "error",
     "reportUnusedImport": "error",
-    "reportIncompatibleMethodOverride": "error"
+    "reportIncompatibleMethodOverride": "error",
+    "reportMissingTypeStubs": "error",
+    "strict": ["cbr"],
+    "stubs": ["python-typings"]
 }  

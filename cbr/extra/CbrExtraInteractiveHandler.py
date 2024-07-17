@@ -96,6 +96,10 @@ class CbrMessage(Generic[TMessageIn, TMessageOut]):
         self.__error_message = error_message
 
     @property
+    def input_uids(self) -> List[int]:
+        return self.__input_uids
+
+    @property
     def payload(self) -> Optional[TMessageIn]:
         return self.__payload
     

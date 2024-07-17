@@ -1,5 +1,7 @@
 from typing import Any, Generic
 
+from PyQt5.QtCore import ws
+
 from .core import *
 
 ForEachAction = Callable[[TValue], Any]
@@ -119,4 +121,34 @@ class Catch(ObservableBase[TValue]):
                 on_complete=os.on_completed
             )
         )
-    
+
+TState = TypeVar('TState')
+
+class Scan(ObservableBase[TState]):
+
+    def __init__(
+        self,
+        os: Observable[TValue],
+        seed: TState,
+        accumulator: Callable[[TState, TValue], TState]
+    ) -> None:
+        super().__init__()
+        self.__os = os
+        self.__seed = seed
+        self.__accumulator = accumulator
+
+    def subscribe(self, os: Observer[TState]) -> Subscription:
+        state = self.__seed
+
+        def on_next(value: Any):
+            nonlocal state
+            state = self.__accumulator(state, value)
+            os.on_next(state)
+
+        return self.__os.subscribe(
+            ForEach(
+                on_next,
+                on_error=os.on_error,
+                on_complete=os.on_completed
+            )
+        )

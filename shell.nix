@@ -38,6 +38,7 @@ let
       jedi
       pyflakes
       jedi-language-server
+      pyqt5-stubs
     ]
   );
 in
