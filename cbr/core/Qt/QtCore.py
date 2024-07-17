@@ -129,6 +129,9 @@ class AbstractRecordTableModel(QAbstractTableModel, Generic[TKey, TModel]):
     def get_record_count(self) -> int:
         return len(self.__keys)
 
+    def has_record(self, record: TModel) -> bool:
+        return self.get_uid(record) in self.__values
+
     def add_records(self, *records: TModel):
         for record in records:
             uid = self.get_uid(record)

@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QComboBox, QWidget
 from typing import Any, List, NamedTuple, Optional, Set, Union
 
 from ...core.Qt.QtCore import AbstractRecordTableModel
+from ...core.Qt.QtWidgets import show_error
 from ...core.uRx.core import SubscriptionComposite
 from ...core.uRx.dsl import Dsl
 from ...core.uRx.qt import QtRx
@@ -121,18 +122,29 @@ class SearchOrganismsInteractiveHandler(QObject):
         self.__current_id += 1
         return self.__current_id
 
-class SearchResultsModelEntry(NamedTuple):
+class SearchResultsModelEntry:
     record: SearchResultRecord
     selected: bool
 
+    def __init__(
+        self,
+        record: SearchResultRecord,
+        selected: bool
+    ):
+        self.record = record
+        self.selected = selected
+
 class SearchResultsModel(AbstractRecordTableModel[str, SearchResultsModelEntry]):
     K_SELECTED = "Selected"
+    K_ACCESSION = "Accession"
+    K_ORGANISM = "Organism"
+    K_TAXID = "TaxId"
 
     def __init__(self, items: Optional[List[SearchResultsModelEntry]] = None):
         items = items if items is not None else []
         super(SearchResultsModel, self).__init__(items)
 
-        self.__columns = [self.K_SELECTED, "Accession", "Organism", "TaxId"]
+        self.__columns = [self.K_SELECTED, self.K_ACCESSION, self.K_ORGANISM, self.K_TAXID]
 
     def get_uid(self, value: SearchResultsModelEntry) -> str:
         return value.record.accession
@@ -166,6 +178,77 @@ class SearchResultsModel(AbstractRecordTableModel[str, SearchResultsModelEntry])
 
         return flags
 
+    def setData(
+        self,
+        index: QModelIndex,
+        value: Any,
+        role: int = Qt.EditRole
+    ) -> bool:
+
+        if role == Qt.CheckStateRole:
+            self.get_record(index.row()).selected = value == Qt.Checked
+            self.dataChanged.emit(index, index)
+            return True
+
+        return False
+
+    def add_results(self, *records: SearchResultRecord) -> None:
+
+        inserts = 0
+        for record in records:
+            entry = SearchResultsModelEntry(record=record, selected=True)
+            if not self.has_record(entry):
+                self.add_records(entry)
+                inserts += 1
+
+        if inserts > 0:
+            self.beginInsertRows(QModelIndex(), self.get_record_count(), self.get_record_count() + inserts - 1)
+            self.endInsertRows()
+
+    def __data_display_role(
+        self,
+        entry: SearchResultsModelEntry,
+        column: int
+    ) -> Any:
+        name = self.__columns[column]
+        record = entry.record
+
+        if name == self.K_ACCESSION:
+            return record.accession
+        elif name == self.K_ORGANISM:
+            return record.organism.name
+        elif name == self.K_TAXID:
+            return record.organism.taxid
+        else:
+            return None
+
+    def __data_check_state_role(
+        self,
+        record: SearchResultsModelEntry,
+        column: int
+    ) -> Any:
+        return Qt.Checked if record.selected else Qt.Unchecked
+
+    def data(
+        self,
+        index: QModelIndex,
+        role: int = Qt.DisplayRole
+    ) -> Any:
+    
+        if not index.isValid():
+            return None
+    
+        row = index.row()
+        column = index.column()
+        record = self.get_record(row)
+
+        if role == Qt.DisplayRole:
+            return self.__data_display_role(record, column)
+        elif role == Qt.CheckStateRole:
+            return self.__data_check_state_role(record, column)
+        else:
+            return None 
+
 class SearchOrganismsWidget(QWidget, Ui_SearchOrganismsWidget):
     def __init__(
         self,
@@ -185,12 +268,26 @@ class SearchOrganismsWidget(QWidget, Ui_SearchOrganismsWidget):
         super().setupUi(SearchOrganismsWidget) #pyright: ignore
 
         self.busy_progress.setVisible(False)
+        self.__results_model = SearchResultsModel()
+        self.results_table.setModel(self.__results_model)
 
     def __set_is_searching(self, is_searching: bool) -> None:
         self.busy_progress.setVisible(is_searching)
 
     def __on_search_state(self, state: SearchOrganismsState) -> None:
         self.__set_is_searching(not state.is_done())
+
+        results = state.results
+        if results is not None:
+            self.__results_model.add_results(*results)
+
+        errors = state.errors
+        if errors is not None:
+            show_error(
+                self,
+                "Search Errors",
+                "\n".join(errors)
+            )
 
     def __on_search_table_item_changed(self, item: Any) -> None:
         if item.row() == 0:
