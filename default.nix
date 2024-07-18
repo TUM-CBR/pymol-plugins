@@ -31,20 +31,14 @@ let
 
   # The pymol distribution from schrodinger bundles more python packages
   # than the pymol available in nixpkgs
-  pymol-extra-deps = with python.pkgs; [
-    pyqt5
-    pyqt5-sip
-    requests
-    numpy
-    biopython
-  ];
+  pymol-extra-deps = import ./nix/requirements.nix { py-pkgs = python.pkgs; };
   pymol-required-pkgs = python.pkgs.requiredPythonModules pymol-extra-deps; 
   pymol-ext = pymol.overridePythonAttrs {
     buildInputs = pymol.buildInputs ++ pymol-extra-deps;
     doCheck = false;
     postInstall = ''
       wrapProgram $out/bin/pymol \
-	--prefix PYTHONPATH : ${lib.makeSearchPathOutput "lib" python.sitePackages pymol-required-pkgs}
+	      --prefix PYTHONPATH : ${lib.makeSearchPathOutput "lib" python.sitePackages pymol-required-pkgs}
     '';
   };
   pymolpath-out = "${placeholder "out"}/${python.sitePackages}/pymol/pymol_path/";

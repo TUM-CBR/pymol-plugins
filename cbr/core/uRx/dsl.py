@@ -114,7 +114,6 @@ class Dsl(ObservableBase[TValue], Generic[TValue]):
             items[v[1]] = v[0]
             return cast(Any, tuple(items))
 
-        #pyright: ignore
         result = self.map(map_left) \
             .merge_union(
                 right.map(map_right) # pyright: ignore

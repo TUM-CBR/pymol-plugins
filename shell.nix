@@ -3,7 +3,7 @@
   python3 ? nixpkgs.python3,
   fetchFromGitHub ? nixpkgs.fetchFromGitHub,
   nixGL ? import (fetchGit { url = "https://github.com/nix-community/nixGL.git"; rev = "310f8e49a149e4c9ea52f1adf70cdc768ec53f8a"; }) { pkgs = nixpkgs; },
-  cbr-tools-extra ? import (fetchGit { url = "https://github.com/TUM-CBR/cbr-tools-extra.git"; rev = "3d596be414e290e073c01e858b31da2dc13445ec";}) { inherit nixpkgs; }
+  cbr-tools-extra ? import ./nix/cbr-tools-extra.nix { inherit nixpkgs; }
 }:
 let
   pymol-src = python3.pkgs.buildPythonPackage {
@@ -26,11 +26,6 @@ let
     py-pkgs: with py-pkgs; [
       pymol-src
       ipython
-      pyqt5
-      pyqt5.pyqt5-sip
-      requests
-      numpy
-      biopython
       debugpy
       setuptools
       wheel
@@ -39,7 +34,9 @@ let
       pyflakes
       jedi-language-server
       pyqt5-stubs
-    ]
+      pytest
+    ] ++
+    (import ./nix/requirements.nix { inherit py-pkgs; })
   );
 in
 nixpkgs.mkShell {
@@ -51,6 +48,7 @@ nixpkgs.mkShell {
     nixGL.nixGLMesa
     qtcreator
     pyright
+    weston
   ];
 
   shellHook = ''
