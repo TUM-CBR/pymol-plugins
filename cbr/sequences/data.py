@@ -54,18 +54,6 @@ class SearchArgs(NamedTuple):
             'searches': [search.to_json_dict() for search in self.searches]
         }
 
-class InteractiveInput(NamedTuple):
-    """Class representing the input that is provided to the
-    "sequences" mode of the cbr-extra-process.
-    """
-
-    search: Optional[SearcArgs] = None
-
-    def to_json_dict(self) -> Dict[Any, Any]:
-        return {
-            'search': self.search.to_json_dict() if self.search is not None else None
-        }
-
 class Organism(NamedTuple):
     taxid: int
     name: str
@@ -77,6 +65,13 @@ class Organism(NamedTuple):
             name = json_dict['name']
         )
 
+    @classmethod
+    def to_json(cls, organism: 'Organism') -> Dict[str, Any]:
+        return {
+            'taxid': organism.taxid,
+            'name': organism.name
+        }
+
 class SearchResultRecord(NamedTuple):
     accession: str
     organism: Organism
@@ -87,6 +82,13 @@ class SearchResultRecord(NamedTuple):
             accession = json_dict['accession'],
             organism = Organism.from_json(json_dict['organism'])
         )
+
+    @classmethod
+    def to_json(cls, record: 'SearchResultRecord') -> Dict[str, Any]:
+        return {
+            'accession': record.accession,
+            'organism': Organism.to_json(record.organism)
+        }
 
 class SearchResultError(NamedTuple):
     message: str
@@ -110,11 +112,36 @@ class SearchResult(NamedTuple):
             errors = [SearchResultError.from_json(error) for error in json_dict['errors']]
         )
 
+class SaveSearchResult(NamedTuple):
+    errors : Optional[List[str]] = None
+
+    @classmethod
+    def from_json(cls, json_dict: Dict[str, Any]) -> 'SaveSearchResult':
+        return SaveSearchResult(
+            errors = json_dict.get('errors')
+        )
+
 class InteractiveOutput(NamedTuple):
     search_result: Optional[SearchResult] = None
+    save_search_result: Optional[SaveSearchResult] = None
 
     @classmethod
     def from_json(cls, json_dict: Dict[str, Any]) -> 'InteractiveOutput':
         return InteractiveOutput(
-            search_result = SearchResult.from_json(json_dict['search_result']) if 'search_result' in json_dict else None
+            search_result = SearchResult.from_json(json_dict['search_result']) if 'search_result' in json_dict else None,
+            save_search_result = SaveSearchResult.from_json(json_dict['save_search_result']) if 'save_search_result' in json_dict else None
         )
+
+class InteractiveInput(NamedTuple):
+    """Class representing the input that is provided to the
+    "sequences" mode of the cbr-extra-process.
+    """
+
+    search: Optional[SearchArgs] = None
+    save_search: Optional[List[SearchResultRecord]] = None
+
+    def to_json_dict(self) -> Dict[Any, Any]:
+        return {
+            'search': self.search.to_json_dict() if self.search is not None else None,
+            'save_search': [SearchResultRecord.to_json(record) for record in self.save_search] if self.save_search is not None else None
+        }

@@ -1,4 +1,4 @@
-from typing import cast, NamedTuple, Union
+from typing import Any, cast, NamedTuple, Tuple, Union
 
 from .core import *
 from .stages import *
@@ -97,6 +97,35 @@ class Dsl(ObservableBase[TValue], Generic[TValue]):
 
     def scan(self, seed: TState, accumulator: Callable[[TState, TValue], TState]) -> 'Dsl[TState]':
         return Dsl(Scan(self.__obs, seed, accumulator), self.__context)
-    
+
+    def zip_scan(self, right: Observable[TMergeRight]) -> 'Dsl[Tuple[TValue, TMergeRight]]':
+
+        def map_left(v: TValue) -> Tuple[Union[TValue, TMergeRight], int]:
+            return (v, 0)
+
+        def map_right(v: TMergeRight) -> Tuple[Union[TValue, TMergeRight], int]:
+            return (v, 1)
+
+        def accumulator(
+            acc: Tuple[Optional[TValue], Optional[TMergeRight]],
+            v: Tuple[Union[TValue, TMergeRight], int]
+        ) -> Tuple[TValue, TMergeRight]:
+            items = list(acc)
+            items[v[1]] = v[0]
+            return cast(Any, tuple(items))
+
+        #pyright: ignore
+        result = self.map(map_left) \
+            .merge_union(
+                right.map(map_right) # pyright: ignore
+            ) \
+            .scan(
+                (None, None),
+                accumulator
+            ) \
+            .filter(lambda v: v[0] is not None and v[1] is not None) # pyright: ignore
+
+        return cast(Dsl[Tuple[TValue, TMergeRight]], result)
+
 def observe(os: Observable[TValue]) -> Dsl[TValue]:
     return Dsl(os, DslContext())

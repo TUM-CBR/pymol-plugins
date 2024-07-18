@@ -7,16 +7,11 @@ from ...core.Qt.QtWidgets import show_error
 from ...core.uRx.core import SubscriptionComposite
 from ...core.uRx.dsl import Dsl
 from ...core.uRx.qt import QtRx
-from ...extra.CbrExtraInteractiveHandler import CbrExtraInteractiveHandler, CbrMessage 
+from ...extra.CbrExtraInteractiveHandler import CbrExtraInteractiveHandler 
 
 from ..data import InteractiveInput, InteractiveOutput, SearchArg, SearchArgs, SearchResultRecord
+from ..interactive import InteractiveMessage
 from .Ui_SearchOrganismsWidget import Ui_SearchOrganismsWidget
-
-class OrganismSearchState(NamedTuple):
-    message_id: int
-    search_id: str
-
-SearchResultMessage = CbrMessage[InteractiveOutput, InteractiveInput]
 
 class SearchOrganismsState(NamedTuple):
     """Due to the asyncronous nature of the interactive organism search, we need to keep track of the
@@ -24,15 +19,19 @@ class SearchOrganismsState(NamedTuple):
     and the results that have been received so far.
     """
 
-    current_searches: Set[OrganismSearchState]
+    current_searches: Set['SearchOrganismsState.Search']
     errors: Optional[List[str]] = None
     results: Optional[List[SearchResultRecord]] = None 
+
+    class Search(NamedTuple):
+        message_id: int
+        search_id: str
 
     @classmethod
     def empty(cls) -> 'SearchOrganismsState':
         return SearchOrganismsState(current_searches=set())
     
-    def on_message(self, message: SearchResultMessage) -> 'SearchOrganismsState':
+    def __on_message(self, message: InteractiveMessage) -> 'SearchOrganismsState':
         """This method is called every time a search result message is received. It
         is responsible for updating the state of the search based on the message that
         was received.
@@ -46,14 +45,15 @@ class SearchOrganismsState(NamedTuple):
         """
 
         if message.error is not None:
-            searches = self.current_searches.difference({
+            affected = {
                 search
                 for search in self.current_searches
                 if search.message_id in message.input_uids
-            })
+            }
+            searches = self.current_searches.difference(affected)
             return SearchOrganismsState(
                 current_searches=searches,
-                errors=[message.error]
+                errors=[message.error] if len(affected) > 0 else None
             )
 
         payload = message.payload
@@ -75,23 +75,68 @@ class SearchOrganismsState(NamedTuple):
 
         raise ValueError(f"The received message was not understood {message}")
 
-    def is_done(self) -> bool:
-        return len(self.current_searches) == 0
+    def is_busy(self) -> bool:
+        return len(self.current_searches) > 0
 
     @classmethod
     def accumulator(
         cls,
         state: 'SearchOrganismsState', 
-        value: Union[OrganismSearchState, SearchResultMessage]
+        value: Union[List['SearchOrganismsState.Search'], InteractiveMessage]
     ) -> 'SearchOrganismsState':
-        if isinstance(value, OrganismSearchState):
-            return SearchOrganismsState(current_searches=state.current_searches.union({value}))
+        if isinstance(value, list):
+            return SearchOrganismsState(
+                current_searches=state.current_searches.union({search for search in value})
+            )
         else:
-            return state
+            return state.__on_message(value)
+
+class SaveSearchState(NamedTuple):
+    current_saves: Set[int]
+    errors: Optional[List[str]] = None
+
+    class Save(NamedTuple):
+        message_id: int
+
+    @classmethod
+    def empty(cls) -> 'SaveSearchState':
+        return SaveSearchState(current_saves=set())
+
+    def is_busy(self) -> bool:
+        return len(self.current_saves) > 0
+
+    def __on_message(self, message: InteractiveMessage) -> 'SaveSearchState':
+
+        affected = {
+            save_id
+            for save_id in self.current_saves
+            if save_id in message.input_uids
+        }
+        errors = None
+
+        if message.error is not None:
+            errors = [message.error] if len(affected) > 0 else None
+        elif message.payload is not None and message.payload.save_search_result is not None:
+            save_search = message.payload.save_search_result
+            errors = save_search.errors
+
+        return SaveSearchState(
+            current_saves=self.current_saves.difference(affected),
+            errors=errors
+        )
+
+    @classmethod
+    def accumulator(cls, state: 'SaveSearchState', value: Union['SaveSearchState.Save', InteractiveMessage]) -> 'SaveSearchState':
+        if isinstance(value, SaveSearchState.Save):
+            return SaveSearchState(current_saves=state.current_saves.union({value.message_id}))
+        else:
+            return state.__on_message(value)
+
 
 class SearchOrganismsInteractiveHandler(QObject):
 
-    __on_search = pyqtSignal(List[OrganismSearchState])
+    __on_search = pyqtSignal(List[SearchOrganismsState.Search])
+    __on_save = pyqtSignal(SaveSearchState.Save)
 
     def __init__(
         self,
@@ -106,16 +151,37 @@ class SearchOrganismsInteractiveHandler(QObject):
             .merge_union(handler.observe_message()) \
             .scan(SearchOrganismsState.empty(), SearchOrganismsState.accumulator)
 
+        self.__save_state = QtRx.observe_signal(self, self.__on_save) \
+            .merge_union(handler.observe_message()) \
+            .scan(SaveSearchState.empty(), SaveSearchState.accumulator)
+
         self.__subscriptions = SubscriptionComposite([])
 
     def search_state(self) -> Dsl[SearchOrganismsState]:
         return self.__search_state
 
+    def save_state(self) -> Dsl[SaveSearchState]:
+        return self.__save_state
+
+    def busy_state(self) -> Dsl[bool]:
+        return self.__search_state \
+            .zip_scan(self.__save_state) \
+            .map(lambda v: v[0].is_busy() or v[1].is_busy())
+
     def search(self, search_args: SearchArgs) -> None:
         search_task = self.__handler.send_message(InteractiveInput(search=search_args))
         self.__on_search.emit([
-            OrganismSearchState(message_id=search_task.message_uid, search_id=search.search_id)
+            SearchOrganismsState.Search(
+                message_id=search_task.message_uid,
+                search_id=search.search_id
+            )
             for search in search_args.searches
+        ])
+
+    def save(self, records: List[SearchResultRecord]) -> None:
+        save_task = self.__handler.send_message(InteractiveInput(save_search=records))
+        self.__on_save.emit([
+            SaveSearchState.Save(message_id=save_task.message_uid)
         ])
 
     def next_id(self) -> int:
@@ -261,7 +327,9 @@ class SearchOrganismsWidget(QWidget, Ui_SearchOrganismsWidget):
         self.__subscriptions = SubscriptionComposite([
             QtRx.foreach_signal(self, self.search_button.clicked, self.__on_search_clicked),
             QtRx.foreach_signal(self, self.search_table.itemChanged, self.__on_search_table_item_changed),
-            self.__handler.search_state().for_each(self.__on_search_state)
+            self.__handler.search_state().for_each(self.__on_search_state),
+            self.__handler.save_state().for_each(self.__on_save_search_state),
+            self.__handler.busy_state().for_each(self.__set_is_busy)
         ])
 
     def setupUi(self, SearchOrganismsWidget: QWidget) -> None:
@@ -271,11 +339,20 @@ class SearchOrganismsWidget(QWidget, Ui_SearchOrganismsWidget):
         self.__results_model = SearchResultsModel()
         self.results_table.setModel(self.__results_model)
 
-    def __set_is_searching(self, is_searching: bool) -> None:
-        self.busy_progress.setVisible(is_searching)
+    def __set_is_busy(self, is_busy: bool) -> None:
+        self.busy_progress.setVisible(is_busy)
+        self.search_button.setEnabled(not is_busy)
+        self.add_to_database_button.setEnabled(not is_busy)
+
+    def __on_save_search_state(self, state: SaveSearchState) -> None:
+        if state.errors is not None:
+            show_error(
+                self,
+                "Save Errors",
+                "\n".join(state.errors)
+            )
 
     def __on_search_state(self, state: SearchOrganismsState) -> None:
-        self.__set_is_searching(not state.is_done())
 
         results = state.results
         if results is not None:
