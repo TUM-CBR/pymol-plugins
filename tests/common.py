@@ -2,7 +2,7 @@ from PyQt5.QtCore import QObject
 from PyQt5.QtWidgets import QWidget
 import pytest
 import time
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, TypeVar
 
 @pytest.fixture(scope="session")
 def pymol_fixture():
@@ -39,6 +39,8 @@ class UiErrorsException(Exception):
             )
         )
         self.errors = errors
+
+TResult = TypeVar('TResult')
 
 class PyQtTestHelpers(QObject):
 
@@ -83,6 +85,9 @@ class PyQtTestHelpers(QObject):
             raise errors[0]
         elif len(errors) > 1:
             raise UiErrorsException(errors)
+
+    def run_in_ui(self, action: Callable[[], TResult]) -> TResult:
+        return self.__pymol_support.run_in_ui(action)
 
     def wait_in_ui(
         self,

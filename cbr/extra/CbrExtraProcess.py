@@ -78,6 +78,8 @@ class CbrExtraProcess(QProcess):
         self.readyReadStandardOutput.connect(self.__on_data_ready)
         self.finished.connect(self.__on_process_finish)
 
+        self.__has_exited = False
+        self.__exit_error: Optional[Exception] = None
         self.__logger_instance : Optional[Logger] = Logger(os.environ.get('LOG_CBR_EXTRA'))
 
     @property
@@ -99,13 +101,15 @@ class CbrExtraProcess(QProcess):
     @pyqtSlot(int, QProcess.ExitStatus)
     def __on_process_finish(self, exit_code: int, exit_status: QProcess.ExitStatus):
 
+        self.__has_exited = True
         self.__close_logger()
 
         if exit_code == 0:
             return
         self.setCurrentReadChannel(QProcess.ProcessChannel.StandardError)
         result = decode_bytes(self.readAll())
-        self.error_signal.emit(Exception(result))
+        self.__exit_error = Exception(result)
+        self.error_signal.emit(self.__exit_error)
 
     def setProcessChannelMode(self, mode: int) -> None:
         raise Exception("The read channel should not be changed by the user")
@@ -118,19 +122,32 @@ class CbrExtraProcess(QProcess):
         self.start(QIODevice.ReadWrite | QIODevice.Text) # type: ignore
 
     def write_json_dict(self, value: Dict[Any, Any]):
+
+        if self.__exit_error is not None:
+            raise self.__exit_error
+
+        if self.__has_exited:
+            raise Exception("The process has already exited")
+
         message = f"{json.dumps(value)}\n"
         self.__logger.log_message(message)
         self.write(message.encode('utf-8'))
 
     def close(self):
+
+        if self.__has_exited:
+            return
+
+        self.__has_exited = True
         self.write_json_dict({
             'uid': -1,
             'entity_type': 'stop'
         })
 
-        self.__close_logger()
         if not super().waitForFinished(msecs=1000):            
             super().close()
+
+        self.__close_logger()
 
     @pyqtSlot()
     def __on_data_ready(self):

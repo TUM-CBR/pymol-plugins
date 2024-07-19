@@ -435,7 +435,7 @@ class SearchOrganismsWidget(QWidget, Ui_SearchOrganismsWidget):
 
         self.__handler.search(args)
 
-    def __set_search_text(self, text: str) -> None:
+    def set_search_text(self, text: str) -> None:
 
         rows = text.split("\n")
         self.search_table.setRowCount(len(rows))
