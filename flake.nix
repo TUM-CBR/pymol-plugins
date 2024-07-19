@@ -20,27 +20,27 @@
   outputs = inputs@{ self, nixpkgs, flake-parts, cbr-tools-extra-flake, nixGL-flake, raspp-src, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = [
-	"x86_64-linux"
-	"x86_64-darwin"
+	      "x86_64-linux"
+	      "x86_64-darwin"
       ];
       perSystem = { self', pkgs, system, ... }:
       let
-	nixGL = nixGL-flake.outputs.packages.${system}.default;
-	cbr-tools-extra = cbr-tools-extra-flake.outputs.packages.${system}.default;
-	callPackage = pkgs.newScope {
-	  nixpkgs = pkgs;
-	  inherit nixGL cbr-tools-extra raspp-src;
-	};
-	cbr-tools = callPackage ./default.nix { };
+	      nixGL = nixGL-flake.outputs.packages.${system}.default;
+	      cbr-tools-extra = cbr-tools-extra-flake.outputs.packages.${system}.default;
+	      callPackage = pkgs.newScope {
+	        nixpkgs = pkgs;
+	        inherit nixGL cbr-tools-extra raspp-src;
+	      };
+	      cbr-tools = callPackage ./default.nix { };
       in
       {
-	packages = {
-	  inherit cbr-tools;
-	  default = cbr-tools;
-	};
-	devShells = {
-	  default = callPackage ./shell.nix { };
-	};
+	      packages = {
+	        inherit cbr-tools;
+	        default = cbr-tools;
+	      };
+	      devShells = {
+	        default = callPackage ./shell.nix { };
+	      };
       };
-    };
+  };
 }
