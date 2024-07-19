@@ -359,6 +359,8 @@ class SearchOrganismsWidget(QWidget, Ui_SearchOrganismsWidget):
 
     def __on_search_state(self, state: SearchOrganismsState) -> None:
 
+        print("Search state", state)
+
         results = state.results
         if results is not None:
             self.__results_model.add_results(*results)

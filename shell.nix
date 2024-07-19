@@ -55,6 +55,7 @@ nixpkgs.mkShell {
     export PYMOL_STARTUP_PATH_POLY=$PWD
     export QT_QPA_PLATFORM=xcb
     unset SUDO_COMMAND
+    export WAYLAND_DISPLAY=/tmp/lewayland
   '';
 }
 

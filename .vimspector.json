@@ -16,6 +16,28 @@
         "program": "${workspaceRoot}/test_pymol.py",
         "cwd": "${workspaceRoot}"
       }
+    },
+    "test": {
+      "adapter": "debugpy",
+      "breakpoints": {
+        "exception": {
+          "all": "N",
+          "uncaught": "Y"
+        }
+      },
+      "stopOnEntry": false,
+      "configuration": {
+        "request": "launch",
+        "protocol": "auto",
+        "stopOnEntry": true,
+        "console": "integratedTerminal",
+        "module": "pytest",
+        "args": [
+          "${workspaceRoot}/tests/"
+        ],
+        "cwd": "${workspaceRoot}",
+        "stopOnEntry": false
+      }
     }
   }
 }

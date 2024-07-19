@@ -2,7 +2,6 @@ from os import path
 from PyQt5.QtCore import Qt
 from PyQt5.QtTest import QTest
 import pytest
-from tempfile import TemporaryDirectory
 from tests.common import *
 
 from cbr.sequences.visual.SearchOrganismsWidget import SearchOrganismsWidget
@@ -73,6 +72,8 @@ class TestSearchOrganisms:
 
         pyqt_test_helpers.run_in_ui(select_columns)
 
+        import time
+        time.sleep(1)
         QTest.mouseClick(search_organisms_widget.search_button, Qt.LeftButton)
 
         def has_results():
@@ -85,4 +86,4 @@ class TestSearchOrganisms:
 
             return False
 
-        pyqt_test_helpers.wait_in_ui([search_organisms_widget], has_results, timeout=100)
+        pyqt_test_helpers.wait_in_ui([search_organisms_widget], has_results, timeout=5)
