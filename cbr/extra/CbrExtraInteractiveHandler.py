@@ -305,6 +305,12 @@ class CbrExtraInteractiveManager(QObject):
         self.__handlers.append(handler)
 
         return handler
+
+    def __enter__(self, *args, **kwargs):
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        self.stop()
     
 def run_interactive(
     args : List[str],

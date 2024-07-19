@@ -147,14 +147,20 @@ class QtRx:
         return lambda exn: show_exception(widget, exn)
 
     @classmethod
-    def observe_signal(cls, parent: QObject, signal: pyqtBoundSignal) -> Dsl[Any]:
-        return Dsl(observer_from_signal(parent, signal), DslContext())
+    def observe_signal(
+        cls,
+        parent: QObject,
+        signal: pyqtBoundSignal,
+        slot_args: Optional[List[Type[Any]]] = None,
+    ) -> Dsl[Any]:
+        return Dsl(observer_from_signal(parent, signal, slot_args=slot_args), DslContext())
 
     @classmethod
     def foreach_signal(
         cls,
         parent: QWidget,
         signal: pyqtBoundSignal,
-        action: ForEachAction[TValue]
+        action: ForEachAction[TValue],
+        slot_args: Optional[List[Type[Any]]] = None
     ) -> Subscription:
-        return cls.observe_signal(parent, signal).subscribe(cls.foreach_ui_observer(parent, action))
+        return cls.observe_signal(parent, signal, slot_args=slot_args).subscribe(cls.foreach_ui_observer(parent, action))

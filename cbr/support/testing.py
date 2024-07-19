@@ -1,4 +1,5 @@
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, QObject
+from PyQt5.QtWidgets import QMainWindow
 import time
 from typing import Any, Callable, Optional, TypeVar
 
@@ -24,12 +25,16 @@ class UiRunner(QObject):
 
     singleton: Optional['UiRunner'] = None
 
-    run_action = pyqtSignal(RunActionRequest)
+    __run_action = pyqtSignal(RunActionRequest)
+
+    __close_request = pyqtSignal()
 
     def __init__(self):
         super().__init__()
-        self.run_action.connect(self.__on_run_action)
-        self.__valid = True
+        from pmg_qt.pymol_qt_gui import window
+        self.__window: Optional[QMainWindow] = window
+        self.__close_request.connect(self.__on_close_request)
+        self.__run_action.connect(self.__on_run_action)
 
     @pyqtSlot(RunActionRequest)
     def __on_run_action(self, request: RunActionRequest):
@@ -45,36 +50,40 @@ class UiRunner(QObject):
     @classmethod
     def init_singleton(cls):
         print("init singleton")
-        cls.singleton = cls()
 
-    def invalidate(self):
-        self.__valid = False
+        assert cls.singleton is None, "Only one singleton can be created"
+
+        cls.singleton = cls()
 
     def run_in_ui_async(self, action: Callable[[], TResult]) -> RunActionRequest:
 
-        if not self.__valid:
+        if self.__window is None:
             raise Exception("The Ui runner cannot be used after the application has been closed.")
 
         request = RunActionRequest(action)
-        self.run_action.emit(request)
+        self.__run_action.emit(request)
         return request
+
+    def __on_close_request(self):
+        window = self.__window
+
+        if window is None:
+            return
+        self.__window = None
+        window.close()
+
+    def close(self):
+        self.__close_request.emit()
 
 class PymolTestSupportObject(QObject):
  
     def __init__(self):
         super().__init__()
 
-        self.__window = None
-
-        while self.__window is None:
-            from pmg_qt.pymol_qt_gui import window
+        while UiRunner.singleton is None:
             time.sleep(0.1)
-            self.__window = window
-
-            while UiRunner.singleton is None:
-                time.sleep(0.1)
-                print("waiting for the singleton")
-            self.__runner = UiRunner.singleton
+            print("waiting for the singleton")
+        self.__runner = UiRunner.singleton
 
     def run_in_ui_async(self, action: Callable[[], TResult]) -> RunActionRequest:
         return self.__runner.run_in_ui_async(action)
@@ -86,14 +95,8 @@ class PymolTestSupportObject(QObject):
     def __enter__(self):
         return self
 
-    def __cleanup_ui(self):
-        print("closing window")
-        self.__window.close()
-        print('goodbye')
-
     def __exit__(self, *args, **kwargs):
-        self.run_in_ui_async(self.__cleanup_ui)
-        self.__runner.invalidate()
+        self.__runner.close()
         import time
         time.sleep(1)
 

@@ -56,7 +56,7 @@ class Ui_SearchOrganismsWidget(object):
         self.label_2.setObjectName("label_2")
         self.gridLayout.addWidget(self.label_2, 2, 0, 1, 1)
         self.splitter = QtWidgets.QSplitter(SearchOrganismsWidget)
-        self.splitter.setOrientation(QtCore.Qt.Qt::Orientation::Horizontal)
+        self.splitter.setOrientation(QtCore.Qt.Orientation.Horizontal)
         self.splitter.setObjectName("splitter")
         self.search_table = QtWidgets.QTableWidget(self.splitter)
         self.search_table.setObjectName("search_table")

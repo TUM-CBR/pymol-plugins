@@ -1,6 +1,6 @@
 import pytest
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def pymol_fixture():
     import pymol
     import time
@@ -17,3 +17,9 @@ def pymol_fixture():
 
     with pymol_support:
         yield pymol_support
+
+@pytest.fixture(scope="function")
+def tmp_folder():
+    from tempfile import TemporaryDirectory
+    with TemporaryDirectory() as tmpdirname:
+        yield tmpdirname

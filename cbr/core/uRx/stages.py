@@ -1,12 +1,40 @@
 from typing import Any, Generic
 
-from PyQt5.QtCore import ws
-
 from .core import *
 
 ForEachAction = Callable[[TValue], Any]
 CompleteAction = Callable[[], Any]
 ErrorAction = Callable[[Exception], Any]
+Predicate = Callable[[TValue], bool]
+
+class Filter(ObservableBase[TValue]):
+
+    def __init__(
+        self,
+        os: Observable[TValue],
+        predicate: Predicate[TValue],
+    ) -> None:
+        super().__init__()
+        self.__os = os
+        self.__predicate = predicate
+
+    def subscribe(self, os: ObserverBase[TValue]) -> SubscriptionBase:
+
+        def on_next(value: TValue):
+            try:
+                if self.__predicate(value):
+                    os.on_next(value)
+            except Exception as e:
+                os.on_error(e)
+
+        return self.__os.subscribe(
+            ForEach(
+                on_next,
+                on_complete=lambda: os.on_completed(),
+                on_error=lambda e: os.on_error(e)
+            )
+        )
+
 
 class ForEach(ObserverBase[TValue]):
 

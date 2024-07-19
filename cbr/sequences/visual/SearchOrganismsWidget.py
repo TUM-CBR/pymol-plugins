@@ -1,5 +1,5 @@
 from PyQt5.QtCore import QModelIndex, QObject, Qt, pyqtSignal
-from PyQt5.QtWidgets import QComboBox, QWidget
+from PyQt5.QtWidgets import QComboBox, QTableWidgetItem, QWidget
 from typing import Any, List, NamedTuple, Optional, Set, Union
 
 from ...core.Qt.QtCore import AbstractRecordTableModel
@@ -7,7 +7,7 @@ from ...core.Qt.QtWidgets import show_error
 from ...core.uRx.core import SubscriptionComposite
 from ...core.uRx.dsl import Dsl
 from ...core.uRx.qt import QtRx
-from ...extra.CbrExtraInteractiveHandler import CbrExtraInteractiveHandler 
+from ...extra.CbrExtraInteractiveHandler import CbrExtraInteractiveManager, CbrExtraInteractiveHandler 
 
 from ..data import InteractiveInput, InteractiveOutput, SearchArg, SearchArgs, SearchResultRecord
 from ..interactive import InteractiveMessage
@@ -135,18 +135,17 @@ class SaveSearchState(NamedTuple):
 
 class SearchOrganismsInteractiveHandler(QObject):
 
-    __on_search = pyqtSignal(List[SearchOrganismsState.Search])
-    __on_save = pyqtSignal(SaveSearchState.Save)
+    __on_search = pyqtSignal(object)
+    __on_save = pyqtSignal(object)
 
     def __init__(
         self,
         parent: QObject,
-        handler: CbrExtraInteractiveHandler[InteractiveOutput, InteractiveInput],
+        handler: CbrExtraInteractiveHandler[InteractiveOutput, InteractiveInput]
     ):
         super(SearchOrganismsInteractiveHandler, self).__init__(parent)
         self.__current_id = 0
         self.__handler = handler
-
         self.__search_state = QtRx.observe_signal(self, self.__on_search) \
             .merge_union(handler.observe_message()) \
             .scan(SearchOrganismsState.empty(), SearchOrganismsState.accumulator)
@@ -318,15 +317,21 @@ class SearchResultsModel(AbstractRecordTableModel[str, SearchResultsModelEntry])
 class SearchOrganismsWidget(QWidget, Ui_SearchOrganismsWidget):
     def __init__(
         self,
-        handler: CbrExtraInteractiveHandler[InteractiveOutput, InteractiveInput],
+        manager: CbrExtraInteractiveManager,
         parent: Optional[QWidget] = None
     ):
         super(SearchOrganismsWidget, self).__init__(parent)
+
+        handler: CbrExtraInteractiveHandler[InteractiveOutput, InteractiveInput] = manager.message_handler(
+            serializer=InteractiveInput.to_json_dict,
+            parser=InteractiveOutput.from_json_dict
+        )
+
         self.setupUi(self)
         self.__handler = SearchOrganismsInteractiveHandler(self, handler)
         self.__subscriptions = SubscriptionComposite([
-            QtRx.foreach_signal(self, self.search_button.clicked, self.__on_search_clicked),
-            QtRx.foreach_signal(self, self.search_table.itemChanged, self.__on_search_table_item_changed),
+            QtRx.foreach_signal(self, self.search_button.clicked, self.__on_search_clicked, [bool]),
+            QtRx.foreach_signal(self, self.search_table.itemChanged, self.__on_search_table_item_changed, [QTableWidgetItem]),
             self.__handler.search_state().for_each(self.__on_search_state),
             self.__handler.save_state().for_each(self.__on_save_search_state),
             self.__handler.busy_state().for_each(self.__set_is_busy)
@@ -424,3 +429,16 @@ class SearchOrganismsWidget(QWidget, Ui_SearchOrganismsWidget):
         args = self.__get_current_search_args()
 
         self.__handler.search(args)
+
+    def set_search_text(self, text: str) -> None:
+
+        rows = text.split("\n")
+        self.search_table.setRowCount(len(rows))
+
+        for i, row in enumerate(rows):
+            columns = row.split("\t")
+            for j, column in enumerate(columns):
+                if self.search_table.columnCount() <= j:
+                    self.search_table.insertColumn(j)
+                self.search_table.setItem(i, j, QTableWidgetItem(column))
+

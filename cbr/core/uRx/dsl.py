@@ -98,6 +98,9 @@ class Dsl(ObservableBase[TValue], Generic[TValue]):
     def scan(self, seed: TState, accumulator: Callable[[TState, TValue], TState]) -> 'Dsl[TState]':
         return Dsl(Scan(self.__obs, seed, accumulator), self.__context)
 
+    def filter(self, predicate: Predicate[TValue]) -> 'Dsl[TValue]':
+        return Dsl(Filter(self.__obs, predicate), self.__context)
+
     def zip_scan(self, right: Observable[TMergeRight]) -> 'Dsl[Tuple[TValue, TMergeRight]]':
 
         def map_left(v: TValue) -> Tuple[Union[TValue, TMergeRight], int]:

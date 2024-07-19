@@ -126,7 +126,7 @@ class InteractiveOutput(NamedTuple):
     save_search_result: Optional[SaveSearchResult] = None
 
     @classmethod
-    def from_json(cls, json_dict: Dict[str, Any]) -> 'InteractiveOutput':
+    def from_json_dict(cls, json_dict: Dict[str, Any]) -> 'InteractiveOutput':
         return InteractiveOutput(
             search_result = SearchResult.from_json(json_dict['search_result']) if 'search_result' in json_dict else None,
             save_search_result = SaveSearchResult.from_json(json_dict['save_search_result']) if 'save_search_result' in json_dict else None
