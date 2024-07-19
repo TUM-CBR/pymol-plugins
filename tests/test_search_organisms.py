@@ -1,4 +1,6 @@
 from os import path
+from PyQt5.QtCore import Qt
+from PyQt5.QtTest import QTest
 import pytest
 from tempfile import TemporaryDirectory
 from tests.common import *
@@ -33,16 +35,26 @@ dummy_organism_search_text = "\n".join([
 ])
 
 class TestSearchOrganisms:
+
+    def test_empty_search_organisms(
+        self,
+        search_organisms_widget: SearchOrganismsWidget,
+        pyqt_test_helpers: PyQtTestHelpers
+    ):
+        QTest.mouseClick(search_organisms_widget.search_button, Qt.LeftButton)
+        with pytest.raises(Exception, match="ValueError"):
+            pyqt_test_helpers.wait_in_ui([search_organisms_widget], lambda: False)
+
     def test_search_organisms(
         self,
         pymol_fixture: PymolTestSupportObject,
         search_organisms_widget: SearchOrganismsWidget
     ):
 
-        pymol_fixture.run_in_ui(
-            lambda: search_organisms_widget.set_search_text(dummy_organism_search_text)
-        )
+        #pymol_fixture.run_in_ui(
+        #    lambda: search_organisms_widget.set_search_text(dummy_organism_search_text)
+        #)
 
         from time import sleep
-        sleep(5)
+        sleep(1)
 

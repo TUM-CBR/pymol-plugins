@@ -392,12 +392,17 @@ class SearchOrganismsWidget(QWidget, Ui_SearchOrganismsWidget):
         )
 
     def __get_current_search_args(self) -> SearchArgs:
-        return SearchArgs([
+        search_terms = [
             search_arg
             for row in range(self.search_table.rowCount())
             for search_arg in [self.__get_search_arg(row)]
             if search_arg is not None
-        ])
+        ]
+
+        if len(search_terms) == 0:
+            raise ValueError("The input does not constitute a valid search. Please ensure that the table contains more than one row and that at least one column is selected.")
+
+        return SearchArgs(searches=search_terms)
 
     def __update_columns_combos(self) -> None:
 
@@ -430,7 +435,7 @@ class SearchOrganismsWidget(QWidget, Ui_SearchOrganismsWidget):
 
         self.__handler.search(args)
 
-    def set_search_text(self, text: str) -> None:
+    def __set_search_text(self, text: str) -> None:
 
         rows = text.split("\n")
         self.search_table.setRowCount(len(rows))
