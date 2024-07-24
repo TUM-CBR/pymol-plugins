@@ -44,6 +44,11 @@ class SubscriptionCallable(SubscriptionBase):
         self.__unsubscribe = None
         unsubscribe()
 
+class SubscriptionEmpty(SubscriptionBase):
+    
+    def dispose(self) -> None:
+        pass
+
 class SubscriptionComposite(SubscriptionBase):
 
     def __init__(
@@ -71,7 +76,16 @@ class SubscriptionComposite(SubscriptionBase):
         for subscription in subscriptions:
             self.__subscriptions.append(subscription)
 
-class ObservableBase(Generic[TValue]):
+class ObservablePlainBase:
+    """
+    Ideally, this class would not be needed, but Python cannot check
+    if an object is an instance of a Generic class, so we need to
+    create a non-generic base class to be able to check if an object
+    is an instance of ObservableBase.
+    """
+    pass
+
+class ObservableBase(ObservablePlainBase, Generic[TValue]):
 
     @abstractmethod
     def subscribe(self, os: Observer[TValue]) -> Subscription:

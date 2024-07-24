@@ -110,11 +110,12 @@ class Dsl(ObservableBase[TValue], Generic[TValue]):
             return (v, 1)
 
         def accumulator(
-            acc: Tuple[Optional[TValue], Optional[TMergeRight]],
+            acc: Tuple[bool, bool, Optional[TValue], Optional[TMergeRight]],
             v: Tuple[Union[TValue, TMergeRight], int]
-        ) -> Tuple[TValue, TMergeRight]:
+        ) -> Tuple[bool, bool, Optional[TValue], Optional[TMergeRight]]:
             items = list(acc)
-            items[v[1]] = v[0]
+            items[v[1]] = True
+            items[2 + v[1]] = v[0]
             return cast(Any, tuple(items))
 
         result = self.map(map_left) \
@@ -122,12 +123,25 @@ class Dsl(ObservableBase[TValue], Generic[TValue]):
                 right.map(map_right) # pyright: ignore
             ) \
             .scan(
-                (None, None),
+                (False, False, None, None),
                 accumulator
             ) \
-            .filter(lambda v: v[0] is not None and v[1] is not None) # pyright: ignore
+            .filter(lambda v: v[0] and v[1]) \
+            .map(lambda v: (v[2], v[3]))
 
         return cast(Dsl[Tuple[TValue, TMergeRight]], result)
+
+    def prepend(self, *values: Union[Observable[TValue], TValue]) -> 'Dsl[TValue]':
+
+        obs: List[Observable[TValue]] = [
+            cast(Observable[TValue], v) \
+                if isinstance(v, ObservablePlainBase) \
+                else FromValues([v])
+            for v in values
+        ]
+
+        return Dsl(Concat(obs + [self.__obs]), self.__context)
+
 
 def observe(os: Observable[TValue]) -> Dsl[TValue]:
     return Dsl(os, DslContext())

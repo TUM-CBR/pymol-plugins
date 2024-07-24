@@ -108,8 +108,14 @@ class SearchResult(NamedTuple):
     def from_json(cls, json_dict: Dict[str, Any]) -> 'SearchResult':
         return SearchResult(
             search_id = json_dict['search_id'],
-            records = [SearchResultRecord.from_json(record) for record in json_dict['records']],
-            errors = [SearchResultError.from_json(error) for error in json_dict['errors']]
+            records = [
+                SearchResultRecord.from_json(record)
+                for record in (json_dict['records'])
+            ] if 'records' in json_dict else [],
+            errors = [
+                SearchResultError.from_json(error)
+                for error in json_dict['errors']
+            ] if 'errors' in json_dict else []
         )
 
 class SaveSearchResult(NamedTuple):
@@ -127,9 +133,12 @@ class InteractiveOutput(NamedTuple):
 
     @classmethod
     def from_json_dict(cls, json_dict: Dict[str, Any]) -> 'InteractiveOutput':
+
+        search_result = json_dict.get('search_result')
+        save_search_result = json_dict.get('save_search_result')
         return InteractiveOutput(
-            search_result = SearchResult.from_json(json_dict['search_result']) if 'search_result' in json_dict else None,
-            save_search_result = SaveSearchResult.from_json(json_dict['save_search_result']) if 'save_search_result' in json_dict else None
+            search_result = SearchResult.from_json(search_result) if search_result is not None else None,
+            save_search_result = SaveSearchResult.from_json(save_search_result) if save_search_result is not None else None
         )
 
 class InteractiveInput(NamedTuple):

@@ -33,10 +33,18 @@
         "console": "integratedTerminal",
         "module": "pytest",
         "args": [
-          "${workspaceRoot}/tests/"
+          "--capture=no",
+          "${workspaceRoot}/tests/",
+          "-k",
+          "2"
         ],
         "cwd": "${workspaceRoot}",
-        "stopOnEntry": false
+        "stopOnEntry": false,
+        "env": {
+          "WAYLAND_DISPLAY": "/tmp/lewayland",
+          "QT_QPA_PLATFORM": "wayland",
+          "PATH": "/nix/workspace/projects/cbr-tools-extra/:$PATH"
+        }
       }
     }
   }

@@ -37,14 +37,14 @@ def search_organisms_widget(
     yield pymol_fixture.run_in_ui(create_widget)
 
 dummy_organism_search_text = "\n".join([
-    "\t".join(["dummy", "accession", "dummy", "taxid", "name"]),
-    "\t".join(["", "", "", "666",""]),
-    "\t".join(["", "", "", "", "Euwallacea"])
+    "\t".join(["dummy1", "accession", "dummy2", "taxid", "name"]),
+    "\t".join(["attribute1", "", "attributex", "666",""]),
+    "\t".join(["attribute2", "", "attributey", "", "Euwallacea"])
 ])
 
 class TestSearchOrganisms:
 
-    def test_empty_search_organisms(
+    def test_1_empty_search_organisms(
         self,
         search_organisms_widget: SearchOrganismsWidget,
         pyqt_test_helpers: PyQtTestHelpers
@@ -53,7 +53,7 @@ class TestSearchOrganisms:
         with pytest.raises(Exception, match="ValueError"):
             pyqt_test_helpers.wait_in_ui([search_organisms_widget], lambda: False)
 
-    def test_search_organisms(
+    def test_2_search_organisms(
         self,
         search_organisms_widget: SearchOrganismsWidget,
         pyqt_test_helpers: PyQtTestHelpers
@@ -67,8 +67,8 @@ class TestSearchOrganisms:
             search_organisms_widget.name_combo.setCurrentText("name")
             assert search_organisms_widget.name_combo.currentText() == "name"
 
-            search_organisms_widget.accession_combo.setCurrentText("taxid")
-            assert search_organisms_widget.accession_combo.currentText() == "taxid"
+            search_organisms_widget.taxid_combo.setCurrentText("taxid")
+            assert search_organisms_widget.taxid_combo.currentText() == "taxid"
 
         pyqt_test_helpers.run_in_ui(select_columns)
 
@@ -87,3 +87,10 @@ class TestSearchOrganisms:
             return False
 
         pyqt_test_helpers.wait_in_ui([search_organisms_widget], has_results, timeout=5)
+
+        results_model = search_organisms_widget.results_table.model()
+
+        for row in range(results_model.rowCount()):
+            for col in range(results_model.columnCount()):
+                item = results_model.data(results_model.index(row, col))
+                print(item)

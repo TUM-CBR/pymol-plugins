@@ -66,7 +66,9 @@ class PyQtTestHelpers(QObject):
         if exns is None:
             exns = self.__exns[uid] = []
 
-        exns.append(Exception(title, description))
+        e = Exception(title, description)
+        exns.append(e)
+        print(f"Error raised: {e}")
 
     def __collet_errors(self, parent: Optional[QWidget]) -> List[Exception]:
         uid = parent.__hash__() if parent is not None else 0
@@ -112,7 +114,10 @@ class PyQtTestHelpers(QObject):
 @pytest.fixture(scope="function")
 def pyqt_test_helpers(monkeypatch, pymol_fixture):
     helpers = PyQtTestHelpers(pymol_fixture)
-    monkeypatch.setattr("pmg_tk.startup.cbr.core.Qt.QtWidgets.show_error", helpers.show_error_patched)
-    monkeypatch.setattr("cbr.core.Qt.QtWidgets.show_error", helpers.show_error_patched)
+    from pmg_tk.startup.cbr.core.Qt import QtWidgets as cbr_pmg
+    monkeypatch.setattr(cbr_pmg, "show_error", helpers.show_error_patched)
+
+    from cbr.core.Qt import QtWidgets as cbr_std
+    monkeypatch.setattr(cbr_std, "show_error", helpers.show_error_patched)
     return helpers
 

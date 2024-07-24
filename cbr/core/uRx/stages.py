@@ -1,4 +1,4 @@
-from typing import Any, Generic
+from typing import Any, Generic, Optional
 
 from .core import *
 
@@ -6,6 +6,17 @@ ForEachAction = Callable[[TValue], Any]
 CompleteAction = Callable[[], Any]
 ErrorAction = Callable[[Exception], Any]
 Predicate = Callable[[TValue], bool]
+
+class FromValues(ObservableBase[TValue]):
+    def __init__(self, values: Iterable[TValue]) -> None:
+        super().__init__()
+        self.__values = list(values)
+
+    def subscribe(self, os: Observer[TValue]) -> Subscription:
+        for v in self.__values:
+            os.on_next(v)
+        os.on_completed()
+        return SubscriptionEmpty()
 
 class Filter(ObservableBase[TValue]):
 
@@ -35,6 +46,19 @@ class Filter(ObservableBase[TValue]):
             )
         )
 
+class ExceptionWithBacktrace(Exception):
+    def __init__(self, exn: Exception, backtrace: str) -> None:
+        super().__init__(str(exn))
+        self.__exn = exn
+        self.__backtrace = backtrace
+
+    @property
+    def exn(self) -> Exception:
+        return self.__exn
+
+    @property
+    def backtrace(self) -> str:
+        return self.__backtrace
 
 class ForEach(ObserverBase[TValue]):
 
@@ -64,7 +88,8 @@ class ForEach(ObserverBase[TValue]):
         try:
             self.__action(next)
         except Exception as exn:
-            self.on_error(exn)
+            import traceback
+            self.on_error(ExceptionWithBacktrace(exn, traceback.format_exc()))
 
 TMapIn = TypeVar('TMapIn')
 Mapping = Callable[[TMapIn], TValue]
@@ -129,6 +154,48 @@ class Merge(ObservableBase[TValue]):
         ]
 
         return SubscriptionComposite(subscriptions)
+
+class Concat(ObservableBase[TValue]):
+
+    def __init__(
+        self,
+        observables: Iterable[Observable[TValue]]
+    ) -> None:
+        super().__init__()
+        self.__observables = list(observables)
+
+    def subscribe(self, os: Observer[TValue]) -> Subscription:
+
+        queue = list(self.__observables)
+        subscription: Optional[Subscription] = None
+
+        def on_complete():
+            nonlocal queue, subscription
+            
+            if subscription is not None:
+                subscription.dispose()
+                subscription = None
+
+            if len(queue) == 0:
+                os.on_completed()
+            else:
+                subscription = queue.pop(0).subscribe(
+                    ForEach(
+                        lambda e: os.on_next(e),
+                        on_error=lambda er: os.on_error(er),
+                        on_complete=on_complete
+                    )
+                )
+
+        def unsubscribe():
+            nonlocal subscription, queue
+            if subscription is not None:
+                subscription.dispose()
+                subscription = None
+            queue = []
+
+        on_complete()
+        return SubscriptionCallable(unsubscribe)
 
 class Catch(ObservableBase[TValue]):
 
