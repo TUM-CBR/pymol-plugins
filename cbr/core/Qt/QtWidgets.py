@@ -97,10 +97,21 @@ def show_exception(
     parent : QWidget,
     exn : BaseException
 ):
+
+    name: Any = None
+    body: Any = None
+    try:
+        if hasattr(exn, '__format_name__'):
+            name = exn.__format_name__() #pyright: ignore
+        if hasattr(exn, '__format_boxy__'):
+            body = exn.__format_body__() #pyright: ignore
+    except Exception:
+        pass
+
     return show_error(
         parent,
-        title=exn.__class__.__name__,
-        description=str(exn)
+        title=name if name is not None else exn.__class__.__name__,
+        description=body if body is not None else str(exn)
     )
 
 TResult = TypeVar('TResult')

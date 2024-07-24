@@ -1,5 +1,6 @@
 from PyQt5.QtCore import QModelIndex, QObject, Qt, pyqtSignal
-from PyQt5.QtWidgets import QComboBox, QTableWidgetItem, QWidget
+from PyQt5.QtWidgets import QApplication, QComboBox, QTableWidgetItem, QWidget
+from PyQt5.QtGui import QClipboard
 from typing import Any, Dict, List, NamedTuple, Optional, Sequence, Set, Tuple, Union
 
 from ...core.Qt.QtCore import AbstractRecordTableModel
@@ -376,12 +377,17 @@ class SearchOrganismsWidget(QWidget, Ui_SearchOrganismsWidget):
         self.setupUi(self)
         self.__handler = SearchOrganismsInteractiveHandler(self, handler)
         self.__subscriptions = SubscriptionComposite([
+            QtRx.foreach_signal(self, self.paste_button.clicked, self.__on_paste_clicked, [bool]),
             QtRx.foreach_signal(self, self.search_button.clicked, self.__on_search_clicked, [bool]),
             QtRx.foreach_signal(self, self.search_table.itemChanged, self.__on_search_table_item_changed, [QTableWidgetItem]),
             self.__handler.search_state().subscribe(QtRx.foreach_ui_observer(self, self.__on_search_state)),
             self.__handler.save_state().subscribe(QtRx.foreach_ui_observer(self, self.__on_save_search_state)),
             self.__handler.busy_state().subscribe(QtRx.foreach_ui_observer(self, self.__set_is_busy))
         ])
+
+    def __on_paste_clicked(self, _value: Any) -> None:
+        clipboard = QApplication.clipboard()
+        self.set_search_text(clipboard.text())
 
     def setupUi(self, SearchOrganismsWidget: QWidget) -> None:
         super().setupUi(SearchOrganismsWidget) #pyright: ignore
@@ -434,7 +440,7 @@ class SearchOrganismsWidget(QWidget, Ui_SearchOrganismsWidget):
 
         return {
             header: item.text()
-            for i in range(1, self.search_table.columnCount())
+            for i in range(0, self.search_table.columnCount())
                 if i not in search_columns
             for header in [headers[i]]
                 if header is not None

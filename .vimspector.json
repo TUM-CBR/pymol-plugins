@@ -36,12 +36,12 @@
           "--capture=no",
           "${workspaceRoot}/tests/",
           "-k",
-          "2"
+          "3"
         ],
         "cwd": "${workspaceRoot}",
         "stopOnEntry": false,
         "env": {
-          "WAYLAND_DISPLAY": "/tmp/lewayland",
+          "WAYLAND_DISPLAY": "/run/user/1000/wayland-0",
           "QT_QPA_PLATFORM": "wayland",
           "PATH": "/nix/workspace/projects/cbr-tools-extra/:$PATH"
         }

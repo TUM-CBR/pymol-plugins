@@ -19,35 +19,7 @@
 }</string>
   </property>
   <layout class="QGridLayout" name="gridLayout" rowstretch="0,1,0,0">
-   <item row="3" column="5" colspan="4">
-    <widget class="QProgressBar" name="busy_progress">
-     <property name="value">
-      <number>24</number>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="0">
-    <widget class="QLabel" name="label_3">
-     <property name="text">
-      <string>TaxID Column</string>
-     </property>
-    </widget>
-   </item>
-   <item row="2" column="1" colspan="2">
-    <widget class="QComboBox" name="name_combo"/>
-   </item>
-   <item row="0" column="0" colspan="3">
-    <widget class="QLabel" name="label">
-     <property name="styleSheet">
-      <string notr="true">font-size: 26px;
-font-weight: bold;</string>
-     </property>
-     <property name="text">
-      <string>Search Organisms</string>
-     </property>
-    </widget>
-   </item>
-   <item row="2" column="5">
+   <item row="2" column="6">
     <spacer name="horizontalSpacer">
      <property name="orientation">
       <enum>Qt::Orientation::Horizontal</enum>
@@ -60,32 +32,53 @@ font-weight: bold;</string>
      </property>
     </spacer>
    </item>
-   <item row="2" column="6" colspan="3">
-    <widget class="QPushButton" name="add_to_database_button">
-     <property name="text">
-      <string>Add Selected to Database</string>
+   <item row="3" column="6" colspan="4">
+    <widget class="QProgressBar" name="busy_progress">
+     <property name="value">
+      <number>24</number>
      </property>
     </widget>
    </item>
-   <item row="3" column="3" colspan="2">
+   <item row="3" column="4" colspan="2">
     <widget class="QPushButton" name="search_button">
      <property name="text">
       <string>Search</string>
      </property>
     </widget>
    </item>
+   <item row="2" column="1" colspan="2">
+    <widget class="QComboBox" name="name_combo"/>
+   </item>
    <item row="3" column="1" colspan="2">
     <widget class="QComboBox" name="taxid_combo"/>
    </item>
-   <item row="2" column="3">
-    <widget class="QLabel" name="label_4">
+   <item row="3" column="0">
+    <widget class="QLabel" name="label_3">
      <property name="text">
-      <string>Accession Column</string>
+      <string>TaxID Column</string>
      </property>
     </widget>
    </item>
-   <item row="2" column="4">
+   <item row="2" column="7" colspan="3">
+    <widget class="QPushButton" name="add_to_database_button">
+     <property name="text">
+      <string>Add Selected to Database</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="5">
     <widget class="QComboBox" name="accession_combo"/>
+   </item>
+   <item row="0" column="0" colspan="3">
+    <widget class="QLabel" name="label">
+     <property name="styleSheet">
+      <string notr="true">font-size: 26px;
+font-weight: bold;</string>
+     </property>
+     <property name="text">
+      <string>Search Organisms</string>
+     </property>
+    </widget>
    </item>
    <item row="2" column="0">
     <widget class="QLabel" name="label_2">
@@ -94,13 +87,27 @@ font-weight: bold;</string>
      </property>
     </widget>
    </item>
-   <item row="1" column="0" colspan="9">
+   <item row="1" column="0" colspan="10">
     <widget class="QSplitter" name="splitter">
      <property name="orientation">
       <enum>Qt::Orientation::Horizontal</enum>
      </property>
      <widget class="QTableWidget" name="search_table"/>
      <widget class="QTableView" name="results_table"/>
+    </widget>
+   </item>
+   <item row="3" column="3">
+    <widget class="QPushButton" name="paste_button">
+     <property name="text">
+      <string>Paste</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="3">
+    <widget class="QLabel" name="label_4">
+     <property name="text">
+      <string>Accession Column</string>
+     </property>
     </widget>
    </item>
   </layout>

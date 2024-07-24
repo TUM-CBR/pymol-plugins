@@ -94,3 +94,10 @@ class TestSearchOrganisms:
             for col in range(results_model.columnCount()):
                 item = results_model.data(results_model.index(row, col))
                 print(item)
+                
+    def test_3_demo(
+        self,
+        search_organisms_widget: SearchOrganismsWidget,
+        pyqt_test_helpers: PyQtTestHelpers
+    ):
+        input()

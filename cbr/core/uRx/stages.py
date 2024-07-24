@@ -60,6 +60,15 @@ class ExceptionWithBacktrace(Exception):
     def backtrace(self) -> str:
         return self.__backtrace
 
+    def __str__(self):
+        return self.__backtrace
+
+    def __format_name__(self):
+        return self.__exn.__class__.__name__
+
+    def __format_body__(self):
+        return self.__backtrace
+
 class ForEach(ObserverBase[TValue]):
 
     def __init__(
