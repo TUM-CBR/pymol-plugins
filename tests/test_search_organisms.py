@@ -29,9 +29,6 @@ def search_organisms_widget(
         widget = SearchOrganismsWidget(search_interactive_manager)
         widget.show()
 
-        # The window must be created before this function returns
-        import time
-        time.sleep(1)
         return widget
 
     yield pymol_fixture.run_in_ui(create_widget)
@@ -39,7 +36,7 @@ def search_organisms_widget(
 dummy_organism_search_text = "\n".join([
     "\t".join(["dummy1", "accession", "dummy2", "taxid", "name"]),
     "\t".join(["attribute1", "", "attributex", "666",""]),
-    "\t".join(["attribute2", "", "attributey", "", "Euwallacea"])
+    "\t".join(["attribute2", "", "attributey", "", "Oxyura"])
 ])
 
 class TestSearchOrganisms:
@@ -77,24 +74,33 @@ class TestSearchOrganisms:
         QTest.mouseClick(search_organisms_widget.search_button, Qt.LeftButton)
 
         def has_results():
-            model = search_organisms_widget.results_table.model()
-            for row in range(model.rowCount()):
-                for col in range(model.columnCount()):
-                    item = model.data(model.index(row, col))
-                    if item != "":
-                        return True
+            return search_organisms_widget.busy_progress.isHidden()
 
-            return False
-
-        pyqt_test_helpers.wait_in_ui([search_organisms_widget], has_results, timeout=5)
+        pyqt_test_helpers.wait_in_ui([search_organisms_widget], has_results, timeout=100)
 
         results_model = search_organisms_widget.results_table.model()
 
-        for row in range(results_model.rowCount()):
-            for col in range(results_model.columnCount()):
-                item = results_model.data(results_model.index(row, col))
-                print(item)
-                
+        expected_accessions = ["GCA_019458465.1", "GCF_003574155.1", "GCA_011077185.1", "GCF_011077185.1"]
+        expected_attributes = ["attribute1", "attribute2", "attributex", "attributey"]
+
+        def check_results():
+            for row in range(results_model.rowCount()):
+                for col in range(results_model.columnCount()):
+                    text = results_model.data(results_model.index(row, col))
+                    if text is None:
+                        continue
+
+                    if text in expected_accessions:
+                        expected_accessions.pop(expected_accessions.index(text))
+                    
+                    if text in expected_attributes:
+                        expected_attributes.pop(expected_attributes.index(text))
+
+        pyqt_test_helpers.run_in_ui(check_results)
+        assert len(expected_accessions) == 0, f"Missing accessions: {expected_accessions}"
+        assert len(expected_attributes) == 0, f"Missing attributes: {expected_attributes}"
+
+    @pytest.mark.skip("This test can be used to run the widget in isolation.")
     def test_3_demo(
         self,
         search_organisms_widget: SearchOrganismsWidget,

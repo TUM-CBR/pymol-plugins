@@ -25,20 +25,24 @@ class UiRunner(QObject):
 
     singleton: Optional['UiRunner'] = None
 
-    __run_action = pyqtSignal(RunActionRequest)
+    run_action = pyqtSignal(RunActionRequest)
 
-    __close_request = pyqtSignal()
+    close_request = pyqtSignal()
 
     def __init__(self):
         super().__init__()
         from pmg_qt.pymol_qt_gui import window
         self.__window: Optional[QMainWindow] = window
-        self.__close_request.connect(self.__on_close_request)
-        self.__run_action.connect(self.__on_run_action)
+        self.close_request.connect(self.__on_close_request)
+        self.run_action.connect(self.__on_run_action)
 
     @pyqtSlot(RunActionRequest)
     def __on_run_action(self, request: RunActionRequest):
         import threading
+
+        if self.__window is None:
+            raise Exception("The Ui runner cannot be used after the application has been closed.")
+
         try:
             print("UI thread: ", threading.current_thread().ident)
             request.result = request.action()
@@ -55,15 +59,6 @@ class UiRunner(QObject):
 
         cls.singleton = cls()
 
-    def run_in_ui_async(self, action: Callable[[], TResult]) -> RunActionRequest:
-
-        if self.__window is None:
-            raise Exception("The Ui runner cannot be used after the application has been closed.")
-
-        request = RunActionRequest(action)
-        self.__run_action.emit(request)
-        return request
-
     def __on_close_request(self):
         window = self.__window
 
@@ -71,9 +66,6 @@ class UiRunner(QObject):
             return
         self.__window = None
         window.close()
-
-    def close(self):
-        self.__close_request.emit()
 
 class PymolTestSupportObject(QObject):
  
@@ -86,7 +78,9 @@ class PymolTestSupportObject(QObject):
         self.__runner = UiRunner.singleton
 
     def run_in_ui_async(self, action: Callable[[], TResult]) -> RunActionRequest:
-        return self.__runner.run_in_ui_async(action)
+        request = RunActionRequest(action)
+        self.__runner.run_action.emit(request)
+        return request
 
     def run_in_ui(self, action: Callable[[], TResult]) -> TResult:
         request = self.run_in_ui_async(action)
@@ -96,8 +90,7 @@ class PymolTestSupportObject(QObject):
         return self
 
     def __exit__(self, *args, **kwargs):
-        self.__runner.close()
+        self.__runner.close_request.emit()
         import time
-        time.sleep(1)
 
 
