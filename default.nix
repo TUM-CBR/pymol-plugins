@@ -15,17 +15,17 @@ let
     nixpkgs.stdenv.mkDerivation {
       name = "cbr-tools";
       nativeBuildInputs = [
-	nixpkgs.coreutils
+	      nixpkgs.coreutils
       ];
       src = ./cbr;
       inherit raspp-src;
       installPhase = ''
-	plugin_folder="$out/${python.sitePackages}/pymol/pymol_path/data/startup/"
-	mkdir -p $plugin_folder
-	cp -r "$PWD" $plugin_folder/
-	raspp_folder="$plugin_folder/cbr/schema/raspp"
-	cp -r "${raspp-src}" $raspp_folder 
-	ls $plugin_folder/cbr/schema/raspp
+          plugin_folder="$out/${python.sitePackages}/pymol/pymol_path/data/startup/"
+          mkdir -p $plugin_folder
+          cp -r "$PWD" $plugin_folder/
+          raspp_folder="$plugin_folder/cbr/schema/raspp"
+          cp -r "${raspp-src}" $raspp_folder 
+          ls $plugin_folder/cbr/schema/raspp
       '';
     };
 
@@ -44,7 +44,7 @@ let
     doCheck = false;
     postInstall = ''
       wrapProgram $out/bin/pymol \
-	--prefix PYTHONPATH : ${lib.makeSearchPathOutput "lib" python.sitePackages pymol-required-pkgs}
+	      --prefix PYTHONPATH : ${lib.makeSearchPathOutput "lib" python.sitePackages pymol-required-pkgs}
     '';
   };
   pymolpath-out = "${placeholder "out"}/${python.sitePackages}/pymol/pymol_path/";

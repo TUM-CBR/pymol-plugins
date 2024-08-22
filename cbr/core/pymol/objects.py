@@ -6,6 +6,16 @@ class ModelAndChain(NamedTuple):
     model: str
     chain: str
 
+    def iter_segs(self):
+        segs: Set[str] = set()
+        pymol.cmd.iterate(
+            "model %s and chain %s" % (self.model, self.chain),
+            'segs.add(segi)',
+            space={'segs': segs}
+        )
+
+        return segs
+
 def iter_chains():
 
     for model in cmd.get_names():

@@ -24,6 +24,9 @@ class StructureSelection(NamedTuple):
 
     @property
     def base_query(self) -> str:
+        return self.base_query_any()
+
+    def base_query_any(self, modifiers: str = " and polymer") -> str:
         selectors = \
             [ f"model {self.structure_name}"
             , self.chain_name and "chain %s" % self.chain_name
@@ -34,11 +37,15 @@ class StructureSelection(NamedTuple):
             selectors += [f"({self.__residues_query(self.residues)})"]
 
         items = " and ".join(s for s in selectors if s)
-        return f"{items} and polymer"
+        return f"{items} {modifiers}"
     
     @property
     def selection(self) -> str:
         return f"byres ({self.base_query})"
+
+    @property
+    def selection_any(self) -> str:
+        return self.base_query_any(modifiers="")
     
     def scoped(self, residues: Sequence[int]) -> 'StructureSelection':
         existing = self. residues

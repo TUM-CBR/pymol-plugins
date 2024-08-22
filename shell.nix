@@ -1,9 +1,10 @@
 {
-  nixpkgs ? import (fetchTarball "https://github.com/NixOS/nixpkgs/archive/refs/tags/24.05.tar.gz") { },
+  packages ? import ../nix-packages/default.nix {},
+  nixpkgs ? packages.nixpkgs,
   python3 ? nixpkgs.python3,
+  nixGL ? packages.nixGL,
   fetchFromGitHub ? nixpkgs.fetchFromGitHub,
-  nixGL ? import (fetchGit { url = "https://github.com/nix-community/nixGL.git"; rev = "310f8e49a149e4c9ea52f1adf70cdc768ec53f8a"; }) { },
-
+  ligandMPNN ? import ./nix/ligandMPNN.nix { inherit packages; }
 }:
 let
   pymol-src = python3.pkgs.buildPythonPackage {
@@ -26,8 +27,12 @@ let
     py-pkgs: with py-pkgs; [
       pymol-src
       ipython
+      jedi
+      jedi-language-server
+      pyflakes
       pyqt5
       pyqt5.pyqt5-sip
+      python-lsp-server
       requests
       numpy
       biopython
@@ -39,15 +44,19 @@ let
 in
 nixpkgs.mkShell {
   name = "cbr-tools";
-  packages = [
+  packages = with nixpkgs; [
     python-pymol-dev
-    nixGL
-    nixpkgs.qt5.full
+    nixGL.nixGLMesa
+    qt5.full
+    qtcreator
+    pyright
+    ligandMPNN
   ];
 
   shellHook = ''
     export PYMOL_STARTUP_PATH_POLY=$PWD
     export QT_QPA_PLATFORM=xcb
+    export DISPLAY=:1
     unset SUDO_COMMAND
   '';
 }

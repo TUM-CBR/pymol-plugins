@@ -13,7 +13,11 @@
         "protocol": "auto",
         "stopOnEntry": true,
         "console": "integratedTerminal",
-        "program": "${workspaceRoot}/test_pymol.py",
+        "module": "IPython",
+        "args": [
+          "-i",
+          "${workspaceRoot}/test_pymol.py"
+        ],
         "cwd": "${workspaceRoot}"
       }
     }
