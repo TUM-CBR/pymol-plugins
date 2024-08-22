@@ -1,6 +1,6 @@
-from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtCore import pyqtSlot, QItemSelection
 from PyQt5.QtGui import QShowEvent
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtWidgets import QTableView, QWidget
 from pymol import cmd
 from typing import Dict, Iterable, List, NamedTuple, Optional, Set, Tuple
 
@@ -12,6 +12,7 @@ from ...core.Qt.visual.NamedTupleEditor import FieldOrientation, MetaFieldOverri
 from ...core.sequence import assert_residue
 from ..data import *
 from .MpnnAdvancedOptionsDialog import MpnnAdvancedOptionsDialog
+from .MpnnLigandsModel import MpnnLigandModel
 from .MpnnViewer import MpnnViewer
 from .Ui_MpnnRunner import Ui_MpnnRunner
 
@@ -110,6 +111,14 @@ class MpnnRunner(QWidget):
         self.__chain_set_model = PymolChainSetEditorModel(exclusive=True)
         self.__ui.tiedPositionsTable.setModel(self.__chain_set_model)
         self.__ui.modelComboBox.addItems(models.keys())
+        self.__ligands_model = MpnnLigandModel()
+        self.__ui.ligandsTable.setModel(self.__ligands_model)
+        self.__ui.ligandsTable.selectionModel().selectionChanged.connect(self.__on_ligand_cell_selected)
+        self.__ui.ligandsTable.setSelectionBehavior(QTableView.SelectRows)
+
+    @pyqtSlot(QItemSelection, QItemSelection)
+    def __on_ligand_cell_selected(self, selected: QItemSelection, deselected: QItemSelection):
+        self.__ligands_model.on_selection(selected)
 
     @pyqtSlot()
     def __on_advanced_options_clicked(self):
@@ -129,6 +138,7 @@ class MpnnRunner(QWidget):
     @pyqtSlot()
     def __on_refresh_button_clicked(self):
         self.__refresh_selections()
+        self.__ligands_model.refresh()
         
     def __refresh_selections(self):
         selections : Set[str] = set(cmd.get_names('selections'))
