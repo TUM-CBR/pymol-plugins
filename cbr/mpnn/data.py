@@ -1,3 +1,4 @@
+import random
 from types import MappingProxyType
 from typing import *
 from pymol import cmd
@@ -170,6 +171,7 @@ class MpnnArgs(NamedTuple):
     """
 
     sampling_temperature: float = 0.1
+    random_seed: int = random.randint(0, 2**31)
 
 TiedChainsJonsl = Dict[str, List[List[str]]]
 

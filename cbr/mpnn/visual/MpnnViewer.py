@@ -297,7 +297,8 @@ class MpnnViewer(QWidget):
                     "--number_of_batches", str(self.__spec.num_seqs),
                     #"--num_seq_per_target", str(self.__spec.num_seqs),
                     #"--backbone_noise", str(args.backbone_noise),
-                    "--temperature", str(args.sampling_temperature)
+                    "--temperature", str(args.sampling_temperature),
+                    "--seed", str(args.random_seed)
                 ] \
                 + self.__get_excluded_args() \
                 + tied_args
