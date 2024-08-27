@@ -45,6 +45,7 @@ in
 nixpkgs.mkShell {
   name = "cbr-tools";
   packages = with nixpkgs; [
+    clustal-omega
     python-pymol-dev
     nixGL.nixGLMesa
     qt5.full

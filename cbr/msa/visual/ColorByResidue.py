@@ -1,7 +1,7 @@
 from pymol import cmd
 from PyQt5.QtCore import pyqtSlot, QPoint, Qt
 from PyQt5.QtWidgets import QTableWidgetItem, QWidget
-from typing import Callable, Dict, List, NamedTuple, Optional, Set
+from typing import Callable, Dict, List, NamedTuple, Optional, Set, Tuple
 
 from ...clustal import msa
 from ...clustal.Clustal import Clustal
@@ -21,6 +21,8 @@ COLOR_MIN = 600
 def perc_str(n : float):
     return str(round(100*n, ndigits=2))
 
+K_GAP = "-"
+
 class MsaConservationResult(object):
 
     def __init__(
@@ -32,12 +34,30 @@ class MsaConservationResult(object):
         ):
         score = score.copy()
         self.__blanks = score.get("-") or 0
-        if "-" in score:
-            del score["-"]
+        if K_GAP in score:
+            del score[K_GAP]
         self.__structure_residue = structure_residue
         self.__score = score
         self.__pdb_position = pdb_position
         self.__msa_position = msa_position
+
+        self.__score_perc = self.__compute_score_percent()
+
+    @property
+    def msa_consensus(self) -> str:
+        scores = self.score_percent
+        rank = list(scores.keys())
+        rank.sort(key=lambda x: scores[x], reverse=True)
+        best = rank[0]
+        score = scores[best]
+        best_score = f"({perc_str(score)}%)"
+
+        if score < self.blanks_percent:
+            best = residue_to_3(rank[1]) + "*"
+        else:
+            best = residue_to_3(best)
+
+        return f"{best} {best_score}"
 
     @property
     def blanks(self) -> int:
@@ -49,7 +69,10 @@ class MsaConservationResult(object):
 
     @property
     def residue(self) -> str:
-        return self.__structure_residue
+        resi = self.__structure_residue
+        score = self.__score_perc.get(resi) or 0.0
+        resi = residue_to_3(resi)
+        return f"{resi} ({perc_str(score)}%)"
 
     @property
     def pdb_position(self) -> int:
@@ -69,6 +92,9 @@ class MsaConservationResult(object):
 
     @property
     def score_percent(self) -> Dict[str, float]:
+        return self.__score_perc
+
+    def __compute_score_percent(self) -> Dict[str, float]:
         total = self.sum_with_blanks
         return dict([
             (res, score/total)
@@ -171,6 +197,9 @@ class ColorByResidue(QWidget):
 
         for (i, ix) in enumerate(positions):
 
+            if ix in result:
+                continue
+
             structure_residue = structure_sequence[ix].lower()
             conserved = {structure_residue: 1}
             for sequence in sequences:
@@ -184,7 +213,7 @@ class ColorByResidue(QWidget):
                 else:
                     conserved[aa] = 1
 
-            result[ix] = MsaConservationResult(offset[ix], i, structure_residue, conserved)
+            result[ix] = MsaConservationResult(offset[ix], i+1, structure_residue, conserved)
 
         return MsaConservationResults(results_keys, result)
     
@@ -218,7 +247,7 @@ class ColorByResidue(QWidget):
 
         self.__residue_selector.set_selection(structure_selection.selection)
 
-        base_columns = ['structure position', 'MSA position', 'structure residue', 'score', 'Gaps (%)']
+        base_columns = ['structure position', 'MSA position', 'structure residue', 'consensus residue', 'score', 'Gaps (%)']
 
         columns = self.__get_columns(results.results_keys)
         column_headers = [col[1] for col in columns]
@@ -230,20 +259,24 @@ class ColorByResidue(QWidget):
         table.setHorizontalHeaderLabels(column_names)
 
         for (i,score) in enumerate(results.results.values()):
+            perc_scores = score.score_percent
+            consensus = score.msa_consensus
+
             residue_selector.set_item_riesidues(i, [score.pdb_position])
             table.setItem(i, 0, QTableWidgetItem(str(score.pdb_position)))
             table.setItem(i, 1, QTableWidgetItem(str(score.msa_position)))
-            table.setItem(i, 2, QTableWidgetItem(residue_to_3(score.residue)))
-            table.setItem(i, 3, QTableWidgetItem(str(scoring(score))))
+            table.setItem(i, 2, QTableWidgetItem(score.residue))
+            table.setItem(i, 3, QTableWidgetItem(consensus))
+            table.setItem(i, 4, QTableWidgetItem(str(scoring(score))))
 
             table.setItem(
                 i,
-                4,
+                5,
                 QTableWidgetItem("%s%%" % perc_str(score.blanks_percent))
             )
 
             for (j, (key, _)) in enumerate(columns):
-                k_score = perc_str(score.score_percent.get(key) or 0.0)
+                k_score = perc_str(perc_scores.get(key) or 0.0)
                 table.setItem(i, j + len(base_columns), QTableWidgetItem("%s%%" % k_score))
 
 

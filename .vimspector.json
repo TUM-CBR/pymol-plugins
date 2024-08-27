@@ -18,7 +18,8 @@
           "-i",
           "${workspaceRoot}/test_pymol.py"
         ],
-        "cwd": "${workspaceRoot}"
+        "cwd": "${workspaceRoot}",
+        "justMyCode": false
       }
     }
   }
