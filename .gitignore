@@ -3,4 +3,5 @@ __pycache__
 .virtualenv
 demo
 scratch
-PyMOL/*
+PyMOL/*tools/
+tools

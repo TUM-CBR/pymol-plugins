@@ -140,6 +140,9 @@ class MpnnViewer(QWidget):
     
     def __get_results_location(self) -> str:
         return path.join(self.__working_directory, "results")
+
+    def __get_logfile_location(self) -> str:
+        return path.join(self.__working_directory, "log.txt")
     
     def __get_model_locations_json(self, models: Sequence[str]) -> str:
         location = path.join(self.__working_directory, "models.json")
@@ -236,6 +239,7 @@ class MpnnViewer(QWidget):
 
         processes.on_complete.disconnect(self.__on_complete)
         processes.close()
+        commands = processes.get_commands()
         processes = None
 
         self.__ui.progressBar.hide()
@@ -245,6 +249,14 @@ class MpnnViewer(QWidget):
             show_error(self, "Protein MPNN Failed", errors)
 
         self.__populate_fasta()
+
+        self.__write_log("\n".join(commands), result)
+
+    def __write_log(self, command: str, result: ExecutableGroupResult) -> None:
+        with open(self.__get_logfile_location(), 'w') as out_stream:
+            out_stream.write(f"Command:\n{command}\n")
+            out_stream.write(f"StdOut:\n {result.get_outputs()}\n")
+            out_stream.write(f"Errors:\n{result.get_errors()}\n")
 
     def __get_excluded_args(self) -> List[str]:
         excluded = self.__spec.get_excluded_jonsl(self.__models_to_pdb())
@@ -298,7 +310,9 @@ class MpnnViewer(QWidget):
                     #"--num_seq_per_target", str(self.__spec.num_seqs),
                     #"--backbone_noise", str(args.backbone_noise),
                     "--temperature", str(args.sampling_temperature),
-                    "--seed", str(args.random_seed)
+                    "--seed", str(args.random_seed),
+                    "--verbose", "1",
+                    "--save_stats", "1"
                 ] \
                 + self.__get_excluded_args() \
                 + tied_args

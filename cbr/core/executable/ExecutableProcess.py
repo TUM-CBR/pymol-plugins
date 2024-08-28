@@ -18,6 +18,7 @@ def decode_bytes(bs: Any):
 class ExecutableResult(NamedTuple):
     process :'ExecutableProcess'
     error : Optional[str]
+    output: str
 
     @property
     def is_successful(self) -> bool:
@@ -43,6 +44,12 @@ class ExecutableProcess(QProcess):
         self.finished.connect(self.__on_process_finish)
         self.__executable_result : Optional[ExecutableResult] = None
 
+    def get_command(self) -> str:
+        return " ".join(
+            [self.program()] +
+            [f'"{arg}"' for arg in self.arguments()]
+        )
+
     def get_result(self) -> Optional[ExecutableResult]:
 
         result = self.__executable_result
@@ -56,15 +63,19 @@ class ExecutableProcess(QProcess):
 
         exit_code = self.exitCode()
 
+        std_out = decode_bytes(self.readAllStandardOutput())
+
         if exit_code == 0:
             result = ExecutableResult(
                 process = self,
-                error = None
+                error = None,
+                output = std_out
             )
         else:
             result = ExecutableResult(
                 process = self,
-                error = decode_bytes(self.readAllStandardError())
+                error = decode_bytes(self.readAllStandardError()),
+                output = std_out
             )
 
         self.__executable_result = result
@@ -84,6 +95,12 @@ class ExecutableProcess(QProcess):
     
 class ExecutableGroupResult(NamedTuple):
     results : List[ExecutableResult]
+
+    def get_outputs(self) -> str:
+        return "\n".join(
+            result.output
+            for result in self.results
+        )
 
     def get_errors(self) -> Optional[str]:
         errors = [
@@ -121,6 +138,9 @@ class ExecutableProcessGroup(QObject):
             process.on_completed.connect(self.__on_complete)
             for process in processess
         ]
+
+    def get_commands(self) -> List[str]:
+        return [process.get_command() for process in self.__processess]
 
     def __conclude(self):
 
