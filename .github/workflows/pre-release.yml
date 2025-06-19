@@ -24,13 +24,13 @@ jobs:
           fetch-depth: 0
           submodules: true
 
-      - name: "Setup Python for Building"
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.7'
-          cache: 'pip' # caching pip dependencies
+      # - name: "Setup Python for Building"
+      #  uses: actions/setup-python@v4
+      #  with:
+      #    python-version: '3.12'
+      #    cache: 'pip' # caching pip dependencies
 
-      - run: pip install -r .github/workflows/support/requirements.txt
+      # - run: pip install -r .github/workflows/support/requirements.txt
 
       #- name: "Run pyright"
       #  run: pyright -p ./pyrightconfig.github.json --verbose
