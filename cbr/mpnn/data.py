@@ -168,10 +168,15 @@ class MpnnArgs(NamedTuple):
 
     Attributes:
         sampling_temperature    Sampling temperature for amino acids. Suggested values 0.1, 0.15, 0.2, 0.25, 0.3. Higher values will lead to more diversity.
+        random_seed             The random seed used to introduce entropy in the sampling. Using the same seed should give the same output given the same configuration is used.
+        use_atom_context        Wether to consider or not the ligand's atoms when sampling.
+        use_side_chain_context  Wether to consider the side-chain atoms or not when sampling.
     """
 
     sampling_temperature: float = 0.1
     random_seed: int = random.randint(0, 2**31)
+    use_atom_context: bool = True
+    use_side_chain_context: bool = True
 
 TiedChainsJonsl = Dict[str, List[List[str]]]
 

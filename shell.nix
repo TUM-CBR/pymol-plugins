@@ -48,7 +48,7 @@ nixpkgs.mkShell {
   packages = with nixpkgs; [
     clustal-omega
     python-pymol-dev
-    nixGL.nixGLMesa
+    #nixGL.nixGLMesa
     qt5.full
     qtcreator
     pyright
@@ -61,7 +61,6 @@ nixpkgs.mkShell {
     export LD_LIBRARY_PATH=${nixpkgs.libz}/lib:/nix/store/p44qan69linp3ii0xrviypsw2j4qdcp2-gcc-13.2.0-lib/lib/:$LD_LIBRARY_PATH
     export PYMOL_STARTUP_PATH_POLY=$PWD
     export QT_QPA_PLATFORM=xcb
-    export DISPLAY=:1
     unset SUDO_COMMAND
     export PATH=$PWD/tools/LigandMPNN:$PATH
   '';

@@ -312,7 +312,9 @@ class MpnnViewer(QWidget):
                     "--temperature", str(args.sampling_temperature),
                     "--seed", str(args.random_seed),
                     "--verbose", "1",
-                    "--save_stats", "1"
+                    "--save_stats", "1",
+                    "--ligand_mpnn_use_side_chain_context", str(int(args.use_side_chain_context)),
+                    "--ligand_mpnn_use_atom_context", str(int(args.use_atom_context))
                 ] \
                 + self.__get_excluded_args() \
                 + tied_args
@@ -327,7 +329,4 @@ class MpnnViewer(QWidget):
         self.__save_fixed_chains()
         self.__save_fixed_positions()
         self.__run_mpnn()
-
-
-
 

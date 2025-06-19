@@ -208,3 +208,4 @@ class MpnnRunner(QWidget):
         self.__context.run_widget(
             lambda ctx: MpnnViewer(ctx, mpnn, spec)
         ).show()
+
