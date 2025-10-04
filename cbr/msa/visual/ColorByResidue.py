@@ -51,13 +51,13 @@ class MsaConservationResult(object):
         best = rank[0]
         score = scores[best]
         best_score = f"({perc_str(score)}%)"
+        best_name = residue_to_3(best)
 
-        if score < self.blanks_percent:
-            best = residue_to_3(rank[1]) + "*"
-        else:
-            best = residue_to_3(best)
+        # Display a start to indicate that the best score
+        # was obtained by the "gaps"
+        best_info = "" if score >= self.blanks_percent else "*"
 
-        return f"{best} {best_score}"
+        return f"{best_name}{best_info} {best_score}"
 
     @property
     def blanks(self) -> int:

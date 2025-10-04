@@ -5,18 +5,18 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Pymol37",
-            "type": "python",
+            "name": "Pymol-Linux",
+            "type": "debugpy",
             "request": "launch",
             "args": ["-i", "test_pymol.py"],
             "module": "IPython",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "python": "${workspaceFolder}/.virtualenv/bin/python",
+            "python": "/nix/store/ryzhpc0rnrwbsba7hicqgrjxi6n07dv8-python3-3.11.9-env/bin/python",
             "env": {
                 "QTHREAD_DEBUGGING": "True",
-                "PATH": "${workspaceFolder}/bin/:$PATH",
-                "LOG_CBR_EXTRA": "${workspaceFolder}/logs/cbrextra.log"
+                "PATH": "${workspaceFolder}/bin/:/nix/store/4rf5qybw37b4lh1g0xczlv14sqdbmnpm-python3-3.11.9/bin:$PATH",
+                "LOG_CBR_EXTRA": "${workspaceFolder}/logs/cbrextra.$(date).log"
             }
         },
         {

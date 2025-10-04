@@ -63,6 +63,7 @@ nixpkgs.mkShell {
     export QT_QPA_PLATFORM=xcb
     unset SUDO_COMMAND
     export PATH=$PWD/tools/LigandMPNN:$PATH
+    export THEPYTHON=${python-pymol-dev}
   '';
 }
 
