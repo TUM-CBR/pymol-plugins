@@ -46,6 +46,10 @@ class MsaConservationResult(object):
     @property
     def msa_consensus(self) -> str:
         scores = self.score_percent
+
+        if len(scores) == 0:
+            return "None (Only Gaps)"
+
         rank = list(scores.keys())
         rank.sort(key=lambda x: scores[x], reverse=True)
         best = rank[0]
